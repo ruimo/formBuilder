@@ -13,5 +13,8 @@ lazy val root = (project in file(".")).
         val jh = ps("java.home")
         Attributed.blank(file(jh) / "lib/ext/jfxrt.jar")
     },
-    libraryDependencies += scalaTest % Test
+    libraryDependencies ++= Seq(
+      "org.scalafx" % "scalafx_2.12" % "8.0.102-R11",
+      scalaTest % Test
+    )
   )
