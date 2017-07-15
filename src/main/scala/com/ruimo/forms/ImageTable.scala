@@ -5,7 +5,7 @@ import scala.collection.{immutable => imm, mutable => mut}
 import java.io.File
 
 trait ImageTableListener {
-  def onFilesChanged(before: java.util.Set[File], after: java.util.Set[File]) {}
+  def onFilesChanged(before: imm.Set[File], after: imm.Set[File]) {}
 }
 
 class ImageTable {
@@ -17,9 +17,9 @@ class ImageTable {
   }
 
   def addFiles(files: Iterable[File]) {
-    val before = new java.util.TreeSet(this.files.asJava)
+    val before = this.files.toSet
     this.files ++= files
-    val after = new java.util.TreeSet(this.files.asJava)
+    val after = this.files.toSet
     onFilesChanged(before, after)
   }
 
@@ -27,7 +27,7 @@ class ImageTable {
     this.listeners += l
   }
 
-  private[this] def onFilesChanged(before: java.util.Set[File], after: java.util.Set[File]) {
+  private[this] def onFilesChanged(before: imm.Set[File], after: imm.Set[File]) {
     listeners.foreach { _.onFilesChanged(before, after) }
   }
 }
