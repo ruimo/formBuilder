@@ -15,6 +15,8 @@ lazy val root = (project in file(".")).
     },
     libraryDependencies ++= Seq(
       "org.scalafx" % "scalafx_2.12" % "8.0.102-R11",
+      "com.typesafe.play" %% "play-ahc-ws-standalone" % "1.0.2",
+      "com.typesafe.play" %% "play-ws-standalone-json" % "1.0.2",
       scalaTest % Test
     )
   )
