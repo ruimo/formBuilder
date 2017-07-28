@@ -13,6 +13,7 @@ lazy val root = (project in file(".")).
         val jh = ps("java.home")
         Attributed.blank(file(jh) / "lib/ext/jfxrt.jar")
     },
+    fork in run := true,
     libraryDependencies ++= Seq(
       "org.scalafx" % "scalafx_2.12" % "8.0.102-R11",
       "com.typesafe.play" %% "play-ahc-ws-standalone" % "1.0.2",
