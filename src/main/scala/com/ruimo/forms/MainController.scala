@@ -1,34 +1,29 @@
 package com.ruimo.forms
 
-import scala.collection.{immutable => imm, mutable => mut}
+import java.awt.Button
 
-import javafx.collections.FXCollections
-import javafx.collections.ObservableList
-import javafx.fxml.Initializable
-import javafx.fxml.FXML
+import scala.collection.{immutable => imm, mutable => mut}
+import javafx.fxml.{FXML, FXMLLoader, Initializable}
 import javafx.event.ActionEvent
 import javafx.scene.input.MouseEvent
-import javafx.scene.control.ListView
-import javafx.scene.image.ImageView
+import javafx.event.EventHandler
 
 import scalafx.collections.ObservableBuffer
 import scalafx.application.Platform
-import scalafx.collections.ObservableSet
 import scalafx.scene.image.Image
-import scalafx.stage.FileChooser
-import scalafx.stage.Stage
-
+import scalafx.stage.{FileChooser, Modality, Stage, StageStyle}
 import java.io.File
 import java.net.URL
-import java.util.ArrayList
-import java.util.List
 import java.util.ResourceBundle
-import java.util.Set
-import java.util.function.Function
-import java.util.stream.Collectors
-import scalafx.scene.control.{ListView => SfxListView}
+import javafx.scene.Scene
+
+import scalafx.scene.control.{Alert => SfxAlert, ListView => SfxListView}
 import javafx.scene.canvas.Canvas
+import javafx.scene.control._
+
 import scalafx.scene.canvas.{Canvas => SfxCanvas}
+import scalafx.scene.control.{DialogPane => SfxDialogPane}
+import scalafx.scene.control.Alert.AlertType
 
 class MainController extends Initializable {
   private var imageTable: ImageTable = new ImageTable
@@ -49,6 +44,12 @@ class MainController extends Initializable {
   private[this] var imageCanvas: Canvas = _
 
   lazy val sfxImageCanvas = new SfxCanvas(imageCanvas)
+
+  @FXML
+  private[this] var skewCorrectionCheckBox: CheckBox = _
+
+  @FXML
+  private[this] var skewCorrectionDetailButton: Button = _
 
   @FXML
   def exitMenuClicked(event: ActionEvent) {
@@ -77,6 +78,38 @@ class MainController extends Initializable {
     val ctx = sfxImageCanvas.graphicsContext2D
     ctx.clearRect(0, 0, sfxImageCanvas.width.toDouble, sfxImageCanvas.height.toDouble)
     ctx.drawImage(img, 0, 0)
+  }
+
+  @FXML
+  def skewCorrectionChanged(e: ActionEvent) {
+    println("skewCorrectionChanged")
+  }
+
+  @FXML
+  def skewCorrectionDetailClicked(e: ActionEvent) {
+    println("skewCorrectionDetail")
+    val loader = new FXMLLoader(getClass().getResource("skewCorrectionDialog.fxml"))
+    loader.setController(new SkewCorrectionDetailController())
+    val alert = new SfxAlert(AlertType.Confirmation)
+    alert.dialogPane = new SfxDialogPane(loader.load())
+    alert.title = "傾き補正"
+    alert.onCloseRequest = new EventHandler[DialogEvent] {
+      override def handle(t: DialogEvent) {
+        println("event type = " + t.getEventType)
+        println("target = " + t.getTarget)
+        println("result = " + t.getTarget.asInstanceOf[Alert].getResult)
+        t.consume()
+      }
+    }
+    alert.showAndWait()
+
+//    val scene: Scene = new Scene(root)
+//    val myStage = new Stage()
+//    myStage.setTitle("傾き補正")
+//    myStage.initModality(Modality.ApplicationModal)
+//    myStage.initOwner(stage.getOwner())
+//    myStage.setScene(scene)
+//    myStage.show()
   }
 
   override def initialize(url: URL, resourceBundle: ResourceBundle) {
