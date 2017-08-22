@@ -1,7 +1,6 @@
 package com.ruimo.forms
 
 import java.net.URL
-import java.awt.Button
 import java.io._
 
 import scalafx.scene.canvas.{GraphicsContext => SfxGraphicsContext}
@@ -22,6 +21,8 @@ import java.util.zip.{ZipEntry, ZipOutputStream}
 import javafx.scene.{Cursor, Scene}
 
 import scalafx.scene.control.{Alert => SfxAlert, ListView => SfxListView, TextInputDialog => SfxTextInputDialog}
+import scalafx.scene.control.{ChoiceDialog => SfxChoiceDialog}
+import scalafx.scene.control.{CheckBox => SfxCheckBox}
 import javafx.scene.canvas.Canvas
 import javafx.scene.control._
 import javafx.scene.paint.Color
@@ -35,8 +36,6 @@ import play.api.libs.ws.JsonBodyWritables._
 import scala.concurrent.ExecutionContext.Implicits.global
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
-import play.api.libs.ws._
-import play.api.libs.ws.ahc._
 import com.ruimo.scoins.LoanPattern
 import com.ruimo.scoins.LoanPattern._
 import play.api.libs.json.{JsObject, Json}
@@ -59,10 +58,11 @@ object ModeEditors {
     def onMouseDragged(e: MouseEvent): ModeEditor
     def onMouseReleased(e: MouseEvent): ModeEditor
     def switchToAddMode(e: ActionEvent): ModeEditor
-    def switchToASelectMode(e: ActionEvent): ModeEditor
+    def switchToAddCropMode(e: ActionEvent): ModeEditor
+    def switchToSelectMode(e: ActionEvent): ModeEditor
   }
 
-  object AddMode {
+  object AddCropMode {
     case class Init(
       project: Project,
       editorContext: EditorContext
@@ -74,7 +74,8 @@ object ModeEditors {
       def onMouseDragged(e: MouseEvent): ModeEditor = this
       def onMouseReleased(e: MouseEvent): ModeEditor = this
       def switchToAddMode(e: ActionEvent): ModeEditor = this
-      def switchToASelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent): ModeEditor = this
+      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
     }
 
     case class Start(
@@ -85,13 +86,14 @@ object ModeEditors {
       def onMousePressed(e: MouseEvent): ModeEditor = this
       def onMouseDragged(e: MouseEvent): ModeEditor = {
         val p1 = new Point2D(e.getX, e.getY)
-        val adding = AbsoluteField(toRect(p0, p1), "adding")
+        val adding = new CropFieldImpl(toRect(p0, p1))
         editorContext.drawWidget(adding, true)
         Dragging(adding, project, editorContext, p0, p1)
       }
       def onMouseReleased(e: MouseEvent): ModeEditor = Init(project, editorContext)
       def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
-      def switchToASelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent): ModeEditor = Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
     }
 
     case class Dragging(
@@ -104,20 +106,86 @@ object ModeEditors {
       def onMouseDragged(e: MouseEvent): ModeEditor = {
         val newP1 = new Point2D(e.getX, e.getY)
         editorContext.redrawRect(adding.drawArea)
-        val newAdding = AbsoluteField(toRect(p0, newP1), "adding")
+        val newAdding = new CropFieldImpl(toRect(p0, newP1))
         editorContext.drawWidget(newAdding, true)
         Dragging(newAdding, project, editorContext, p0, newP1)
       }
       def onMouseReleased(e: MouseEvent): ModeEditor = {
         val newP1 = new Point2D(e.getX, e.getY)
         editorContext.redrawRect(adding.drawArea)
-        val newAdding = AbsoluteField(toRect(p0, newP1), "adding")
+        val newAdding = new CropFieldImpl(toRect(p0, newP1))
         editorContext.drawWidget(newAdding, true)
         editorContext.fieldCreated(newAdding)
         Init(project, editorContext)
       }
       def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
-      def switchToASelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent): ModeEditor = Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+    }
+  }
+
+  object AddMode {
+    case class Init(
+      project: Project,
+      editorContext: EditorContext
+    ) extends ModeEditor {
+      assume(project != null)
+      assume(editorContext != null)
+
+      def onMousePressed(e: MouseEvent): ModeEditor = {
+        project.deselectAllFields()
+        Start(project, editorContext, new Point2D(e.getX, e.getY))
+      }
+      def onMouseDragged(e: MouseEvent): ModeEditor = this
+      def onMouseReleased(e: MouseEvent): ModeEditor = this
+      def switchToAddMode(e: ActionEvent): ModeEditor = this
+      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+    }
+
+    case class Start(
+      project: Project,
+      editorContext: EditorContext,
+      p0: Point2D
+    ) extends ModeEditor {
+      def onMousePressed(e: MouseEvent): ModeEditor = this
+      def onMouseDragged(e: MouseEvent): ModeEditor = {
+        val p1 = new Point2D(e.getX, e.getY)
+        val adding = AbsoluteFieldImpl(toRect(p0, p1), "adding")
+        editorContext.drawWidget(adding, true)
+        Dragging(adding, project, editorContext, p0, p1)
+      }
+      def onMouseReleased(e: MouseEvent): ModeEditor = Init(project, editorContext)
+      def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+    }
+
+    case class Dragging(
+      adding: Field,
+      project: Project,
+      editorContext: EditorContext,
+      p0: Point2D, p1: Point2D
+    ) extends ModeEditor {
+      def onMousePressed(e: MouseEvent): ModeEditor = this
+      def onMouseDragged(e: MouseEvent): ModeEditor = {
+        val newP1 = new Point2D(e.getX, e.getY)
+        editorContext.redrawRect(adding.drawArea)
+        val newAdding = AbsoluteFieldImpl(toRect(p0, newP1), "adding")
+        editorContext.drawWidget(newAdding, true)
+        Dragging(newAdding, project, editorContext, p0, newP1)
+      }
+      def onMouseReleased(e: MouseEvent): ModeEditor = {
+        val newP1 = new Point2D(e.getX, e.getY)
+        editorContext.redrawRect(adding.drawArea)
+        val newAdding = AbsoluteFieldImpl(toRect(p0, newP1), "adding")
+        editorContext.drawWidget(newAdding, true)
+        editorContext.fieldCreated(newAdding)
+        Init(project, editorContext)
+      }
+      def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
     }
   }
 
@@ -152,16 +220,43 @@ object ModeEditors {
                 project.selectAbsoluteField(f)
                 doNext(f)
               case None =>
-                if (! e.isShiftDown)
-                  project.deselectAllFields()
-                Start(project, editorContext, new Point2D(e.getX, e.getY))
+                if (project.leftCropField.map { _.drawArea.contains(e.getX, e.getY) }.getOrElse(false)) {
+                  if (! e.isShiftDown)
+                    project.deselectAllFields()
+                  project.selectLeftCropField(true)
+                  Moving(project, editorContext, new Point2D(e.getX, e.getY))
+                }
+                else if (project.topCropField.map { _.drawArea.contains(e.getX, e.getY) }.getOrElse(false)) {
+                  if (! e.isShiftDown)
+                    project.deselectAllFields()
+                  project.selectTopCropField(true)
+                  Moving(project, editorContext, new Point2D(e.getX, e.getY))
+                }
+                else if (project.rightCropField.map { _.drawArea.contains(e.getX, e.getY) }.getOrElse(false)) {
+                  if (! e.isShiftDown)
+                    project.deselectAllFields()
+                  project.selectRightCropField(true)
+                  Moving(project, editorContext, new Point2D(e.getX, e.getY))
+                }
+                else if (project.bottomCropField.map { _.drawArea.contains(e.getX, e.getY) }.getOrElse(false)) {
+                  if (! e.isShiftDown)
+                    project.deselectAllFields()
+                  project.selectBottomCropField(true)
+                  Moving(project, editorContext, new Point2D(e.getX, e.getY))
+                }
+                else {
+                  if (! e.isShiftDown)
+                    project.deselectAllFields()
+                  Start(project, editorContext, new Point2D(e.getX, e.getY))
+                }
             }
         }
       }
       def onMouseDragged(e: MouseEvent): ModeEditor = this
       def onMouseReleased(e: MouseEvent): ModeEditor = this
       def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
-      def switchToASelectMode(e: ActionEvent): ModeEditor = this
+      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent): ModeEditor = this
     }
 
     case class Start(
@@ -177,11 +272,12 @@ object ModeEditors {
         Dragging(sw, project, editorContext, p0, p1)
       }
       def onMouseReleased(e: MouseEvent): ModeEditor = {
-        project.selectSingleAbsoluteFieldAt(e.getX, e.getY)
+        project.selectSingleFieldAt(e.getX, e.getY)
         Init(project, editorContext)
       }
       def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
-      def switchToASelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
     }
 
     case class Moving(
@@ -197,7 +293,8 @@ object ModeEditors {
       }
       def onMouseReleased(e: MouseEvent): ModeEditor = Init(project, editorContext)
       def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
-      def switchToASelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
     }
 
     case class NorthResize(
@@ -214,7 +311,8 @@ object ModeEditors {
       }
       def onMouseReleased(e: MouseEvent): ModeEditor = Init(project, editorContext)
       def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
-      def switchToASelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
     }
 
     case class Dragging(
@@ -239,7 +337,8 @@ object ModeEditors {
         Init(project, editorContext)
       }
       def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
-      def switchToASelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
     }
   }
 }
@@ -271,40 +370,21 @@ class Editor(
     editor = editor.switchToAddMode(e)
   }
 
-  def switchToASelectMode(e: ActionEvent): Unit = {
-    editor = editor.switchToASelectMode(e)
+  def switchToSelectMode(e: ActionEvent): Unit = {
+    editor = editor.switchToSelectMode(e)
+  }
+
+  def switchToAddCropMode(e: ActionEvent): Unit = {
+    editor = editor.switchToAddCropMode(e)
   }
 }
 
 class MainController extends Initializable {
   private var imageTable: ImageTable = new ImageTable
   private var stage: Stage = _
-  private var project: Project = ProjectV1(
-    new ProjectContext(
-      onNormalAbsoluteFieldAdded = (f: AbsoluteField) => {
-        println("*** normal field added " + f)
-        f.draw(sfxImageCanvas.graphicsContext2D, false)
-      },
-      onSelectedAbsoluteFieldAdded = (f: AbsoluteField) => {
-        println("*** selected field added " + f)
-        f.draw(sfxImageCanvas.graphicsContext2D, true)
-      },
-      onNormalAbsoluteFieldRemoved = (f: AbsoluteField) => {
-        println("*** normal field removed " + f)
-        redrawRect(f.drawArea)
-      },
-      onSelectedAbsoluteFieldRemoved = (f: AbsoluteField) => {
-        println("*** selected field removed " + f)
-        redrawRect(f.drawArea)
-      }
-    )
-  )
+  private var project: Project = _
   private var img: Image = _
-
-  val editor = new Editor(
-    project,
-    EditorContext(drawWidget, redrawRect, fieldCreated, drawSelectionRect, selectFields)
-  )
+  private var editor: Editor = _
 
   def setStage(stage: Stage) {
     this.stage = stage
@@ -325,24 +405,25 @@ class MainController extends Initializable {
   @FXML
   private[this] var imageListView: ListView[File] = _
 
-  lazy val sfxImageListView = new SfxListView(imageListView.asInstanceOf[ListView[File]])
-
   @FXML
   private[this] var imageCanvas: Canvas = _
 
-  lazy val sfxImageCanvas = new SfxCanvas(imageCanvas)
+  @FXML
+  private[this] var cropCheck: CheckBox = _
 
   @FXML
-  private[this] var skewCorrectionCheckBox: CheckBox = _
+  private[this] var skewCorrectionCheck: CheckBox = _
 
-  @FXML
-  private[this] var resetImageButton: Button = _
+  lazy val sfxSkewCorrectionCheck = new SfxCheckBox(skewCorrectionCheck)
 
   @FXML
   private[this] var addModeButton: ToggleButton = _
 
   @FXML
   private[this] var selectModeButton: ToggleButton = _
+
+  lazy val sfxImageListView = new SfxListView(imageListView.asInstanceOf[ListView[File]])
+  lazy val sfxImageCanvas = new SfxCanvas(imageCanvas)
 
   def redrawRect(rect: Rectangle2D): Unit = {
     println("redrawRect(" + rect + ")")
@@ -352,6 +433,26 @@ class MainController extends Initializable {
       rect.minX, rect.minY, rect.width, rect.height,
       rect.minX, rect.minY, rect.width, rect.height
     )
+    project.leftCropField.foreach { cf =>
+      if (cf.intersects(rect)) {
+        cf.draw(gc, project.isLeftCropFieldSelected)
+      }
+    }
+    project.topCropField.foreach { cf =>
+      if (cf.intersects(rect)) {
+        cf.draw(gc, project.isLeftCropFieldSelected)
+      }
+    }
+    project.rightCropField.foreach { cf =>
+      if (cf.intersects(rect)) {
+        cf.draw(gc, project.isRightCropFieldSelected)
+      }
+    }
+    project.bottomCropField.foreach { cf =>
+      if (cf.intersects(rect)) {
+        cf.draw(gc, project.isBottomCropFieldSelected)
+      }
+    }
     project.absoluteFields.normalFields.foreach { af =>
       if (af.intersects(rect)) {
         af.draw(gc, false)
@@ -381,16 +482,36 @@ class MainController extends Initializable {
   def fieldCreated(field: Field): Unit = {
     println("fieldCreated(" + field + ")")
 
-    val dlg = new SfxTextInputDialog("")
-    dlg.title = "フィールドの名前入力"
-    dlg.headerText = "フィールドの名前を入力してください。"
-    dlg.showAndWait() match {
-      case None =>
-        redrawRect(field.drawArea)
-      case Some(name) =>
-        field match {
-          case af: AbsoluteField =>
+    field match {
+      case af: AbsoluteField =>
+        val dlg = new SfxTextInputDialog("")
+        dlg.title = "フィールドの名前入力"
+        dlg.headerText = "フィールドの名前を入力してください。"
+        dlg.showAndWait() match {
+          case None =>
+            redrawRect(field.drawArea)
+          case Some(name) =>
             project.addAbsoluteField(af.withName(name), true)
+        }
+      case cf: CropField =>
+        val Left = "左余白検出"
+        val Right = "右余白検出"
+        val Top = "上余白検出"
+        val Bottom = "下余白検出"
+        val dlg = new SfxChoiceDialog(Top, Seq(Top, Left, Right, Bottom))
+        dlg.title = "余白位置の選択"
+        dlg.headerText = "余白位置を選択してください"
+        dlg.showAndWait() match {
+          case None =>
+            redrawRect(field.drawArea)
+          case Some(loc) => (loc match {
+            case Left => project.addLeftCropField(cf.toLeft, true)
+            case Right => project.addRightCropField(cf.toRight, true)
+            case Top => project.addTopCropField(cf.toTop, true)
+            case Bottom => project.addBottomCropField(cf.toBottom, true)
+          }).foreach { oldCropField =>
+            redrawRect(oldCropField.drawArea)
+          }
         }
     }
   }
@@ -430,18 +551,20 @@ class MainController extends Initializable {
     project.redraw()
   }
 
-  @FXML
-  def skewCorrectionChanged(e: ActionEvent) {
-    println("skewCorrectionChanged")
-  }
+//  @FXML
+//  def skewCorrectionChanged(e: ActionEvent) {
+//    project.skewCorrection = project.skewCorrection.withEnabled(skCorChkBox.isSelected())
+//  }
 
   @FXML
   def skewCorrectionDetailClicked(e: ActionEvent) {
     println("skewCorrectionDetail")
     val loader = new FXMLLoader(getClass().getResource("skewCorrectionDialog.fxml"))
-    loader.setController(new SkewCorrectionDetailController())
+    val root: DialogPane = loader.load()
+    val ctrl = loader.getController().asInstanceOf[SkewCorrectionDetailController]
+    ctrl.model = project.skewCorrection
     val alert = new SfxAlert(AlertType.Confirmation)
-    alert.dialogPane = new SfxDialogPane(loader.load())
+    alert.dialogPane = new SfxDialogPane(root)
     alert.title = "傾き補正"
     alert.onCloseRequest = new EventHandler[DialogEvent] {
       override def handle(t: DialogEvent) {
@@ -452,7 +575,11 @@ class MainController extends Initializable {
       }
     }
     alert.showAndWait().map(_.delegate) match {
-      case Some(ButtonType.APPLY) => println("APPLY")
+      case Some(ButtonType.APPLY) =>
+        val model = ctrl.model
+        println("apply skew correction detail " + model)
+        project.skewCorrection = model
+
       case Some(_) => println("canceled")
       case None => println("bt = none")
     }
@@ -516,14 +643,6 @@ class MainController extends Initializable {
           }
         }
       }
-
-      // val ws = StandaloneAhcWSClient()
-      // ws.url("http://localhost:9000/capture").post(fileToSubmit.toFile).map { resp =>
-      //   val statusText: String = resp.statusText
-      //   println(s"Got a response $statusText")
-      //   val body = resp.body[String]
-      //   println(s"Got a body $body")
-      // }
     }
   }
 
@@ -541,7 +660,13 @@ class MainController extends Initializable {
   @FXML
   def selectModeClicked(e: ActionEvent) {
     println("selectModeClicked")
-    editor.switchToASelectMode(e)
+    editor.switchToSelectMode(e)
+  }
+
+  @FXML
+  def addCropModeClicked(e: ActionEvent) {
+    println("addCropModeClicked")
+    editor.switchToAddCropMode(e)
   }
 
   @FXML
@@ -632,7 +757,42 @@ class MainController extends Initializable {
       }
     });
 
-    editor.initialize()
     addModeButton.setSelected(true)
+
+    project = ProjectImpl(
+      new ProjectContext(
+        onNormalAbsoluteFieldAdded = (f: AbsoluteField) => {
+          println("*** normal field added " + f)
+          f.draw(sfxImageCanvas.graphicsContext2D, false)
+        },
+        onSelectedAbsoluteFieldAdded = (f: AbsoluteField) => {
+          println("*** selected field added " + f)
+          f.draw(sfxImageCanvas.graphicsContext2D, true)
+        },
+        onNormalAbsoluteFieldRemoved = (f: AbsoluteField) => {
+          println("*** normal field removed " + f)
+          redrawRect(f.drawArea)
+        },
+        onSelectedAbsoluteFieldRemoved = (f: AbsoluteField) => {
+          println("*** selected field removed " + f)
+          redrawRect(f.drawArea)
+        },
+        onCropFieldAdded = (f: CropField) => {
+          redrawRect(f.drawArea)
+        }
+      ),
+      new ProjectListener {
+        def onSkewCorrectionChanged(skewCorrection: SkewCorrection) {
+          println("Skew correction changed " + skewCorrection)
+          sfxSkewCorrectionCheck.selected = skewCorrection.enabled
+        }
+      }
+    )
+
+    editor = new Editor(
+      project,
+      EditorContext(drawWidget, redrawRect, fieldCreated, drawSelectionRect, selectFields)
+    )
+    editor.initialize()
   }
 }

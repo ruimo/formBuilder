@@ -71,19 +71,19 @@
                            <content>
                               <GridPane>
                                  <columnConstraints>
-                                    <ColumnConstraints hgrow="SOMETIMES" maxWidth="97.0" minWidth="10.0" prefWidth="97.0" />
-                                    <ColumnConstraints hgrow="SOMETIMES" maxWidth="151.0" minWidth="10.0" prefWidth="128.0" />
+                                    <ColumnConstraints hgrow="SOMETIMES" maxWidth="136.0" minWidth="10.0" prefWidth="136.0" />
+                                    <ColumnConstraints hgrow="SOMETIMES" maxWidth="151.0" minWidth="10.0" prefWidth="89.0" />
                                     <ColumnConstraints hgrow="SOMETIMES" maxWidth="94.0" minWidth="10.0" prefWidth="49.0" />
                                  </columnConstraints>
                                  <rowConstraints>
                                     <RowConstraints minHeight="10.0" vgrow="SOMETIMES" />
                                     <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                                    <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                                  </rowConstraints>
                                  <children>
                                     <AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" />
                                     <Button fx:id="skewCorrectionDetail" mnemonicParsing="false" onAction="#skewCorrectionDetailClicked" text="..." GridPane.columnIndex="2" />
-                                    <CheckBox fx:id="skewCorrectionCheck" mnemonicParsing="false" onAction="#skewCorrectionChanged" text="傾き修正" />
-                                    <HBox alignment="BOTTOM_RIGHT" prefHeight="100.0" prefWidth="200.0" spacing="10.0" GridPane.columnIndex="1" GridPane.columnSpan="2" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
+                                    <HBox alignment="BOTTOM_RIGHT" prefHeight="100.0" prefWidth="200.0" spacing="10.0" GridPane.columnIndex="1" GridPane.columnSpan="2" GridPane.halignment="RIGHT" GridPane.rowIndex="2">
                                        <children>
                                           <Button fx:id="applyToImage" alignment="BOTTOM_RIGHT" mnemonicParsing="false" onAction="#applyToImageClicked" text="適用" />
                                           <Button fx:id="resetImage" alignment="BOTTOM_RIGHT" mnemonicParsing="false" onAction="#resetImageClicked" text="リセット" />
@@ -95,6 +95,8 @@
                                           <Insets top="20.0" />
                                        </GridPane.margin>
                                     </HBox>
+                                    <CheckBox fx:id="cropCheck" mnemonicParsing="false" text="余白切り落とし" GridPane.rowIndex="1" />
+                                    <CheckBox fx:id="skewCorrectionCheck" mnemonicParsing="false" text="傾き補正" />
                                  </children>
                               </GridPane>
                            </content>
@@ -110,12 +112,15 @@
    <left>
       <VBox spacing="8.0" BorderPane.alignment="CENTER">
          <children>
-            <ToggleButton fx:id="addModeButton" mnemonicParsing="false" onAction="#addModeClicked" text="追加">
+            <ToggleButton fx:id="selectModeButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#selectModeClicked" text="選択">
+               <VBox.margin>
+                  <Insets />
+               </VBox.margin>
                <toggleGroup>
                   <ToggleGroup fx:id="addSelect" />
-               </toggleGroup>
-            </ToggleButton>
-            <ToggleButton fx:id="selectModeButton" mnemonicParsing="false" onAction="#selectModeClicked" text="選択" toggleGroup="$addSelect" />
+               </toggleGroup></ToggleButton>
+            <ToggleButton fx:id="addModeButton" mnemonicParsing="false" onAction="#addModeClicked" text="フィールド&#10;追加" toggleGroup="$addSelect" />
+            <ToggleButton mnemonicParsing="false" onAction="#addCropModeClicked" text="余白検出&#10;領域追加" toggleGroup="$addSelect" />
          </children>
          <padding>
             <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />

@@ -1,117 +1,57 @@
 package com.ruimo.forms
 
+import scalafx.geometry.{Point2D, Rectangle2D}
 import javafx.scene.input.MouseEvent
-import javafx.scene.paint.Color
-import scala.collection.{immutable => imm}
-import scalafx.geometry.{Rectangle2D, Point2D}
+
+import com.ruimo.graphics.twodim.Area
+
 import scalafx.scene.canvas.{GraphicsContext => SfxGraphicsContext}
+import scala.collection.{immutable => imm}
 
-sealed trait MouseOperation
+sealed trait SkewCorrectionDirection
+case object SkewCorrectionDirectionHorizontal extends SkewCorrectionDirection
+case object SkewCorrectionDirectionVertical extends SkewCorrectionDirection
 
-case object CanDoNothing extends MouseOperation
-case class CanMove(f: Field) extends MouseOperation
-case class CanNorthResize(f: Field) extends MouseOperation
-case class CanEastResize(f: Field) extends MouseOperation
-case class CanWestResize(f: Field) extends MouseOperation
-case class CanSouthResize(f: Field) extends MouseOperation
-case class CanNorthWestResize(f: Field) extends MouseOperation
-case class CanNorthEastResize(f: Field) extends MouseOperation
-case class CanSouthWestResize(f: Field) extends MouseOperation
-case class CanSouthEastResize(f: Field) extends MouseOperation
-
-sealed trait Field extends Widget[Field]
-
-object AbsoluteField {
-  val LineWidth = 2.0
+trait Field extends Widget[Field] {
+  def drawArea: Rectangle2D
+  def draw(gc: SfxGraphicsContext, isSelected: Boolean): Unit
 }
 
-case class AbsoluteField(rect: Rectangle2D, name: String) extends Widget[AbsoluteField] with Field {
-  import AbsoluteField._
 
-  val drawArea = new Rectangle2D(
-    rect.minX - LineWidth / 2, rect.minY - LineWidth / 2,
-    rect.width + LineWidth, rect.height + LineWidth
-  )
+trait SkewCorrection {
+  def enabled: Boolean
+  def direction: SkewCorrectionDirection
+  def lineCount: Int
+  def maxAngleToDetect: Double
 
-  def draw(gc: SfxGraphicsContext, isSelected: Boolean) {
-    gc.setLineWidth(LineWidth)
-    gc.setStroke(if (isSelected) Color.RED else Color.BLUE)
-    gc.setLineDashes()
-    gc.strokeRect(rect.minX, rect.minY, rect.width, rect.height)
-  }
-
-  def move(from: Point2D, to: Point2D): AbsoluteField = copy(
-    rect = new Rectangle2D(
-      this.rect.minX + (to.x - from.x),
-      this.rect.minY + (to.y - from.y),
-      this.rect.width,
-      this.rect.height
-    )
-  )
-
-  def withName(newName: String): AbsoluteField =
-    if (newName != name) copy(name = newName) else this
-
-  def possibleMouseOperation(x: Double, y: Double): MouseOperation = {
-    val cornerSize = LineWidth * 2
-
-    if (rect.minX - cornerSize <= x && x <= rect.minX + cornerSize
-      && rect.minY - cornerSize <= y && y <= rect.minY + cornerSize) {
-      CanNorthWestResize(this)
-    }
-    else if (rect.maxX - cornerSize <= x && x <= rect.maxX + cornerSize
-      && rect.minY - cornerSize <= y && y <= rect.minY + cornerSize) {
-      CanNorthEastResize(this)
-    }
-    else if (rect.minX - cornerSize <= x && x <= rect.minX + cornerSize
-      && rect.maxY - cornerSize <= y && y <= rect.maxY + cornerSize) {
-      CanSouthWestResize(this)
-    }
-    else if (rect.maxX - cornerSize <= x && x <= rect.maxX + cornerSize
-      && rect.maxY - cornerSize <= y && y <= rect.maxY + cornerSize) {
-      CanSouthEastResize(this)
-    }
-    else if (rect.minX - cornerSize <= x && x <= rect.minX + cornerSize) {
-      CanWestResize(this)
-    }
-    else if (rect.maxX - cornerSize <= x && x <= rect.maxX + cornerSize) {
-      CanEastResize(this)
-    }
-    else if (rect.minY - cornerSize <= y && y <= rect.minY + cornerSize) {
-      CanNorthResize(this)
-    }
-    else if (rect.maxY - cornerSize <= y && y <= rect.maxY + cornerSize) {
-      CanSouthResize(this)
-    }
-    else
-      CanMove(this)
-  }
+  def withEnabled(newEnabled: Boolean): SkewCorrection
 }
 
-sealed trait Project {
-  val version: Version
-  def addAbsoluteField(f: AbsoluteField, isSelected: Boolean): Unit
-  def absoluteFields: AbsoluteFieldTable
-  def deselectAllFields(): Unit
-  def selectAbsoluteFields(rect: Rectangle2D, e: MouseEvent): Unit
-  def selectSingleAbsoluteFieldAt(x: Double, y: Double): Unit
-  def selectAbsoluteField(f: AbsoluteField): Unit
-  def deleteAllSelectedFields(): Unit
-  def getSelectedAbsoluteField(x: Double, y: Double): Option[AbsoluteField]
-  def getNormalAbsoluteField(x: Double, y: Double): Option[AbsoluteField]
-  def moveSelectedAbsoluteFields(from: Point2D, to: Point2D): Unit
-  def renameSelectedAbsoluteField(f: AbsoluteField, newName: String): Unit
-  def redraw(): Unit
+trait EdgeCrop {
+  def enabled: Boolean
+  def topArea: Option[Area]
+  def bottomArea: Option[Area]
+  def leftArea: Option[Area]
+  def rightArea: Option[Area]
+}
+
+trait AbsoluteField extends Field {
+  def move(from: Point2D, to: Point2D): AbsoluteField
+  def name: String
+  def withName(newName: String): AbsoluteField
   def possibleMouseOperation(x: Double, y: Double): MouseOperation
-  def northResize(f: Field, p0: Point2D, p1: Point2D)
 }
 
-class ProjectContext(
-  val onNormalAbsoluteFieldAdded: AbsoluteField => Unit,
-  val onSelectedAbsoluteFieldAdded: AbsoluteField => Unit,
-  val onNormalAbsoluteFieldRemoved: AbsoluteField => Unit,
-  val onSelectedAbsoluteFieldRemoved: AbsoluteField => Unit
-)
+trait CropField extends Field {
+  def toLeft: LeftCropField
+  def toTop: TopCropField
+  def toRight: RightCropField
+  def toBottom: BottomCropField
+}
+trait LeftCropField extends CropField
+trait TopCropField extends CropField
+trait RightCropField extends CropField
+trait BottomCropField extends CropField
 
 class AbsoluteFieldTable(
   projectContext: ProjectContext
@@ -152,16 +92,20 @@ class AbsoluteFieldTable(
     }
   }
 
-  def selectSingleAbsoluteFieldAt(x: Double, y: Double) {
-    _normalFields.zipWithIndex.find { case (f, idx) =>
+  def selectSingleAbsoluteFieldAt(x: Double, y: Double): Option[Field] = {
+    val found = _normalFields.zipWithIndex.find { case (f, idx) =>
       f.contains(x, y)
-    }.foreach { case (f, idx) =>
+    }
+
+    found.foreach { case (f, idx) =>
         val sp = _normalFields.splitAt(idx)
         _normalFields = sp._1 ++ sp._2.tail
         _selectedFields = _selectedFields :+ f
         projectContext.onSelectedAbsoluteFieldAdded(f)
         projectContext.onNormalAbsoluteFieldRemoved(f)
     }
+
+    found.map(_._1)
   }
 
   def selectAbsoluteField(af: AbsoluteField) {
@@ -249,64 +193,61 @@ class AbsoluteFieldTable(
   }
 }
 
-
-case class ProjectV1(
-  projectContext: ProjectContext
-) extends Project {
-  val version = VersionOne
-  private[this] var absFields = new AbsoluteFieldTable(projectContext)
-
-  def absoluteFields: AbsoluteFieldTable = absFields
-
-  def addAbsoluteField(f: AbsoluteField, isSelected: Boolean) {
-    absFields.addAbsoluteField(f, isSelected)
-  }
-
-  def deselectAllFields() {
-    absFields.deselectAllFields()
-  }
-
-  def selectAbsoluteFields(rect: Rectangle2D, e: MouseEvent) {
-    absFields.selectAbsoluteFields(rect, e)
-  }
-
-  def selectSingleAbsoluteFieldAt(x: Double, y: Double) {
-    absFields.selectSingleAbsoluteFieldAt(x, y)
-  }
-
-  def selectAbsoluteField(f: AbsoluteField) {
-    absFields.selectAbsoluteField(f)
-  }
-
-  def deleteAllSelectedFields() {
-    absFields.deleteAllSelectedFields()
-  }
-
-  def getSelectedAbsoluteField(x: Double, y: Double): Option[AbsoluteField] =
-    absFields.getSelectedAbsoluteField(x, y)
-
-  def getNormalAbsoluteField(x: Double, y: Double): Option[AbsoluteField] =
-    absFields.getNormalAbsoluteField(x, y)
-
-  def moveSelectedAbsoluteFields(from: Point2D, to: Point2D) {
-    absFields.moveSelectedAbsoluteFields(from, to)
-  }
-
-  def renameSelectedAbsoluteField(f: AbsoluteField, newName: String) {
-    absFields.renameSelectedAbsoluteField(f, newName)
-  }
-
-  def redraw() {
-    absFields.redraw()
-  }
-
-  def possibleMouseOperation(x: Double, y: Double): MouseOperation =
-    absFields.possibleMouseOperation(x, y)
-
-  def northResize(f: Field, p0: Point2D, p1: Point2D) {
-    f match {
-      case af: AbsoluteField =>
-        absFields.northResize(af, p0, p1)
-    }
-  }
+trait ProjectListener {
+  def onSkewCorrectionChanged(skewCorrection: SkewCorrection)
 }
+
+object NullObjectListener extends ProjectListener {
+  def onSkewCorrectionChanged(skewCorrection: SkewCorrection) {}
+}
+
+trait Project {
+  val version: Version
+  def listener: ProjectListener
+
+  def withListener(newListener: ProjectListener): Project
+  def addAbsoluteField(f: AbsoluteField, isSelected: Boolean): Unit
+  def absoluteFields: AbsoluteFieldTable
+  def deselectAllFields(): Unit
+  def selectAbsoluteFields(rect: Rectangle2D, e: MouseEvent): Unit
+  def selectSingleFieldAt(x: Double, y: Double): Unit
+  def selectAbsoluteField(f: AbsoluteField): Unit
+  def deleteAllSelectedFields(): Unit
+  def getSelectedAbsoluteField(x: Double, y: Double): Option[AbsoluteField]
+  def getNormalAbsoluteField(x: Double, y: Double): Option[AbsoluteField]
+  def moveSelectedAbsoluteFields(from: Point2D, to: Point2D): Unit
+  def renameSelectedAbsoluteField(f: AbsoluteField, newName: String): Unit
+  def redraw(): Unit
+  def possibleMouseOperation(x: Double, y: Double): MouseOperation
+  def northResize(f: Field, p0: Point2D, p1: Point2D)
+  def skewCorrection: SkewCorrection
+  def skewCorrection_=(newSkewCorrection: SkewCorrection)
+
+  def addLeftCropField(f: LeftCropField, selected: Boolean): Option[LeftCropField]
+  def addRightCropField(f: RightCropField, selected: Boolean): Option[RightCropField]
+  def addTopCropField(f: TopCropField, selected: Boolean): Option[TopCropField]
+  def addBottomCropField(f: BottomCropField, selected: Boolean): Option[BottomCropField]
+
+  def leftCropField: Option[LeftCropField]
+  def topCropField: Option[TopCropField]
+  def rightCropField: Option[RightCropField]
+  def bottomCropField: Option[BottomCropField]
+
+  def isTopCropFieldSelected: Boolean
+  def isLeftCropFieldSelected: Boolean
+  def isRightCropFieldSelected: Boolean
+  def isBottomCropFieldSelected: Boolean
+
+  def selectLeftCropField(selected: Boolean): Unit
+  def selectTopCropField(selected: Boolean): Unit
+  def selectRightCropField(selected: Boolean): Unit
+  def selectBottomCropField(selected: Boolean): Unit
+}
+
+class ProjectContext(
+  val onNormalAbsoluteFieldAdded: AbsoluteField => Unit,
+  val onSelectedAbsoluteFieldAdded: AbsoluteField => Unit,
+  val onNormalAbsoluteFieldRemoved: AbsoluteField => Unit,
+  val onSelectedAbsoluteFieldRemoved: AbsoluteField => Unit,
+  val onCropFieldAdded: CropField => Unit
+)
