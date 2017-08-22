@@ -3,7 +3,8 @@ import Dependencies._
 resolvers += "ruimo.com" at "http://static.ruimo.com/release"
 
 lazy val root = (project in file(".")).
-  settings(
+   enablePlugins(JavaAppPackaging).
+   settings(
     inThisBuild(List(
       organization := "com.example",
       scalaVersion := "2.12.3",
