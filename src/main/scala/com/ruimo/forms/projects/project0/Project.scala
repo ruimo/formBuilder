@@ -152,21 +152,81 @@ case class UnknownCropFieldImpl(rect: Rectangle2D) extends CropFieldImpl(rect) {
 
 case class TopCropFieldImpl(rect: Rectangle2D) extends CropFieldImpl(rect) with TopCropField {
   override def toTop: TopCropField = this
+  override def draw(gc: SfxGraphicsContext, isSelected: Boolean) {
+    import CropFieldImpl.LineWidth
+
+    super.draw(gc, isSelected)
+    if (rect.height > LineWidth && rect.width > LineWidth) {
+      gc.strokeLine(
+        rect.minX + LineWidth / 2, rect.minY + LineWidth / 2,
+        rect.minX + rect.width / 2 - LineWidth / 2, rect.maxY - LineWidth / 2
+      )
+      gc.strokeLine(
+        rect.minX + rect.width / 2 - LineWidth / 2, rect.maxY - LineWidth / 2,
+        rect.maxX - LineWidth / 2, rect.minY + LineWidth / 2
+      )
+    }
+  }
   def withNewRect(newRect: Rectangle2D): this.type = copy(rect = newRect).asInstanceOf[this.type]
 }
 
 case class LeftCropFieldImpl(rect: Rectangle2D) extends CropFieldImpl(rect) with LeftCropField {
   override def toLeft: LeftCropField = this
+  override def draw(gc: SfxGraphicsContext, isSelected: Boolean) {
+    import CropFieldImpl.LineWidth
+
+    super.draw(gc, isSelected)
+    if (rect.height > LineWidth && rect.width > LineWidth) {
+      gc.strokeLine(
+        rect.minX + LineWidth / 2, rect.minY + LineWidth / 2,
+        rect.maxX - LineWidth / 2, rect.minY + rect.height / 2 - LineWidth / 2
+      )
+      gc.strokeLine(
+        rect.maxX - LineWidth / 2, rect.minY + rect.height / 2 - LineWidth / 2,
+        rect.minX + LineWidth / 2, rect.maxY - LineWidth / 2
+      )
+    }
+  }
   def withNewRect(newRect: Rectangle2D): this.type = copy(rect = newRect).asInstanceOf[this.type]
 }
 
 case class RightCropFieldImpl(rect: Rectangle2D) extends CropFieldImpl(rect) with RightCropField {
   override def toRight: RightCropField = this
+  override def draw(gc: SfxGraphicsContext, isSelected: Boolean) {
+    import CropFieldImpl.LineWidth
+
+    super.draw(gc, isSelected)
+    if (rect.height > LineWidth && rect.width > LineWidth) {
+      gc.strokeLine(
+        rect.maxX - LineWidth / 2, rect.minY + LineWidth / 2,
+        rect.minX + LineWidth / 2, rect.minY + rect.height / 2 - LineWidth / 2
+      )
+      gc.strokeLine(
+        rect.minX + LineWidth / 2, rect.minY + rect.height / 2 - LineWidth / 2,
+        rect.maxX - LineWidth / 2, rect.maxY - LineWidth / 2
+      )
+    }
+  }
   def withNewRect(newRect: Rectangle2D): this.type = copy(rect = newRect).asInstanceOf[this.type]
 }
 
 case class BottomCropFieldImpl(rect: Rectangle2D) extends CropFieldImpl(rect) with BottomCropField {
   override def toBottom: BottomCropField = this
+  override def draw(gc: SfxGraphicsContext, isSelected: Boolean) {
+    import CropFieldImpl.LineWidth
+
+    super.draw(gc, isSelected)
+    if (rect.height > LineWidth && rect.width > LineWidth) {
+      gc.strokeLine(
+        rect.minX + LineWidth / 2, rect.maxY - LineWidth / 2,
+        rect.minX - LineWidth / 2 + rect.width / 2, rect.minY + LineWidth / 2
+      )
+      gc.strokeLine(
+        rect.minX - LineWidth / 2 + rect.width / 2, rect.minY + LineWidth / 2,
+        rect.maxX - LineWidth / 2, rect.maxY - LineWidth / 2
+      )
+    }
+  }
   def withNewRect(newRect: Rectangle2D): this.type = copy(rect = newRect).asInstanceOf[this.type]
 }
 
