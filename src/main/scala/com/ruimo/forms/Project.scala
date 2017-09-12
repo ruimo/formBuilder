@@ -4,19 +4,26 @@ import scalafx.geometry.{Point2D, Rectangle2D}
 import javafx.scene.input.MouseEvent
 
 import com.ruimo.graphics.twodim.Area
+import play.api.libs.json.{JsObject, JsString, JsValue}
 
 import scalafx.scene.canvas.{GraphicsContext => SfxGraphicsContext}
 import scala.collection.{immutable => imm}
 
-sealed trait SkewCorrectionDirection
-case object SkewCorrectionDirectionHorizontal extends SkewCorrectionDirection
-case object SkewCorrectionDirectionVertical extends SkewCorrectionDirection
-
-trait Field extends Widget[Field] {
-  def drawArea: Rectangle2D
-  def draw(gc: SfxGraphicsContext, isSelected: Boolean): Unit
+sealed trait SkewCorrectionDirection {
+  def asJson: JsValue
+}
+case object SkewCorrectionDirectionHorizontal extends SkewCorrectionDirection {
+  val asJson = JsString("horizontal")
+}
+case object SkewCorrectionDirectionVertical extends SkewCorrectionDirection {
+  val asJson = JsString("vertical")
 }
 
+sealed trait Field extends Widget[Field] {
+  def drawArea: Rectangle2D
+  def draw(gc: SfxGraphicsContext, isSelected: Boolean): Unit
+  def possibleMouseOperation(x: Double, y: Double): MouseOperation
+}
 
 trait SkewCorrection {
   def enabled: Boolean
@@ -25,6 +32,7 @@ trait SkewCorrection {
   def maxAngleToDetect: Double
 
   def withEnabled(newEnabled: Boolean): SkewCorrection
+  def asJson: JsValue
 }
 
 trait EdgeCrop {
@@ -39,7 +47,6 @@ trait AbsoluteField extends Field {
   def move(from: Point2D, to: Point2D): AbsoluteField
   def name: String
   def withName(newName: String): AbsoluteField
-  def possibleMouseOperation(x: Double, y: Double): MouseOperation
 }
 
 trait CropField extends Field {
@@ -56,35 +63,35 @@ trait BottomCropField extends CropField
 class AbsoluteFieldTable(
   projectContext: ProjectContext
 ) {
-  private[this] var _normalFields: imm.Seq[AbsoluteField] = imm.Seq()
-  private[this] var _selectedFields: imm.Seq[AbsoluteField] = imm.Seq()
+  private[this] var _normalAbsoluteFields: imm.Seq[AbsoluteField] = imm.Seq()
+  private[this] var _selectedAbsoluteFields: imm.Seq[AbsoluteField] = imm.Seq()
 
-  def normalFields: imm.Seq[AbsoluteField] = _normalFields
-  def selectedFields: imm.Seq[AbsoluteField] = _selectedFields
+  def normalFields: imm.Seq[AbsoluteField] = _normalAbsoluteFields
+  def selectedFields: imm.Seq[AbsoluteField] = _selectedAbsoluteFields
 
   def addAbsoluteField(f: AbsoluteField, isSelected: Boolean) {
     if (isSelected)
-      _selectedFields= _selectedFields :+ f
+      _selectedAbsoluteFields= _selectedAbsoluteFields :+ f
     else
-      _normalFields = _normalFields :+ f
+      _normalAbsoluteFields = _normalAbsoluteFields :+ f
 
     (if (isSelected) projectContext.onSelectedAbsoluteFieldAdded else projectContext.onNormalAbsoluteFieldAdded).apply(f)
   }
 
   def deselectAllFields() {
     selectedFields.foreach { af =>
-      _normalFields  = _normalFields :+ af
+      _normalAbsoluteFields  = _normalAbsoluteFields :+ af
       projectContext.onSelectedAbsoluteFieldRemoved(af)
       projectContext.onNormalAbsoluteFieldAdded(af)
     }
 
-    _selectedFields = imm.Seq()
+    _selectedAbsoluteFields = imm.Seq()
   }
 
   def selectAbsoluteFields(rect: Rectangle2D, e: MouseEvent) {
-    _normalFields = _normalFields.filter { f =>
+    _normalAbsoluteFields = _normalAbsoluteFields.filter { f =>
       if (f.intersects(rect)) {
-        _selectedFields = _selectedFields :+ f
+        _selectedAbsoluteFields = _selectedAbsoluteFields :+ f
         projectContext.onSelectedAbsoluteFieldAdded(f)
         projectContext.onNormalAbsoluteFieldRemoved(f)
         false
@@ -93,14 +100,14 @@ class AbsoluteFieldTable(
   }
 
   def selectSingleAbsoluteFieldAt(x: Double, y: Double): Option[Field] = {
-    val found = _normalFields.zipWithIndex.find { case (f, idx) =>
+    val found = _normalAbsoluteFields.zipWithIndex.find { case (f, idx) =>
       f.contains(x, y)
     }
 
     found.foreach { case (f, idx) =>
-        val sp = _normalFields.splitAt(idx)
-        _normalFields = sp._1 ++ sp._2.tail
-        _selectedFields = _selectedFields :+ f
+        val sp = _normalAbsoluteFields.splitAt(idx)
+        _normalAbsoluteFields = sp._1 ++ sp._2.tail
+        _selectedAbsoluteFields = _selectedAbsoluteFields :+ f
         projectContext.onSelectedAbsoluteFieldAdded(f)
         projectContext.onNormalAbsoluteFieldRemoved(f)
     }
@@ -109,37 +116,37 @@ class AbsoluteFieldTable(
   }
 
   def selectAbsoluteField(af: AbsoluteField) {
-    val (f, idx) = _normalFields.zipWithIndex.find { _._1 == af }.get
+    val (f, idx) = _normalAbsoluteFields.zipWithIndex.find { _._1 == af }.get
 
-    val sp = _normalFields.splitAt(idx)
-    _normalFields = sp._1 ++ sp._2.tail
-    _selectedFields = _selectedFields :+ f
+    val sp = _normalAbsoluteFields.splitAt(idx)
+    _normalAbsoluteFields = sp._1 ++ sp._2.tail
+    _selectedAbsoluteFields = _selectedAbsoluteFields :+ f
     projectContext.onSelectedAbsoluteFieldAdded(f)
     projectContext.onNormalAbsoluteFieldRemoved(f)
   }
 
   def deleteAllSelectedFields() {
-    val buf = _selectedFields
-    _selectedFields = imm.Seq()
+    val buf = _selectedAbsoluteFields
+    _selectedAbsoluteFields = imm.Seq()
     buf.foreach { f =>
       projectContext.onSelectedAbsoluteFieldRemoved(f)
     }
   }
 
-  def getSelectedAbsoluteField(x: Double, y: Double): Option[AbsoluteField] =
-    _selectedFields.find { f =>
+  def getSelectedFieldAt(x: Double, y: Double): Option[AbsoluteField] =
+    _selectedAbsoluteFields.find { f =>
       f.contains(x, y)
     }
 
-  def getNormalAbsoluteField(x: Double, y: Double): Option[AbsoluteField] =
-    _normalFields.find { f =>
+  def getNormalFieldAt(x: Double, y: Double): Option[AbsoluteField] =
+    _normalAbsoluteFields.find { f =>
       f.contains(x, y)
     }
 
   def moveSelectedAbsoluteFields(from: Point2D, to: Point2D) {
-    val orgFields = _selectedFields
+    val orgFields = _selectedAbsoluteFields
 
-    _selectedFields = _selectedFields.map { f =>
+    _selectedAbsoluteFields = _selectedAbsoluteFields.map { f =>
       f.move(from, to)
     }
 
@@ -147,7 +154,7 @@ class AbsoluteFieldTable(
       projectContext.onSelectedAbsoluteFieldRemoved(f)
     }
 
-    _selectedFields.foreach { f =>
+    _selectedAbsoluteFields.foreach { f =>
       projectContext.onSelectedAbsoluteFieldAdded(f)
     }
   }
@@ -155,32 +162,32 @@ class AbsoluteFieldTable(
   def renameSelectedAbsoluteField(af: AbsoluteField, newName: String) {
     if (af.name != newName) {
       val newField = af.withName(newName)
-      _selectedFields.zipWithIndex.find { _._1 == af } match {
+      _selectedAbsoluteFields.zipWithIndex.find { _._1 == af } match {
         case Some((f, idx)) =>
-          val sp = _selectedFields.splitAt(idx)
-          _selectedFields = (sp._1 :+ f.withName(newName)) ++ sp._2.tail
+          val sp = _selectedAbsoluteFields.splitAt(idx)
+          _selectedAbsoluteFields = (sp._1 :+ f.withName(newName)) ++ sp._2.tail
         case None =>
       }
     }
   }
 
   def redraw() {
-    _normalFields.foreach { f =>
+    _normalAbsoluteFields.foreach { f =>
       projectContext.onNormalAbsoluteFieldRemoved(f)
       projectContext.onNormalAbsoluteFieldAdded(f)
     }
 
-    _selectedFields.foreach { f =>
+    _selectedAbsoluteFields.foreach { f =>
       projectContext.onSelectedAbsoluteFieldRemoved(f)
       projectContext.onSelectedAbsoluteFieldAdded(f)
     }
   }
 
   def possibleMouseOperation(x: Double, y: Double): MouseOperation = {
-    _selectedFields.find { f =>
+    _selectedAbsoluteFields.find { f =>
       f.drawArea.contains(x, y)
     }.orElse {
-      _normalFields.find { f =>
+      _normalAbsoluteFields.find { f =>
         f.drawArea.contains(x, y)
       }
     } match {
@@ -211,10 +218,16 @@ trait Project {
   def deselectAllFields(): Unit
   def selectAbsoluteFields(rect: Rectangle2D, e: MouseEvent): Unit
   def selectSingleFieldAt(x: Double, y: Double): Unit
+  def selectField(f: Field): Unit
   def selectAbsoluteField(f: AbsoluteField): Unit
+  def selectCropField(f: CropField): Unit
   def deleteAllSelectedFields(): Unit
-  def getSelectedAbsoluteField(x: Double, y: Double): Option[AbsoluteField]
-  def getNormalAbsoluteField(x: Double, y: Double): Option[AbsoluteField]
+  def getSelectedFieldAt(x: Double, y: Double): Option[Field]
+  def getSelectedAbsoluteFieldAt(x: Double, y: Double): Option[AbsoluteField]
+  def getSelectedCropFieldAt(x: Double, y: Double): Option[CropField]
+  def getNormalFieldAt(x: Double, y: Double): Option[Field]
+  def getNormalAbsoluteFieldAt(x: Double, y: Double): Option[AbsoluteField]
+  def getNormalCropFieldAt(x: Double, y: Double): Option[CropField]
   def moveSelectedAbsoluteFields(from: Point2D, to: Point2D): Unit
   def renameSelectedAbsoluteField(f: AbsoluteField, newName: String): Unit
   def redraw(): Unit

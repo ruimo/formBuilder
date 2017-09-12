@@ -1,5 +1,11 @@
 package com.ruimo.forms
 
+import java.util.zip.ZipInputStream
+import javafx.animation.AnimationTimer
+import scala.math.{Pi, cos, sin, abs}
+
+import com.ruimo.scoins.Zip
+import com.ruimo.scoins.PathUtil
 import java.net.URL
 import java.io._
 
@@ -38,11 +44,13 @@ import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import com.ruimo.scoins.LoanPattern
 import com.ruimo.scoins.LoanPattern._
-import play.api.libs.json.{JsObject, Json}
+import play.api.libs.json._
 
 import scalafx.geometry.{Point2D, Rectangle2D}
 import Helpers.toRect
 import org.w3c.dom.events.EventListener
+
+import scala.annotation.tailrec
 
 case class EditorContext(
   drawWidget: (Widget[_], Boolean) => Unit,
@@ -195,7 +203,7 @@ object ModeEditors {
       editorContext: EditorContext
     ) extends ModeEditor {
       def onMousePressed(e: MouseEvent): ModeEditor = {
-        def doNext(f: AbsoluteField): ModeEditor = {
+        def doNext(f: Field): ModeEditor = {
           f.possibleMouseOperation(e.getX, e.getY) match {
             case CanMove(_) => Moving(project, editorContext, new Point2D(e.getX, e.getY))
             case CanNorthResize(f) => NorthResize(f, project, editorContext, new Point2D(e.getX, e.getY))
@@ -210,45 +218,19 @@ object ModeEditors {
           }
         }
 
-        project.getSelectedAbsoluteField(e.getX, e.getY) match {
+        project.getSelectedFieldAt(e.getX, e.getY) match {
           case Some(f) => doNext(f)
           case None =>
-            project.getNormalAbsoluteField(e.getX, e.getY) match {
+            project.getNormalFieldAt(e.getX, e.getY) match {
               case Some(f) =>
                 if (! e.isShiftDown)
                   project.deselectAllFields()
-                project.selectAbsoluteField(f)
+                project.selectField(f)
                 doNext(f)
               case None =>
-                if (project.leftCropField.map { _.drawArea.contains(e.getX, e.getY) }.getOrElse(false)) {
-                  if (! e.isShiftDown)
-                    project.deselectAllFields()
-                  project.selectLeftCropField(true)
-                  Moving(project, editorContext, new Point2D(e.getX, e.getY))
-                }
-                else if (project.topCropField.map { _.drawArea.contains(e.getX, e.getY) }.getOrElse(false)) {
-                  if (! e.isShiftDown)
-                    project.deselectAllFields()
-                  project.selectTopCropField(true)
-                  Moving(project, editorContext, new Point2D(e.getX, e.getY))
-                }
-                else if (project.rightCropField.map { _.drawArea.contains(e.getX, e.getY) }.getOrElse(false)) {
-                  if (! e.isShiftDown)
-                    project.deselectAllFields()
-                  project.selectRightCropField(true)
-                  Moving(project, editorContext, new Point2D(e.getX, e.getY))
-                }
-                else if (project.bottomCropField.map { _.drawArea.contains(e.getX, e.getY) }.getOrElse(false)) {
-                  if (! e.isShiftDown)
-                    project.deselectAllFields()
-                  project.selectBottomCropField(true)
-                  Moving(project, editorContext, new Point2D(e.getX, e.getY))
-                }
-                else {
-                  if (! e.isShiftDown)
-                    project.deselectAllFields()
-                  Start(project, editorContext, new Point2D(e.getX, e.getY))
-                }
+                if (! e.isShiftDown)
+                  project.deselectAllFields()
+                Start(project, editorContext, new Point2D(e.getX, e.getY))
             }
         }
       }
@@ -379,11 +361,15 @@ class Editor(
   }
 }
 
+case class SelectedImage(
+  file: Path, image: Image, skewCorrected: Option[Image] = None
+)
+
 class MainController extends Initializable {
   private var imageTable: ImageTable = new ImageTable
   private var stage: Stage = _
   private var project: Project = _
-  private var img: Image = _
+  private var selectedImage: Option[SelectedImage] = None
   private var editor: Editor = _
 
   def setStage(stage: Stage) {
@@ -428,11 +414,16 @@ class MainController extends Initializable {
   def redrawRect(rect: Rectangle2D): Unit = {
     println("redrawRect(" + rect + ")")
     val gc = sfxImageCanvas.graphicsContext2D
-    gc.drawImage(
-      img,
-      rect.minX, rect.minY, rect.width, rect.height,
-      rect.minX, rect.minY, rect.width, rect.height
-    )
+    selectedImage.foreach { si =>
+      gc.drawImage(
+        si.skewCorrected match {
+          case None => si.image
+          case Some(sc) => sc
+        },
+        rect.minX, rect.minY, rect.width, rect.height,
+        rect.minX, rect.minY, rect.width, rect.height
+      )
+    }
     project.leftCropField.foreach { cf =>
       if (cf.intersects(rect)) {
         cf.draw(gc, project.isLeftCropFieldSelected)
@@ -477,6 +468,12 @@ class MainController extends Initializable {
     gc.setStroke(Color.BLACK)
     gc.setLineDashes(5.0, 5.0)
     gc.strokeRect(rect.minX, rect.minY, rect.width, rect.height)
+  }
+
+  def rectangle2D(x0: Double, y0: Double, x1: Double, y1: Double): Rectangle2D = {
+    val (minX, maxX) = if (x0 < x1) (x0, x1) else (x1, x0)
+    val (minY, maxY) = if (y0 < y1) (y0, y1) else (y1, y0)
+    new Rectangle2D(minX, minY, maxX - minX, maxY - minY)
   }
 
   def fieldCreated(field: Field): Unit = {
@@ -540,15 +537,28 @@ class MainController extends Initializable {
 
   @FXML
   def imageSelected(e: MouseEvent) {
-    val file: File = e.getSource().asInstanceOf[ListView[File]].getSelectionModel().getSelectedItem()
-    println("Image selected " + file)
-    img = new Image(file.toURI().toString())
-    sfxImageCanvas.width = img.width.toDouble
-    sfxImageCanvas.height = img.height.toDouble
-    val ctx = sfxImageCanvas.graphicsContext2D
-    ctx.clearRect(0, 0, sfxImageCanvas.width.toDouble, sfxImageCanvas.height.toDouble)
-    ctx.drawImage(img, 0, 0)
-    project.redraw()
+    val imageFile = e.getSource().asInstanceOf[ListView[File]].getSelectionModel().getSelectedItem()
+    println("Image selected " + imageFile)
+    val img = new Image(imageFile.toURI().toString())
+    selectedImage = Some(SelectedImage(imageFile.toPath, img))
+
+    redraw()
+  }
+
+  def redraw() {
+    selectedImage.foreach { selectedImage =>
+      val img = selectedImage.skewCorrected match {
+        case None => selectedImage.image
+        case Some(sc) => sc
+      }
+
+      sfxImageCanvas.width = img.width.toDouble
+      sfxImageCanvas.height = img.height.toDouble
+      val ctx = sfxImageCanvas.graphicsContext2D
+      ctx.clearRect(0, 0, sfxImageCanvas.width.toDouble, sfxImageCanvas.height.toDouble)
+      ctx.drawImage(img, 0, 0)
+      project.redraw()
+    }
   }
 
 //  @FXML
@@ -593,39 +603,57 @@ class MainController extends Initializable {
 //    myStage.show()
   }
 
-  def prepareFileForCaptureApi(): Path = {
-    val file = Files.createTempFile(null, null)
-    using(new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(file.toFile)))) { zos =>
-      val entry = new ZipEntry("config.json")
-      zos.putNextEntry(entry)
+  def extention(path: Path): Option[String] = {
+    val fname = path.getFileName().toString()
+    val idx = fname.lastIndexOf(".")
+    if (idx == -1) None else Some(fname.substring(idx))
+  }
 
-      zos.write(
-        Json.obj(
-          "Hello" -> 1,
-          "World" -> "Foo"
-        ).toString.getBytes("utf-8")
+  def prepareFileForCaptureApi(imageFile: Path): Path = {
+    println("skewCorrection = " + project.skewCorrection.asJson)
+
+    val configFile = Files.createTempFile(null, null)
+    val fileName = "image001" + extention(imageFile).getOrElse("")
+    Files.write(
+      configFile,
+      Json.obj(
+        "inputFiles" -> JsArray(Seq(JsString(fileName))),
+        "skewCorrection" -> project.skewCorrection.asJson
+      ).toString.getBytes("utf-8")
+    )
+
+    val zipFile = Files.createTempFile(null, null)
+    Zip.deflate(
+      zipFile,
+      Seq(
+        "config.json" -> configFile,
+        fileName -> imageFile
       )
-    }
+    )
 
-    file
+    Files.delete(configFile)
+
+    zipFile
   }
 
   @FXML
   def applyToImageClicked(e: ActionEvent) {
     println(" hit applyToImage")
+    println("selected file = " + selectedImage)
 
-    val file: Option[File] = Option(imageListView.getSelectionModel.getSelectedItem)
-    println("selected file = " + file)
+    selectedImage.foreach { si =>
+      val fileToSubmit: Path = prepareFileForCaptureApi(si.file)
+      val url = new URL("http://localhost:9000/prepare")
 
-    file.foreach { f =>
-      val fileToSubmit: Path = prepareFileForCaptureApi()
-
-      using(
-        new URL("http://localhost:9000/capture").openConnection().asInstanceOf[HttpURLConnection]
-      )(
-        c => c.disconnect()
-      ) { conn =>
+      selectedImage = Some(
+        si.copy(
+          skewCorrected = None
+        )
+      )
+      redraw()
+      using(url.openConnection().asInstanceOf[HttpURLConnection]) { conn =>
         conn.setDoOutput(true)
+        conn.setDoInput(true)
         conn.setRequestMethod("POST")
         conn.setRequestProperty("Content-Type", "application/zip")
         using(conn.getOutputStream) { os =>
@@ -634,15 +662,128 @@ class MainController extends Initializable {
 
         val statusCode = conn.getResponseCode
         println("status = " + statusCode)
-        using(new BufferedReader(new InputStreamReader(conn.getInputStream, "utf-8"))) { br =>
-          def print(): Unit = {
-            br.readLine() match {
-              case null =>
-              case line => println(line)
+
+        val (resp: JsValue, skewCorrectedImage: Image) = using(new ZipInputStream(conn.getInputStream())) { zipIn =>
+          @tailrec def parseZip(resp: Option[JsValue], skewCorrectedImage: Option[Image]): (JsValue, Image) = {
+            val entry = zipIn.getNextEntry()
+            if (entry == null) (resp.get, skewCorrectedImage.get)
+            else {
+              entry.getName match {
+                case "response.json" =>
+                  // Json.parse() closes input stream...
+                  val json: JsValue = using(Files.createTempFile(null, null)) { tmp =>
+                    Files.copy(zipIn, tmp, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+                    zipIn.closeEntry()
+                    Json.parse(new FileInputStream(tmp.toFile))
+                  }(f => Files.delete(f)).get
+                  parseZip(Some(json), skewCorrectedImage)
+                case fname: String =>
+                  if ((resp.get \ "skewCorrection" \ "correctedFiles").as[Seq[String]].head == fname) {
+                    val i = Some(new Image(zipIn))
+                    zipIn.closeEntry()
+                    parseZip(resp, i)
+                  }
+                  else {
+                    // Ignore...
+                    zipIn.closeEntry()
+                    parseZip(resp, skewCorrectedImage)
+                  }
+              }
+            }
+          }
+
+          parseZip(None, None)
+        }.get
+
+        println("resp = " + resp)
+
+        val foundLines = (resp \ "skewCorrection" \ "foundLines").get.asInstanceOf[JsArray]
+        val showLines: Seq[(Double, Double, Double, Double)] = foundLines.value.map { l =>
+          val ro = (l \ "ro").as[Double]
+          val th = (l \ "th").as[Double] + Pi / 2
+          println("ro = " + ro + ", th = " + th)
+
+          if (Pi / 2 - 0.1 < th && th < Pi / 2 + 0.1) { // horizontal
+            val line = NearlyHorizontalLine(ro, th)
+            val w = si.image.width.get()
+
+            (0d, line.y(0), w, line.y(w))
+          }
+          else {
+            val line = NearlyVerticalLine(ro, th)
+            val h = si.image.height.get()
+
+            (line.x(0), 0d, line.x(h), h)
+          }
+        }
+
+        class ShowResultAnimation(
+          val lines: Seq[(Double, Double, Double, Double)]
+        ) extends AnimationTimer {
+          val LineWidth = 2.0
+          private var startNano: Long = 0L
+          private var state = -1L
+          val union: Rectangle2D = {
+            var minX = Double.MaxValue
+            var maxX = Double.MinValue
+            var minY = Double.MaxValue
+            var maxY = Double.MinValue
+
+            lines.foreach { l =>
+              if (l._1 < minX) minX = l._1
+              if (l._3 < minX) minX = l._3
+              if (l._2 < minY) minY = l._2
+              if (l._4 < minY) minY = l._4
+
+              if (maxX < l._1) maxX = l._1
+              if (maxX < l._3) maxX = l._3
+              if (maxY < l._2) maxY = l._2
+              if (maxY < l._4) maxY = l._4
+            }
+
+            val w = maxX - minX + LineWidth + 2
+            val h = maxY - minY + LineWidth + 2
+            new Rectangle2D(minX - 1, minY - 1, if (w < 0) 0 else w, if (h < 0) 0 else h)
+          }
+
+          override def handle(nano: Long) {
+            if (startNano == 0) startNano = nano
+
+            val currentState = (nano - startNano) / 1000 / 1000 / 500
+            if (currentState != state) {
+              state = currentState
+              val gc = sfxImageCanvas.graphicsContext2D
+              gc.setLineWidth(LineWidth)
+              gc.setLineDashes()
+              gc.setStroke(Color.RED)
+              gc.setLineDashes(5.0, 5.0)
+
+              if ((state % 2) == 0) {
+                lines.foreach { l =>
+                  println("draw line " + l)
+                  gc.strokeLine(l._1, l._2, l._3, l._4)
+                }
+              }
+              else {
+                println("clear line " + union)
+                redrawRect(union)
+              }
+
+              if (3 <= currentState) {
+                stop()
+                selectedImage = Some(
+                  si.copy(
+                    skewCorrected = Some(skewCorrectedImage)
+                  )
+                )
+                redraw()
+              }
             }
           }
         }
-      }
+
+        new ShowResultAnimation(showLines).start()
+      } (_.disconnect()).get
     }
   }
 
@@ -674,7 +815,7 @@ class MainController extends Initializable {
     println("canvasMouseClicked")
     if (e.getClickCount == 2) {
       println("double clicked")
-      project.getSelectedAbsoluteField(e.getX, e.getY) foreach { f =>
+      project.getSelectedAbsoluteFieldAt(e.getX, e.getY) foreach { f =>
         val dlg = new SfxTextInputDialog(f.name)
         dlg.title = "フィールドの名前変更"
         dlg.headerText = "フィールドの名前を入力してください。"
