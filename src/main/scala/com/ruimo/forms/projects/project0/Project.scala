@@ -29,14 +29,14 @@ case class AbsoluteFieldImpl(rect: Rectangle2D, name: String) extends AbsoluteFi
     gc.strokeRect(rect.minX, rect.minY, rect.width, rect.height)
   }
 
-  def move(from: Point2D, to: Point2D): AbsoluteField = copy(
+  def move(from: Point2D, to: Point2D): this.type = copy(
     rect = new Rectangle2D(
       this.rect.minX + (to.x - from.x),
       this.rect.minY + (to.y - from.y),
       this.rect.width,
       this.rect.height
     )
-  )
+  ).asInstanceOf[this.type]
 
   def withName(newName: String): AbsoluteField =
     if (newName != name) copy(name = newName) else this
@@ -81,7 +81,7 @@ object CropFieldImpl {
   val LineWidth = 2.0
 }
 
-class CropFieldImpl(rect: Rectangle2D) extends CropField {
+abstract class CropFieldImpl(rect: Rectangle2D) extends CropField {
   import CropFieldImpl._
 
   override def draw(gc: SfxGraphicsContext, isSelected: Boolean) {
@@ -135,31 +135,39 @@ class CropFieldImpl(rect: Rectangle2D) extends CropField {
   override def toRight: RightCropField = RightCropFieldImpl(rect)
   override def toBottom: BottomCropField = BottomCropFieldImpl(rect)
   override def toTop: TopCropField = TopCropFieldImpl(rect)
+  def withNewRect(rect: Rectangle2D): this.type
+  def move(from: Point2D, to: Point2D): this.type = withNewRect(
+    new Rectangle2D(
+      this.rect.minX + (to.x - from.x),
+      this.rect.minY + (to.y - from.y),
+      this.rect.width,
+      this.rect.height
+    )
+  ).asInstanceOf[this.type]
+}
+
+case class UnknownCropFieldImpl(rect: Rectangle2D) extends CropFieldImpl(rect) {
+  def withNewRect(newRect: Rectangle2D): this.type = copy(rect = newRect).asInstanceOf[this.type]
 }
 
 case class TopCropFieldImpl(rect: Rectangle2D) extends CropFieldImpl(rect) with TopCropField {
-  override def toLeft: LeftCropField = LeftCropFieldImpl(rect)
-  override def toRight: RightCropField = RightCropFieldImpl(rect)
-  override def toBottom: BottomCropField = BottomCropFieldImpl(rect)
   override def toTop: TopCropField = this
+  def withNewRect(newRect: Rectangle2D): this.type = copy(rect = newRect).asInstanceOf[this.type]
 }
+
 case class LeftCropFieldImpl(rect: Rectangle2D) extends CropFieldImpl(rect) with LeftCropField {
   override def toLeft: LeftCropField = this
-  override def toRight: RightCropField = RightCropFieldImpl(rect)
-  override def toBottom: BottomCropField = BottomCropFieldImpl(rect)
-  override def toTop: TopCropField = TopCropFieldImpl(rect)
+  def withNewRect(newRect: Rectangle2D): this.type = copy(rect = newRect).asInstanceOf[this.type]
 }
+
 case class RightCropFieldImpl(rect: Rectangle2D) extends CropFieldImpl(rect) with RightCropField {
-  override def toLeft: LeftCropField = LeftCropFieldImpl(rect)
   override def toRight: RightCropField = this
-  override def toBottom: BottomCropField = BottomCropFieldImpl(rect)
-  override def toTop: TopCropField = TopCropFieldImpl(rect)
+  def withNewRect(newRect: Rectangle2D): this.type = copy(rect = newRect).asInstanceOf[this.type]
 }
+
 case class BottomCropFieldImpl(rect: Rectangle2D) extends CropFieldImpl(rect) with BottomCropField {
-  override def toLeft: LeftCropField = LeftCropFieldImpl(rect)
-  override def toRight: RightCropField = RightCropFieldImpl(rect)
   override def toBottom: BottomCropField = this
-  override def toTop: TopCropField = TopCropFieldImpl(rect)
+  def withNewRect(newRect: Rectangle2D): this.type = copy(rect = newRect).asInstanceOf[this.type]
 }
 
 case class SkewCorrectionImpl(
@@ -225,10 +233,48 @@ class ProjectImpl(
 
   def deselectAllFields() {
     absFields.deselectAllFields()
+    selectBottomCropField(false)
+    selectRightCropField(false)
+    selectTopCropField(false)
+    selectLeftCropField(false)
   }
 
   def selectAbsoluteFields(rect: Rectangle2D, e: MouseEvent) {
-    absFields.selectAbsoluteFields(rect, e)
+    absFields.selectFields(rect, e)
+  }
+
+  def selectCropFields(rect: Rectangle2D, e: MouseEvent) {
+    if (! isTopCropFieldSelected) {
+      _topCropField.foreach { f =>
+        if (f.intersects(rect)) {
+          addTopCropField(f, true)
+        }
+      }
+    }
+
+    if (! isLeftCropFieldSelected) {
+      _leftCropField.foreach { f =>
+        if (f.intersects(rect)) {
+          addLeftCropField(f, true)
+        }
+      }
+    }
+
+    if (! isRightCropFieldSelected) {
+      _rightCropField.foreach { f =>
+        if (f.intersects(rect)) {
+          addRightCropField(f, true)
+        }
+      }
+    }
+
+    if (! isBottomCropFieldSelected) {
+      _bottomCropField.foreach { f =>
+        if (f.intersects(rect)) {
+          addBottomCropField(f, true)
+        }
+      }
+    }
   }
 
   def selectSingleFieldAt(x: Double, y: Double) {
@@ -240,7 +286,7 @@ class ProjectImpl(
           }
         }
       }.foreach { cf =>
-        projectContext.onCropFieldAdded(cf)
+        projectContext.onSelectedCropFieldAdded(cf)
       }
     }
   }
@@ -294,16 +340,68 @@ class ProjectImpl(
 
   def getNormalCropFieldAt(x: Double, y: Double): Option[CropField] = getCropFieldAt(x, y, false)
 
+  def moveSelectedFields(from: Point2D, to: Point2D) {
+    moveSelectedAbsoluteFields(from, to)
+    moveSelectedCropFields(from, to)
+  }
+
   def moveSelectedAbsoluteFields(from: Point2D, to: Point2D) {
     absFields.moveSelectedAbsoluteFields(from, to)
+  }
+
+  def moveSelectedCropFields(from: Point2D, to: Point2D) {
+    if (topCropField.isDefined && isTopCropFieldSelected) {
+      val orgField = addTopCropField(topCropField.get.move(from, to), true)
+    }
   }
 
   def renameSelectedAbsoluteField(f: AbsoluteField, newName: String) {
     absFields.renameSelectedAbsoluteField(f, newName)
   }
 
+  def onCropFieldRemoved(f: CropField, isSelected: Boolean) {
+    if (isSelected) {
+      projectContext.onSelectedCropFieldRemoved(f)
+    }
+    else {
+      projectContext.onNormalCropFieldRemoved(f)
+    }
+  }
+
+  def onCropFieldAdded(f: CropField, isSelected: Boolean) {
+    if (isSelected) {
+      projectContext.onSelectedCropFieldAdded(f)
+    }
+    else {
+      projectContext.onNormalCropFieldAdded(f)
+    }
+  }
+
+  def redrawCropField(f: CropField, isSelected: Boolean) {
+    if (isSelected) {
+      projectContext.onSelectedCropFieldRemoved(f)
+      projectContext.onSelectedCropFieldAdded(f)
+    }
+    else {
+      projectContext.onNormalCropFieldRemoved(f)
+      projectContext.onNormalCropFieldAdded(f)
+    }
+  }
+
   def redraw() {
     absFields.redraw()
+    topCropField.foreach { f =>
+      redrawCropField(f, isTopCropFieldSelected)
+    }
+    leftCropField.foreach { f =>
+      redrawCropField(f, isLeftCropFieldSelected)
+    }
+    rightCropField.foreach { f =>
+      redrawCropField(f, isRightCropFieldSelected)
+    }
+    bottomCropField.foreach { f =>
+      redrawCropField(f, isBottomCropFieldSelected)
+    }
   }
 
   def possibleMouseOperation(x: Double, y: Double): MouseOperation =
@@ -321,6 +419,8 @@ class ProjectImpl(
     val existing = this._leftCropField
     this._leftCropField = Some(f)
     this._isLeftCropFieldSelected = selected
+    existing.foreach { f => onCropFieldRemoved(f, isLeftCropFieldSelected) }
+    onCropFieldAdded(f, selected)
     existing
   }
 
@@ -329,6 +429,8 @@ class ProjectImpl(
     val existing = this._rightCropField
     this._rightCropField = Some(f)
     this._isRightCropFieldSelected = selected
+    existing.foreach { f => onCropFieldRemoved(f, isRightCropFieldSelected) }
+    onCropFieldAdded(f, selected)
     existing
   }
 
@@ -337,6 +439,8 @@ class ProjectImpl(
     val existing = this._topCropField
     this._topCropField = Some(f)
     this._isTopCropFieldSelected = selected
+    existing.foreach { f => onCropFieldRemoved(f, isTopCropFieldSelected) }
+    onCropFieldAdded(f, selected)
     existing
   }
 
@@ -345,6 +449,8 @@ class ProjectImpl(
     val existing = this._bottomCropField
     this._bottomCropField = Some(f)
     this._isBottomCropFieldSelected = selected
+    existing.foreach { f => onCropFieldRemoved(f, isBottomCropFieldSelected) }
+    onCropFieldAdded(f, selected)
     existing
   }
 
@@ -361,25 +467,28 @@ class ProjectImpl(
   def selectLeftCropField(selected: Boolean) {
     leftCropField.foreach { cf =>
       _isLeftCropFieldSelected = selected
-      projectContext.onCropFieldAdded(cf)
+      onCropFieldAdded(cf, selected)
     }
   }
+
   def selectTopCropField(selected: Boolean) {
     topCropField.foreach { cf =>
       _isTopCropFieldSelected = selected
-      projectContext.onCropFieldAdded(cf)
+      onCropFieldAdded(cf, selected)
     }
   }
+
   def selectRightCropField(selected: Boolean) {
     rightCropField.foreach { cf =>
       _isRightCropFieldSelected = selected
-      projectContext.onCropFieldAdded(cf)
+      onCropFieldAdded(cf, selected)
     }
   }
+
   def selectBottomCropField(selected: Boolean) {
     bottomCropField.foreach { cf =>
       _isBottomCropFieldSelected = selected
-      projectContext.onCropFieldAdded(cf)
+      onCropFieldAdded(cf, selected)
     }
   }
 }

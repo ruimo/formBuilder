@@ -23,6 +23,7 @@ sealed trait Field extends Widget[Field] {
   def drawArea: Rectangle2D
   def draw(gc: SfxGraphicsContext, isSelected: Boolean): Unit
   def possibleMouseOperation(x: Double, y: Double): MouseOperation
+  def move(from: Point2D, to: Point2D): this.type
 }
 
 trait SkewCorrection {
@@ -44,7 +45,6 @@ trait EdgeCrop {
 }
 
 trait AbsoluteField extends Field {
-  def move(from: Point2D, to: Point2D): AbsoluteField
   def name: String
   def withName(newName: String): AbsoluteField
 }
@@ -88,7 +88,7 @@ class AbsoluteFieldTable(
     _selectedAbsoluteFields = imm.Seq()
   }
 
-  def selectAbsoluteFields(rect: Rectangle2D, e: MouseEvent) {
+  def selectFields(rect: Rectangle2D, e: MouseEvent) {
     _normalAbsoluteFields = _normalAbsoluteFields.filter { f =>
       if (f.intersects(rect)) {
         _selectedAbsoluteFields = _selectedAbsoluteFields :+ f
@@ -217,6 +217,7 @@ trait Project {
   def absoluteFields: AbsoluteFieldTable
   def deselectAllFields(): Unit
   def selectAbsoluteFields(rect: Rectangle2D, e: MouseEvent): Unit
+  def selectCropFields(rect: Rectangle2D, e: MouseEvent): Unit
   def selectSingleFieldAt(x: Double, y: Double): Unit
   def selectField(f: Field): Unit
   def selectAbsoluteField(f: AbsoluteField): Unit
@@ -228,7 +229,9 @@ trait Project {
   def getNormalFieldAt(x: Double, y: Double): Option[Field]
   def getNormalAbsoluteFieldAt(x: Double, y: Double): Option[AbsoluteField]
   def getNormalCropFieldAt(x: Double, y: Double): Option[CropField]
+  def moveSelectedFields(from: Point2D, to: Point2D): Unit
   def moveSelectedAbsoluteFields(from: Point2D, to: Point2D): Unit
+  def moveSelectedCropFields(from: Point2D, to: Point2D): Unit
   def renameSelectedAbsoluteField(f: AbsoluteField, newName: String): Unit
   def redraw(): Unit
   def possibleMouseOperation(x: Double, y: Double): MouseOperation
@@ -262,5 +265,8 @@ class ProjectContext(
   val onSelectedAbsoluteFieldAdded: AbsoluteField => Unit,
   val onNormalAbsoluteFieldRemoved: AbsoluteField => Unit,
   val onSelectedAbsoluteFieldRemoved: AbsoluteField => Unit,
-  val onCropFieldAdded: CropField => Unit
+  val onNormalCropFieldAdded: CropField => Unit,
+  val onSelectedCropFieldAdded: CropField => Unit,
+  val onNormalCropFieldRemoved: CropField => Unit,
+  val onSelectedCropFieldRemoved: CropField => Unit
 )

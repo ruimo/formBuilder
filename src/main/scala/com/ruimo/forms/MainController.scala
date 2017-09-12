@@ -94,7 +94,7 @@ object ModeEditors {
       def onMousePressed(e: MouseEvent): ModeEditor = this
       def onMouseDragged(e: MouseEvent): ModeEditor = {
         val p1 = new Point2D(e.getX, e.getY)
-        val adding = new CropFieldImpl(toRect(p0, p1))
+        val adding = UnknownCropFieldImpl(toRect(p0, p1))
         editorContext.drawWidget(adding, true)
         Dragging(adding, project, editorContext, p0, p1)
       }
@@ -114,14 +114,14 @@ object ModeEditors {
       def onMouseDragged(e: MouseEvent): ModeEditor = {
         val newP1 = new Point2D(e.getX, e.getY)
         editorContext.redrawRect(adding.drawArea)
-        val newAdding = new CropFieldImpl(toRect(p0, newP1))
+        val newAdding = UnknownCropFieldImpl(toRect(p0, newP1))
         editorContext.drawWidget(newAdding, true)
         Dragging(newAdding, project, editorContext, p0, newP1)
       }
       def onMouseReleased(e: MouseEvent): ModeEditor = {
         val newP1 = new Point2D(e.getX, e.getY)
         editorContext.redrawRect(adding.drawArea)
-        val newAdding = new CropFieldImpl(toRect(p0, newP1))
+        val newAdding = UnknownCropFieldImpl(toRect(p0, newP1))
         editorContext.drawWidget(newAdding, true)
         editorContext.fieldCreated(newAdding)
         Init(project, editorContext)
@@ -270,7 +270,7 @@ object ModeEditors {
       def onMousePressed(e: MouseEvent): ModeEditor = this
       def onMouseDragged(e: MouseEvent): ModeEditor = {
         val p1 = new Point2D(e.getX, e.getY)
-        project.moveSelectedAbsoluteFields(p0, p1)
+        project.moveSelectedFields(p0, p1)
         Moving(project, editorContext, p1)
       }
       def onMouseReleased(e: MouseEvent): ModeEditor = Init(project, editorContext)
@@ -516,6 +516,7 @@ class MainController extends Initializable {
   def selectFields(rect: Rectangle2D, e: MouseEvent): Unit = {
     println("selectFields(" + rect + ", " + e + ")")
     project.selectAbsoluteFields(rect, e)
+    project.selectCropFields(rect, e)
   }
 
   @FXML
@@ -918,7 +919,16 @@ class MainController extends Initializable {
           println("*** selected field removed " + f)
           redrawRect(f.drawArea)
         },
-        onCropFieldAdded = (f: CropField) => {
+        onNormalCropFieldAdded = (f: CropField) => {
+          f.draw(sfxImageCanvas.graphicsContext2D, false)
+        },
+        onSelectedCropFieldAdded = (f: CropField) => {
+          f.draw(sfxImageCanvas.graphicsContext2D, true)
+        },
+        onNormalCropFieldRemoved = (f: CropField) => {
+          redrawRect(f.drawArea)
+        },
+        onSelectedCropFieldRemoved = (f: CropField) => {
           redrawRect(f.drawArea)
         }
       ),
