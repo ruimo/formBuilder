@@ -206,7 +206,7 @@ object ModeEditors {
         def doNext(f: Field): ModeEditor = {
           f.possibleMouseOperation(e.getX, e.getY) match {
             case CanMove(_) => Moving(project, editorContext, new Point2D(e.getX, e.getY))
-            case CanNorthResize(f) => NorthResize(f, project, editorContext, new Point2D(e.getX, e.getY))
+            case CanNorthResize(f) => NorthResize(project, editorContext, new Point2D(e.getX, e.getY))
             case CanEastResize(_) => Moving(project, editorContext, new Point2D(e.getX, e.getY))
             case CanWestResize(_) => Moving(project, editorContext, new Point2D(e.getX, e.getY))
             case CanSouthResize(_) => Moving(project, editorContext, new Point2D(e.getX, e.getY))
@@ -280,7 +280,6 @@ object ModeEditors {
     }
 
     case class NorthResize(
-      f: Field,
       project: Project,
       editorContext: EditorContext,
       p0: Point2D
@@ -288,8 +287,8 @@ object ModeEditors {
       def onMousePressed(e: MouseEvent): ModeEditor = this
       def onMouseDragged(e: MouseEvent): ModeEditor = {
         val p1 = new Point2D(e.getX, e.getY)
-        project.northResize(f, p0, p1)
-        NorthResize(f, project, editorContext, p0)
+        project.northResize(p0, p1)
+        NorthResize(project, editorContext, p0)
       }
       def onMouseReleased(e: MouseEvent): ModeEditor = Init(project, editorContext)
       def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)

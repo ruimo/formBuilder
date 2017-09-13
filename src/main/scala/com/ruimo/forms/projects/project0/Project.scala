@@ -405,6 +405,11 @@ class ProjectImpl(
     moveSelectedCropFields(from, to)
   }
 
+  def northResize(p0: Point2D, p1: Point2D) {
+    northResizeAbsoluteFields(from, to)
+    northResizeCropFields(from, to)
+  }
+
   def moveSelectedAbsoluteFields(from: Point2D, to: Point2D) {
     absFields.moveSelectedAbsoluteFields(from, to)
   }
@@ -413,6 +418,13 @@ class ProjectImpl(
     if (topCropField.isDefined && isTopCropFieldSelected) {
       val orgField = addTopCropField(topCropField.get.move(from, to), true)
     }
+  }
+
+  def northResizeAbsoluteFields(from: Point2D, to: Point2D) {
+    absFields.northResizeFields(from, to)
+  }
+
+  def northResizeCropFields(from: Point2D, to: Point2D) {
   }
 
   def renameSelectedAbsoluteField(f: AbsoluteField, newName: String) {
@@ -466,13 +478,6 @@ class ProjectImpl(
 
   def possibleMouseOperation(x: Double, y: Double): MouseOperation =
     absFields.possibleMouseOperation(x, y)
-
-  def northResize(f: Field, p0: Point2D, p1: Point2D) {
-    f match {
-      case af: AbsoluteField =>
-        absFields.northResize(af, p0, p1)
-    }
-  }
 
   // returns old field
   def addLeftCropField(f: LeftCropField, selected: Boolean): Option[LeftCropField] = {
