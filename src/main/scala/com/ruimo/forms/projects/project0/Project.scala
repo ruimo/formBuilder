@@ -410,8 +410,40 @@ class ProjectImpl(
   }
 
   def moveSelectedCropFields(from: Point2D, to: Point2D) {
-    if (topCropField.isDefined && isTopCropFieldSelected) {
-      val orgField = addTopCropField(topCropField.get.move(from, to), true)
+    topCropField.foreach { f =>
+      if (isTopCropFieldSelected) {
+        val moved = f.move(from, to)
+        addTopCropField(moved, true)
+        projectContext.onSelectedCropFieldRemoved(f)
+        projectContext.onSelectedCropFieldAdded(moved)
+      }
+    }
+
+    leftCropField.foreach { f =>
+      if (isLeftCropFieldSelected) {
+        val moved = f.move(from, to)
+        addLeftCropField(moved, true)
+        projectContext.onSelectedCropFieldRemoved(f)
+        projectContext.onSelectedCropFieldAdded(moved)
+      }
+    }
+
+    rightCropField.foreach { f =>
+      if (isRightCropFieldSelected) {
+        val moved = f.move(from, to)
+        addRightCropField(moved, true)
+        projectContext.onSelectedCropFieldRemoved(f)
+        projectContext.onSelectedCropFieldAdded(moved)
+      }
+    }
+
+    bottomCropField.foreach { f =>
+      if (isBottomCropFieldSelected) {
+        val moved = f.move(from, to)
+        addBottomCropField(moved, true)
+        projectContext.onSelectedCropFieldRemoved(f)
+        projectContext.onSelectedCropFieldAdded(moved)
+      }
     }
   }
 
@@ -464,8 +496,24 @@ class ProjectImpl(
     }
   }
 
-  def possibleMouseOperation(x: Double, y: Double): MouseOperation =
-    absFields.possibleMouseOperation(x, y)
+  def possibleMouseOperation(x: Double, y: Double): MouseOperation = {
+    var ret = absFields.possibleMouseOperation(x, y)
+    if (ret != CanDoNothing) return ret
+
+    ret = topCropField.map { _.possibleMouseOperation(x, y) }.getOrElse(CanDoNothing)
+    if (ret != CanDoNothing) return ret
+
+    ret = leftCropField.map { _.possibleMouseOperation(x, y) }.getOrElse(CanDoNothing)
+    if (ret != CanDoNothing) return ret
+
+    ret = rightCropField.map { _.possibleMouseOperation(x, y) }.getOrElse(CanDoNothing)
+    if (ret != CanDoNothing) return ret
+
+    ret = bottomCropField.map { _.possibleMouseOperation(x, y) }.getOrElse(CanDoNothing)
+    if (ret != CanDoNothing) return ret
+
+    CanDoNothing
+  }
 
   def northResize(f: Field, p0: Point2D, p1: Point2D) {
     f match {
