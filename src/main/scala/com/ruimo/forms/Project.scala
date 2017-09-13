@@ -1,5 +1,6 @@
 package com.ruimo.forms
 
+import javafx.scene.Cursor
 import scalafx.geometry.{Point2D, Rectangle2D}
 import javafx.scene.input.MouseEvent
 

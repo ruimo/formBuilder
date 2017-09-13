@@ -57,7 +57,8 @@ case class EditorContext(
   redrawRect: (Rectangle2D) => Unit,
   fieldCreated: (Field) => Unit,
   drawSelectionRect: (Rectangle2D) => Unit,
-  selectFields: (Rectangle2D, MouseEvent) => Unit
+  selectFields: (Rectangle2D, MouseEvent) => Unit,
+  setMouseCursor: Cursor => Unit
 )
 
 object ModeEditors {
@@ -65,6 +66,9 @@ object ModeEditors {
     def onMousePressed(e: MouseEvent): ModeEditor
     def onMouseDragged(e: MouseEvent): ModeEditor
     def onMouseReleased(e: MouseEvent): ModeEditor
+    def onMouseEntered(e: MouseEvent): ModeEditor
+    def onMouseExited(e: MouseEvent): ModeEditor
+    def onMouseMoved(e: MouseEvent): ModeEditor
     def switchToAddMode(e: ActionEvent): ModeEditor
     def switchToAddCropMode(e: ActionEvent): ModeEditor
     def switchToSelectMode(e: ActionEvent): ModeEditor
@@ -81,6 +85,9 @@ object ModeEditors {
       }
       def onMouseDragged(e: MouseEvent): ModeEditor = this
       def onMouseReleased(e: MouseEvent): ModeEditor = this
+      def onMouseEntered(e: MouseEvent): ModeEditor = this
+      def onMouseExited(e: MouseEvent): ModeEditor = this
+      def onMouseMoved(e: MouseEvent): ModeEditor = this
       def switchToAddMode(e: ActionEvent): ModeEditor = this
       def switchToAddCropMode(e: ActionEvent): ModeEditor = this
       def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
@@ -99,6 +106,9 @@ object ModeEditors {
         Dragging(adding, project, editorContext, p0, p1)
       }
       def onMouseReleased(e: MouseEvent): ModeEditor = Init(project, editorContext)
+      def onMouseEntered(e: MouseEvent): ModeEditor = this
+      def onMouseExited(e: MouseEvent): ModeEditor = this
+      def onMouseMoved(e: MouseEvent): ModeEditor = this
       def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
       def switchToAddCropMode(e: ActionEvent): ModeEditor = Init(project, editorContext)
       def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
@@ -126,6 +136,9 @@ object ModeEditors {
         editorContext.fieldCreated(newAdding)
         Init(project, editorContext)
       }
+      def onMouseEntered(e: MouseEvent): ModeEditor = this
+      def onMouseExited(e: MouseEvent): ModeEditor = this
+      def onMouseMoved(e: MouseEvent): ModeEditor = this
       def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
       def switchToAddCropMode(e: ActionEvent): ModeEditor = Init(project, editorContext)
       def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
@@ -146,6 +159,9 @@ object ModeEditors {
       }
       def onMouseDragged(e: MouseEvent): ModeEditor = this
       def onMouseReleased(e: MouseEvent): ModeEditor = this
+      def onMouseEntered(e: MouseEvent): ModeEditor = this
+      def onMouseExited(e: MouseEvent): ModeEditor = this
+      def onMouseMoved(e: MouseEvent): ModeEditor = this
       def switchToAddMode(e: ActionEvent): ModeEditor = this
       def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
       def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
@@ -164,6 +180,9 @@ object ModeEditors {
         Dragging(adding, project, editorContext, p0, p1)
       }
       def onMouseReleased(e: MouseEvent): ModeEditor = Init(project, editorContext)
+      def onMouseEntered(e: MouseEvent): ModeEditor = this
+      def onMouseExited(e: MouseEvent): ModeEditor = this
+      def onMouseMoved(e: MouseEvent): ModeEditor = this
       def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
       def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
       def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
@@ -191,6 +210,9 @@ object ModeEditors {
         editorContext.fieldCreated(newAdding)
         Init(project, editorContext)
       }
+      def onMouseEntered(e: MouseEvent): ModeEditor = this
+      def onMouseExited(e: MouseEvent): ModeEditor = this
+      def onMouseMoved(e: MouseEvent): ModeEditor = this
       def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
       def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
       def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
@@ -236,6 +258,37 @@ object ModeEditors {
       }
       def onMouseDragged(e: MouseEvent): ModeEditor = this
       def onMouseReleased(e: MouseEvent): ModeEditor = this
+      def onMouseEntered(e: MouseEvent): ModeEditor = onMouseMoved(e)
+      def onMouseExited(e: MouseEvent): ModeEditor = {
+        editorContext.setMouseCursor(Cursor.DEFAULT)
+        this
+      }
+      def onMouseMoved(e: MouseEvent): ModeEditor = {
+        project.possibleMouseOperation(e.getX, e.getY) match {
+          case CanDoNothing =>
+            editorContext.setMouseCursor(Cursor.DEFAULT)
+          case CanMove(f) =>
+            editorContext.setMouseCursor(Cursor.MOVE)
+          case CanNorthResize(f) =>
+            editorContext.setMouseCursor(Cursor.N_RESIZE)
+          case CanEastResize(f) =>
+            editorContext.setMouseCursor(Cursor.E_RESIZE)
+          case CanWestResize(f) =>
+            editorContext.setMouseCursor(Cursor.W_RESIZE)
+          case CanSouthResize(f) =>
+            editorContext.setMouseCursor(Cursor.S_RESIZE)
+          case CanNorthWestResize(f) =>
+            editorContext.setMouseCursor(Cursor.NW_RESIZE)
+          case CanNorthEastResize(f) =>
+            editorContext.setMouseCursor(Cursor.NE_RESIZE)
+          case CanSouthWestResize(f) =>
+            editorContext.setMouseCursor(Cursor.SW_RESIZE)
+          case CanSouthEastResize(f) =>
+            editorContext.setMouseCursor(Cursor.SE_RESIZE)
+        }
+
+        this
+      }
       def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
       def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
       def switchToSelectMode(e: ActionEvent): ModeEditor = this
@@ -255,8 +308,15 @@ object ModeEditors {
       }
       def onMouseReleased(e: MouseEvent): ModeEditor = {
         project.selectSingleFieldAt(e.getX, e.getY)
+        editorContext.setMouseCursor(Cursor.DEFAULT)
         Init(project, editorContext)
       }
+      def onMouseEntered(e: MouseEvent): ModeEditor = this
+      def onMouseExited(e: MouseEvent): ModeEditor = {
+        editorContext.setMouseCursor(Cursor.DEFAULT)
+        this
+      }
+      def onMouseMoved(e: MouseEvent): ModeEditor = this
       def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
       def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
       def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
@@ -273,7 +333,13 @@ object ModeEditors {
         project.moveSelectedFields(p0, p1)
         Moving(project, editorContext, p1)
       }
-      def onMouseReleased(e: MouseEvent): ModeEditor = Init(project, editorContext)
+      def onMouseReleased(e: MouseEvent): ModeEditor = {
+        editorContext.setMouseCursor(Cursor.DEFAULT)
+        Init(project, editorContext)
+      }
+      def onMouseEntered(e: MouseEvent): ModeEditor = this
+      def onMouseExited(e: MouseEvent): ModeEditor = this
+      def onMouseMoved(e: MouseEvent): ModeEditor = this
       def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
       def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
       def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
@@ -290,7 +356,13 @@ object ModeEditors {
         project.northResize(p0, p1)
         NorthResize(project, editorContext, p0)
       }
-      def onMouseReleased(e: MouseEvent): ModeEditor = Init(project, editorContext)
+      def onMouseReleased(e: MouseEvent): ModeEditor = {
+        editorContext.setMouseCursor(Cursor.DEFAULT)
+        Init(project, editorContext)
+      }
+      def onMouseEntered(e: MouseEvent): ModeEditor = this
+      def onMouseExited(e: MouseEvent): ModeEditor = this
+      def onMouseMoved(e: MouseEvent): ModeEditor = this
       def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
       def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
       def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
@@ -312,11 +384,15 @@ object ModeEditors {
         Dragging(newSw, project, editorContext, p0, newP1)
       }
       def onMouseReleased(e: MouseEvent): ModeEditor = {
+        editorContext.setMouseCursor(Cursor.DEFAULT)
         val newP1 = new Point2D(e.getX, e.getY)
         editorContext.redrawRect(sw.drawArea)
         editorContext.selectFields(toRect(p0, newP1), e)
         Init(project, editorContext)
       }
+      def onMouseEntered(e: MouseEvent): ModeEditor = this
+      def onMouseExited(e: MouseEvent): ModeEditor = this
+      def onMouseMoved(e: MouseEvent): ModeEditor = this
       def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
       def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
       def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
@@ -345,6 +421,18 @@ class Editor(
 
   def onMouseReleased(e: MouseEvent): Unit = {
     editor = editor.onMouseReleased(e)
+  }
+
+  def onMouseExited(e: MouseEvent): Unit = {
+    editor = editor.onMouseExited(e)
+  }
+
+  def onMouseEntered(e: MouseEvent): Unit = {
+    editor = editor.onMouseEntered(e)
+  }
+
+  def onMouseMoved(e: MouseEvent): Unit = {
+    editor = editor.onMouseMoved(e)
   }
 
   def switchToAddMode(e: ActionEvent): Unit = {
@@ -467,6 +555,10 @@ class MainController extends Initializable {
     gc.setStroke(Color.BLACK)
     gc.setLineDashes(5.0, 5.0)
     gc.strokeRect(rect.minX, rect.minY, rect.width, rect.height)
+  }
+
+  def setMouseCursor(cursor: Cursor) {
+    stage.scene.get().setCursor(cursor)
   }
 
   def rectangle2D(x0: Double, y0: Double, x1: Double, y1: Double): Rectangle2D = {
@@ -846,49 +938,50 @@ class MainController extends Initializable {
 
   @FXML
   def canvasMouseEntered(e: MouseEvent) {
-    canvasMouseMoved(e)
+    editor.onMouseEntered(e)
   }
 
   @FXML
   def canvasMouseExited(e: MouseEvent) {
-    stage.scene.get().setCursor(Cursor.DEFAULT)
+    editor.onMouseExited(e)
   }
 
   @FXML
   def canvasMouseMoved(e: MouseEvent) {
-    if (selectModeButton.isSelected) {
-      project.possibleMouseOperation(e.getX, e.getY) match {
-        case CanDoNothing =>
-          stage.scene.get().setCursor(Cursor.DEFAULT)
+    editor.onMouseMoved(e)
+    // if (selectModeButton.isSelected) {
+    //   project.possibleMouseOperation(e.getX, e.getY) match {
+    //     case CanDoNothing =>
+    //       stage.scene.get().setCursor(Cursor.DEFAULT)
 
-        case CanMove(f) =>
-          stage.scene.get().setCursor(Cursor.MOVE)
+    //     case CanMove(f) =>
+    //       stage.scene.get().setCursor(Cursor.MOVE)
 
-        case CanNorthResize(f) =>
-          stage.scene.get().setCursor(Cursor.N_RESIZE)
+    //     case CanNorthResize(f) =>
+    //       stage.scene.get().setCursor(Cursor.N_RESIZE)
 
-        case CanEastResize(f) =>
-          stage.scene.get().setCursor(Cursor.E_RESIZE)
+    //     case CanEastResize(f) =>
+    //       stage.scene.get().setCursor(Cursor.E_RESIZE)
 
-        case CanWestResize(f) =>
-          stage.scene.get().setCursor(Cursor.W_RESIZE)
+    //     case CanWestResize(f) =>
+    //       stage.scene.get().setCursor(Cursor.W_RESIZE)
 
-        case CanSouthResize(f) =>
-          stage.scene.get().setCursor(Cursor.S_RESIZE)
+    //     case CanSouthResize(f) =>
+    //       stage.scene.get().setCursor(Cursor.S_RESIZE)
 
-        case CanNorthWestResize(f) =>
-          stage.scene.get().setCursor(Cursor.NW_RESIZE)
+    //     case CanNorthWestResize(f) =>
+    //       stage.scene.get().setCursor(Cursor.NW_RESIZE)
 
-        case CanNorthEastResize(f) =>
-          stage.scene.get().setCursor(Cursor.NE_RESIZE)
+    //     case CanNorthEastResize(f) =>
+    //       stage.scene.get().setCursor(Cursor.NE_RESIZE)
 
-        case CanSouthWestResize(f) =>
-          stage.scene.get().setCursor(Cursor.SW_RESIZE)
+    //     case CanSouthWestResize(f) =>
+    //       stage.scene.get().setCursor(Cursor.SW_RESIZE)
 
-        case CanSouthEastResize(f) =>
-          stage.scene.get().setCursor(Cursor.SE_RESIZE)
-      }
-    }
+    //     case CanSouthEastResize(f) =>
+    //       stage.scene.get().setCursor(Cursor.SE_RESIZE)
+    //   }
+    // }
   }
 
   override def initialize(url: URL, resourceBundle: ResourceBundle) {
@@ -941,7 +1034,9 @@ class MainController extends Initializable {
 
     editor = new Editor(
       project,
-      EditorContext(drawWidget, redrawRect, fieldCreated, drawSelectionRect, selectFields)
+      EditorContext(
+        drawWidget, redrawRect, fieldCreated, drawSelectionRect, selectFields, setMouseCursor
+      )
     )
     editor.initialize()
   }
