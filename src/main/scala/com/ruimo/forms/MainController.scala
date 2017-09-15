@@ -229,13 +229,13 @@ object ModeEditors {
           f.possibleMouseOperation(e.getX, e.getY) match {
             case CanMove(_) => Moving(project, editorContext, new Point2D(e.getX, e.getY))
             case CanNorthResize(f) => NorthResize(project, editorContext, new Point2D(e.getX, e.getY))
-            case CanEastResize(_) => Moving(project, editorContext, new Point2D(e.getX, e.getY))
-            case CanWestResize(_) => Moving(project, editorContext, new Point2D(e.getX, e.getY))
-            case CanSouthResize(_) => Moving(project, editorContext, new Point2D(e.getX, e.getY))
-            case CanNorthWestResize(_) => Moving(project, editorContext, new Point2D(e.getX, e.getY))
-            case CanNorthEastResize(_) => Moving(project, editorContext, new Point2D(e.getX, e.getY))
-            case CanSouthWestResize(_) => Moving(project, editorContext, new Point2D(e.getX, e.getY))
-            case CanSouthEastResize(_) => Moving(project, editorContext, new Point2D(e.getX, e.getY))
+            case CanEastResize(_) => EastResize(project, editorContext, new Point2D(e.getX, e.getY))
+            case CanWestResize(_) => WestResize(project, editorContext, new Point2D(e.getX, e.getY))
+            case CanSouthResize(_) => SouthResize(project, editorContext, new Point2D(e.getX, e.getY))
+            case CanNorthWestResize(_) => NorthWestResize(project, editorContext, new Point2D(e.getX, e.getY))
+            case CanNorthEastResize(_) => NorthEastResize(project, editorContext, new Point2D(e.getX, e.getY))
+            case CanSouthWestResize(_) => SouthWestResize(project, editorContext, new Point2D(e.getX, e.getY))
+            case CanSouthEastResize(_) => SouthEastResize(project, editorContext, new Point2D(e.getX, e.getY))
             case CanDoNothing => Moving(project, editorContext, new Point2D(e.getX, e.getY))
           }
         }
@@ -353,8 +353,169 @@ object ModeEditors {
       def onMousePressed(e: MouseEvent): ModeEditor = this
       def onMouseDragged(e: MouseEvent): ModeEditor = {
         val p1 = new Point2D(e.getX, e.getY)
-        project.northResize(p0, p1)
-        NorthResize(project, editorContext, p0)
+        project.northResizeSelectedFields(p0, p1)
+        NorthResize(project, editorContext, p1)
+      }
+      def onMouseReleased(e: MouseEvent): ModeEditor = {
+        editorContext.setMouseCursor(Cursor.DEFAULT)
+        Init(project, editorContext)
+      }
+      def onMouseEntered(e: MouseEvent): ModeEditor = this
+      def onMouseExited(e: MouseEvent): ModeEditor = this
+      def onMouseMoved(e: MouseEvent): ModeEditor = this
+      def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+    }
+
+    case class EastResize(
+      project: Project,
+      editorContext: EditorContext,
+      p0: Point2D
+    ) extends ModeEditor {
+      def onMousePressed(e: MouseEvent): ModeEditor = this
+      def onMouseDragged(e: MouseEvent): ModeEditor = {
+        val p1 = new Point2D(e.getX, e.getY)
+        project.eastResizeSelectedFields(p0, p1)
+        EastResize(project, editorContext, p1)
+      }
+      def onMouseReleased(e: MouseEvent): ModeEditor = {
+        editorContext.setMouseCursor(Cursor.DEFAULT)
+        Init(project, editorContext)
+      }
+      def onMouseEntered(e: MouseEvent): ModeEditor = this
+      def onMouseExited(e: MouseEvent): ModeEditor = this
+      def onMouseMoved(e: MouseEvent): ModeEditor = this
+      def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+    }
+
+    case class WestResize(
+      project: Project,
+      editorContext: EditorContext,
+      p0: Point2D
+    ) extends ModeEditor {
+      def onMousePressed(e: MouseEvent): ModeEditor = this
+      def onMouseDragged(e: MouseEvent): ModeEditor = {
+        val p1 = new Point2D(e.getX, e.getY)
+        project.westResizeSelectedFields(p0, p1)
+        WestResize(project, editorContext, p1)
+      }
+      def onMouseReleased(e: MouseEvent): ModeEditor = {
+        editorContext.setMouseCursor(Cursor.DEFAULT)
+        Init(project, editorContext)
+      }
+      def onMouseEntered(e: MouseEvent): ModeEditor = this
+      def onMouseExited(e: MouseEvent): ModeEditor = this
+      def onMouseMoved(e: MouseEvent): ModeEditor = this
+      def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+    }
+
+    case class SouthResize(
+      project: Project,
+      editorContext: EditorContext,
+      p0: Point2D
+    ) extends ModeEditor {
+      def onMousePressed(e: MouseEvent): ModeEditor = this
+      def onMouseDragged(e: MouseEvent): ModeEditor = {
+        val p1 = new Point2D(e.getX, e.getY)
+        project.southResizeSelectedFields(p0, p1)
+        SouthResize(project, editorContext, p1)
+      }
+      def onMouseReleased(e: MouseEvent): ModeEditor = {
+        editorContext.setMouseCursor(Cursor.DEFAULT)
+        Init(project, editorContext)
+      }
+      def onMouseEntered(e: MouseEvent): ModeEditor = this
+      def onMouseExited(e: MouseEvent): ModeEditor = this
+      def onMouseMoved(e: MouseEvent): ModeEditor = this
+      def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+    }
+
+    case class NorthWestResize(
+      project: Project,
+      editorContext: EditorContext,
+      p0: Point2D
+    ) extends ModeEditor {
+      def onMousePressed(e: MouseEvent): ModeEditor = this
+      def onMouseDragged(e: MouseEvent): ModeEditor = {
+        val p1 = new Point2D(e.getX, e.getY)
+        project.northWestResizeSelectedFields(p0, p1)
+        NorthWestResize(project, editorContext, p1)
+      }
+      def onMouseReleased(e: MouseEvent): ModeEditor = {
+        editorContext.setMouseCursor(Cursor.DEFAULT)
+        Init(project, editorContext)
+      }
+      def onMouseEntered(e: MouseEvent): ModeEditor = this
+      def onMouseExited(e: MouseEvent): ModeEditor = this
+      def onMouseMoved(e: MouseEvent): ModeEditor = this
+      def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+    }
+
+    case class NorthEastResize(
+      project: Project,
+      editorContext: EditorContext,
+      p0: Point2D
+    ) extends ModeEditor {
+      def onMousePressed(e: MouseEvent): ModeEditor = this
+      def onMouseDragged(e: MouseEvent): ModeEditor = {
+        val p1 = new Point2D(e.getX, e.getY)
+        project.northEastResizeSelectedFields(p0, p1)
+        NorthEastResize(project, editorContext, p1)
+      }
+      def onMouseReleased(e: MouseEvent): ModeEditor = {
+        editorContext.setMouseCursor(Cursor.DEFAULT)
+        Init(project, editorContext)
+      }
+      def onMouseEntered(e: MouseEvent): ModeEditor = this
+      def onMouseExited(e: MouseEvent): ModeEditor = this
+      def onMouseMoved(e: MouseEvent): ModeEditor = this
+      def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+    }
+
+    case class SouthWestResize(
+      project: Project,
+      editorContext: EditorContext,
+      p0: Point2D
+    ) extends ModeEditor {
+      def onMousePressed(e: MouseEvent): ModeEditor = this
+      def onMouseDragged(e: MouseEvent): ModeEditor = {
+        val p1 = new Point2D(e.getX, e.getY)
+        project.southWestResizeSelectedFields(p0, p1)
+        SouthWestResize(project, editorContext, p1)
+      }
+      def onMouseReleased(e: MouseEvent): ModeEditor = {
+        editorContext.setMouseCursor(Cursor.DEFAULT)
+        Init(project, editorContext)
+      }
+      def onMouseEntered(e: MouseEvent): ModeEditor = this
+      def onMouseExited(e: MouseEvent): ModeEditor = this
+      def onMouseMoved(e: MouseEvent): ModeEditor = this
+      def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+    }
+
+    case class SouthEastResize(
+      project: Project,
+      editorContext: EditorContext,
+      p0: Point2D
+    ) extends ModeEditor {
+      def onMousePressed(e: MouseEvent): ModeEditor = this
+      def onMouseDragged(e: MouseEvent): ModeEditor = {
+        val p1 = new Point2D(e.getX, e.getY)
+        project.southEastResizeSelectedFields(p0, p1)
+        SouthEastResize(project, editorContext, p1)
       }
       def onMouseReleased(e: MouseEvent): ModeEditor = {
         editorContext.setMouseCursor(Cursor.DEFAULT)
@@ -695,22 +856,33 @@ class MainController extends Initializable {
 //    myStage.show()
   }
 
+  @FXML
+  def skewCorrectionEnabledClicked(e: ActionEvent) {
+println("skewCorrectionEnabledClicked")
+  }
+
+  @FXML
+  def cropEnabledCheckClicked(e: ActionEvent) {
+println("cropEnabledCheckClicked")
+  }
+
   def extention(path: Path): Option[String] = {
     val fname = path.getFileName().toString()
     val idx = fname.lastIndexOf(".")
     if (idx == -1) None else Some(fname.substring(idx))
   }
 
-  def prepareFileForCaptureApi(imageFile: Path): Path = {
+  def prepareFileForCaptureApi(image: SelectedImage): Path = {
     println("skewCorrection = " + project.skewCorrection.asJson)
 
     val configFile = Files.createTempFile(null, null)
-    val fileName = "image001" + extention(imageFile).getOrElse("")
+    val fileName = "image001" + extention(image.file).getOrElse("")
     Files.write(
       configFile,
       Json.obj(
         "inputFiles" -> JsArray(Seq(JsString(fileName))),
-        "skewCorrection" -> project.skewCorrection.asJson
+        "skewCorrection" -> project.skewCorrection.asJson,
+        "crop" -> project.edgeCrop(image.image.getWidth(), image.image.getHeight()).asJson
       ).toString.getBytes("utf-8")
     )
 
@@ -719,7 +891,7 @@ class MainController extends Initializable {
       zipFile,
       Seq(
         "config.json" -> configFile,
-        fileName -> imageFile
+        fileName -> image.file
       )
     )
 
@@ -734,7 +906,7 @@ class MainController extends Initializable {
     println("selected file = " + selectedImage)
 
     selectedImage.foreach { si =>
-      val fileToSubmit: Path = prepareFileForCaptureApi(si.file)
+      val fileToSubmit: Path = prepareFileForCaptureApi(si)
       val url = new URL("http://localhost:9000/prepare")
 
       selectedImage = Some(

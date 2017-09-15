@@ -95,8 +95,8 @@
                                           <Insets top="20.0" />
                                        </GridPane.margin>
                                     </HBox>
-                                    <CheckBox fx:id="cropCheck" mnemonicParsing="false" text="余白切り落とし" GridPane.rowIndex="1" />
-                                    <CheckBox fx:id="skewCorrectionCheck" mnemonicParsing="false" text="傾き補正" />
+                                    <CheckBox fx:id="cropCheck" mnemonicParsing="false" onAction="#cropEnabledCheckClicked" text="余白切り落とし" GridPane.rowIndex="1" />
+                                    <CheckBox fx:id="skewCorrectionCheck" mnemonicParsing="false" onAction="#skewCorrectionEnabledClicked" text="傾き補正" />
                                  </children>
                               </GridPane>
                            </content>
