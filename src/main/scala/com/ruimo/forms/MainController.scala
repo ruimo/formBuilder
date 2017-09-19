@@ -645,6 +645,8 @@ class MainController extends Initializable {
   @FXML
   private[this] var cropCheck: CheckBox = _
 
+  lazy val sfxCropCheck = new SfxCheckBox(cropCheck)
+
   @FXML
   private[this] var skewCorrectionCheck: CheckBox = _
 
@@ -863,7 +865,8 @@ println("skewCorrectionEnabledClicked")
 
   @FXML
   def cropEnabledCheckClicked(e: ActionEvent) {
-println("cropEnabledCheckClicked")
+    project.cropEnabled = sfxCropCheck.selected()
+println("cropEnabledCheckClicked => " + sfxCropCheck.selected)
   }
 
   def extention(path: Path): Option[String] = {
@@ -1200,6 +1203,11 @@ println("cropEnabledCheckClicked")
         def onSkewCorrectionChanged(skewCorrection: SkewCorrection) {
           println("Skew correction changed " + skewCorrection)
           sfxSkewCorrectionCheck.selected = skewCorrection.enabled
+        }
+
+        def onCropEnabledChanged(enabled: Boolean) {
+          println("crop enabled changed " + enabled)
+          sfxCropCheck.selected = enabled
         }
       }
     )

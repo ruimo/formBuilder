@@ -742,16 +742,19 @@ class ProjectImpl(
     }
   }
 
-  def enableEdgeCrop(enabled: Boolean) {
+  def cropEnabled_=(enabled: Boolean) {
     _isEdgeCropEnabled = enabled
+    listener.onCropEnabledChanged(enabled)
   }
+
+  def cropEnabled: Boolean = _isEdgeCropEnabled
 
   def edgeCrop(formWidth: Double, formHeight: Double): EdgeCrop = {
     def cropFieldToArea(f: CropField): Area = {
       val rect = f.rect
       Area(
-        Percent(rect.minX / formWidth), Percent(rect.minY / formHeight),
-        Percent(rect.width / formWidth), Percent(rect.height / formHeight)
+        Percent(100 * rect.minX / formWidth), Percent(100 * rect.minY / formHeight),
+        Percent(100 * rect.width / formWidth), Percent(100 * rect.height / formHeight)
       )
     }
 

@@ -401,10 +401,12 @@ class AbsoluteFieldTable(
 
 trait ProjectListener {
   def onSkewCorrectionChanged(skewCorrection: SkewCorrection)
+  def onCropEnabledChanged(enabled: Boolean)
 }
 
 object NullObjectListener extends ProjectListener {
   def onSkewCorrectionChanged(skewCorrection: SkewCorrection) {}
+  def onCropEnabledChanged(enabled: Boolean) {}
 }
 
 trait Project {
@@ -447,6 +449,8 @@ trait Project {
   def skewCorrection_=(newSkewCorrection: SkewCorrection)
 
   def edgeCrop(formWidth: Double, formHeight: Double): EdgeCrop
+  def cropEnabled_=(enabled: Boolean)
+  def cropEnabled: Boolean
 
   def addLeftCropField(f: LeftCropField, selected: Boolean): Option[LeftCropField]
   def addRightCropField(f: RightCropField, selected: Boolean): Option[RightCropField]
