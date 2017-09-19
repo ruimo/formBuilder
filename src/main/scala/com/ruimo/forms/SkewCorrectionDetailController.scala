@@ -5,8 +5,6 @@ import java.net.URL
 import java.util.ResourceBundle
 import javafx.scene.control.{ComboBox, TextField}
 
-import com.ruimo.forms.projects.project0.SkewCorrectionImpl
-
 import scalafx.collections.ObservableBuffer
 import scalafx.scene.control.{ComboBox => SfxComboBox}
 
@@ -33,8 +31,7 @@ println("hvComboBox =" + hvComboBox)
     sfxHvComboBox.value = HorizontalLineDetection
   }
 
-  def model: SkewCorrection = SkewCorrectionImpl(
-    enabled = true,
+  def model: SkewCorrectionCondition = SkewCorrectionConditionImpl(
     direction =
       if (sfxHvComboBox.value() == HorizontalLineDetection) SkewCorrectionDirectionHorizontal
       else SkewCorrectionDirectionVertical,
@@ -42,7 +39,7 @@ println("hvComboBox =" + hvComboBox)
     maxAngleToDetect = maxAngleText.getText().toDouble
   )
 
-  def model_=(newModel: SkewCorrection) {
+  def model_=(newModel: SkewCorrectionCondition) {
     val dir = if (newModel.direction == SkewCorrectionDirectionHorizontal)
       HorizontalLineDetection
     else

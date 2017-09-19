@@ -2,8 +2,8 @@ package com.ruimo.forms
 
 import java.util.zip.ZipInputStream
 import javafx.animation.AnimationTimer
-import scala.math.{Pi, cos, sin, abs}
 
+import scala.math.{Pi, abs, cos, sin}
 import com.ruimo.scoins.Zip
 import com.ruimo.scoins.PathUtil
 import java.net.URL
@@ -51,6 +51,7 @@ import Helpers.toRect
 import org.w3c.dom.events.EventListener
 
 import scala.annotation.tailrec
+import scala.Enumeration
 
 case class EditorContext(
   drawWidget: (Widget[_], Boolean) => Unit,
@@ -609,9 +610,7 @@ class Editor(
   }
 }
 
-case class SelectedImage(
-  file: Path, image: Image, skewCorrected: Option[Image] = None
-)
+case class SelectedImage(file: Path, image: Image)
 
 class MainController extends Initializable {
   private var imageTable: ImageTable = new ImageTable
@@ -666,10 +665,7 @@ class MainController extends Initializable {
     val gc = sfxImageCanvas.graphicsContext2D
     selectedImage.foreach { si =>
       gc.drawImage(
-        si.skewCorrected match {
-          case None => si.image
-          case Some(sc) => sc
-        },
+        project.cachedImage(si)._2,
         rect.minX, rect.minY, rect.width, rect.height,
         rect.minX, rect.minY, rect.width, rect.height
       )
@@ -802,10 +798,7 @@ class MainController extends Initializable {
 
   def redraw() {
     selectedImage.foreach { selectedImage =>
-      val img = selectedImage.skewCorrected match {
-        case None => selectedImage.image
-        case Some(sc) => sc
-      }
+      val img: Image = project.cachedImage(selectedImage)._2
 
       sfxImageCanvas.width = img.width.toDouble
       sfxImageCanvas.height = img.height.toDouble
@@ -827,7 +820,7 @@ class MainController extends Initializable {
     val loader = new FXMLLoader(getClass().getResource("skewCorrectionDialog.fxml"))
     val root: DialogPane = loader.load()
     val ctrl = loader.getController().asInstanceOf[SkewCorrectionDetailController]
-    ctrl.model = project.skewCorrection
+    ctrl.model = project.skewCorrection.condition
     val alert = new SfxAlert(AlertType.Confirmation)
     alert.dialogPane = new SfxDialogPane(root)
     alert.title = "傾き補正"
@@ -843,7 +836,7 @@ class MainController extends Initializable {
       case Some(ButtonType.APPLY) =>
         val model = ctrl.model
         println("apply skew correction detail " + model)
-        project.skewCorrection = model
+        project.skewCorrection = SkewCorrection(project.skewCorrection.enabled, model)
 
       case Some(_) => println("canceled")
       case None => println("bt = none")
@@ -861,6 +854,17 @@ class MainController extends Initializable {
   @FXML
   def skewCorrectionEnabledClicked(e: ActionEvent) {
 println("skewCorrectionEnabledClicked")
+
+    if (sfxSkewCorrectionCheck.selected() == project.skewCorrection.enabled) return
+
+    selectedImage.foreach { si =>
+      if (sfxSkewCorrectionCheck.selected()) {
+        val (skewResult: SkewCorrectionResult, image: Image) = project.cachedImage(si)
+
+      }
+      else {
+      }
+    }
   }
 
   @FXML
@@ -869,189 +873,74 @@ println("skewCorrectionEnabledClicked")
 println("cropEnabledCheckClicked => " + sfxCropCheck.selected)
   }
 
-  def extention(path: Path): Option[String] = {
-    val fname = path.getFileName().toString()
-    val idx = fname.lastIndexOf(".")
-    if (idx == -1) None else Some(fname.substring(idx))
-  }
-
-  def prepareFileForCaptureApi(image: SelectedImage): Path = {
-    println("skewCorrection = " + project.skewCorrection.asJson)
-
-    val configFile = Files.createTempFile(null, null)
-    val fileName = "image001" + extention(image.file).getOrElse("")
-    Files.write(
-      configFile,
-      Json.obj(
-        "inputFiles" -> JsArray(Seq(JsString(fileName))),
-        "skewCorrection" -> project.skewCorrection.asJson,
-        "crop" -> project.edgeCrop(image.image.getWidth(), image.image.getHeight()).asJson
-      ).toString.getBytes("utf-8")
-    )
-
-    val zipFile = Files.createTempFile(null, null)
-    Zip.deflate(
-      zipFile,
-      Seq(
-        "config.json" -> configFile,
-        fileName -> image.file
-      )
-    )
-
-    Files.delete(configFile)
-
-    zipFile
-  }
-
   @FXML
   def applyToImageClicked(e: ActionEvent) {
-    println(" hit applyToImage")
-    println("selected file = " + selectedImage)
+    class ShowResultAnimation(
+      val lines: Seq[(Double, Double, Double, Double)]
+    ) extends AnimationTimer {
+      val LineWidth = 2.0
+      private var startNano: Long = 0L
+      private var state = -1L
+      val union: Rectangle2D = {
+        var minX = Double.MaxValue
+        var maxX = Double.MinValue
+        var minY = Double.MaxValue
+        var maxY = Double.MinValue
 
-    selectedImage.foreach { si =>
-      val fileToSubmit: Path = prepareFileForCaptureApi(si)
-      val url = new URL("http://localhost:9000/prepare")
+        lines.foreach { l =>
+          if (l._1 < minX) minX = l._1
+          if (l._3 < minX) minX = l._3
+          if (l._2 < minY) minY = l._2
+          if (l._4 < minY) minY = l._4
 
-      selectedImage = Some(
-        si.copy(
-          skewCorrected = None
-        )
-      )
-      redraw()
-      using(url.openConnection().asInstanceOf[HttpURLConnection]) { conn =>
-        conn.setDoOutput(true)
-        conn.setDoInput(true)
-        conn.setRequestMethod("POST")
-        conn.setRequestProperty("Content-Type", "application/zip")
-        using(conn.getOutputStream) { os =>
-          os.write(Files.readAllBytes(fileToSubmit))
+          if (maxX < l._1) maxX = l._1
+          if (maxX < l._3) maxX = l._3
+          if (maxY < l._2) maxY = l._2
+          if (maxY < l._4) maxY = l._4
         }
 
-        val statusCode = conn.getResponseCode
-        println("status = " + statusCode)
+        val w = maxX - minX + LineWidth + 2
+        val h = maxY - minY + LineWidth + 2
+        new Rectangle2D(minX - 1, minY - 1, if (w < 0) 0 else w, if (h < 0) 0 else h)
+      }
 
-        val (resp: JsValue, skewCorrectedImage: Image) = using(new ZipInputStream(conn.getInputStream())) { zipIn =>
-          @tailrec def parseZip(resp: Option[JsValue], skewCorrectedImage: Option[Image]): (JsValue, Image) = {
-            val entry = zipIn.getNextEntry()
-            if (entry == null) (resp.get, skewCorrectedImage.get)
-            else {
-              entry.getName match {
-                case "response.json" =>
-                  // Json.parse() closes input stream...
-                  val json: JsValue = using(Files.createTempFile(null, null)) { tmp =>
-                    Files.copy(zipIn, tmp, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-                    zipIn.closeEntry()
-                    Json.parse(new FileInputStream(tmp.toFile))
-                  }(f => Files.delete(f)).get
-                  parseZip(Some(json), skewCorrectedImage)
-                case fname: String =>
-                  if ((resp.get \ "skewCorrection" \ "correctedFiles").as[Seq[String]].head == fname) {
-                    val i = Some(new Image(zipIn))
-                    zipIn.closeEntry()
-                    parseZip(resp, i)
-                  }
-                  else {
-                    // Ignore...
-                    zipIn.closeEntry()
-                    parseZip(resp, skewCorrectedImage)
-                  }
-              }
+      override def handle(nano: Long) {
+        if (startNano == 0) startNano = nano
+
+        val currentState = (nano - startNano) / 1000 / 1000 / 500
+        if (currentState != state) {
+          state = currentState
+          val gc = sfxImageCanvas.graphicsContext2D
+          gc.setLineWidth(LineWidth)
+          gc.setLineDashes()
+          gc.setStroke(Color.RED)
+          gc.setLineDashes(5.0, 5.0)
+
+          if ((state % 2) == 0) {
+            lines.foreach { l =>
+              println("draw line " + l)
+              gc.strokeLine(l._1, l._2, l._3, l._4)
             }
-          }
-
-          parseZip(None, None)
-        }.get
-
-        println("resp = " + resp)
-
-        val foundLines = (resp \ "skewCorrection" \ "foundLines").get.asInstanceOf[JsArray]
-        val showLines: Seq[(Double, Double, Double, Double)] = foundLines.value.map { l =>
-          val ro = (l \ "ro").as[Double]
-          val th = (l \ "th").as[Double] + Pi / 2
-          println("ro = " + ro + ", th = " + th)
-
-          if (Pi / 2 - 0.1 < th && th < Pi / 2 + 0.1) { // horizontal
-            val line = NearlyHorizontalLine(ro, th)
-            val w = si.image.width.get()
-
-            (0d, line.y(0), w, line.y(w))
           }
           else {
-            val line = NearlyVerticalLine(ro, th)
-            val h = si.image.height.get()
+            println("clear line " + union)
+            redrawRect(union)
+          }
 
-            (line.x(0), 0d, line.x(h), h)
+          if (3 <= currentState) {
+            stop()
+//                selectedImage = Some(
+//                  si.copy(
+//                    skewCorrected = Some(skewCorrectedImage)
+//                  )
+//                )
+            redraw()
           }
         }
-
-        class ShowResultAnimation(
-          val lines: Seq[(Double, Double, Double, Double)]
-        ) extends AnimationTimer {
-          val LineWidth = 2.0
-          private var startNano: Long = 0L
-          private var state = -1L
-          val union: Rectangle2D = {
-            var minX = Double.MaxValue
-            var maxX = Double.MinValue
-            var minY = Double.MaxValue
-            var maxY = Double.MinValue
-
-            lines.foreach { l =>
-              if (l._1 < minX) minX = l._1
-              if (l._3 < minX) minX = l._3
-              if (l._2 < minY) minY = l._2
-              if (l._4 < minY) minY = l._4
-
-              if (maxX < l._1) maxX = l._1
-              if (maxX < l._3) maxX = l._3
-              if (maxY < l._2) maxY = l._2
-              if (maxY < l._4) maxY = l._4
-            }
-
-            val w = maxX - minX + LineWidth + 2
-            val h = maxY - minY + LineWidth + 2
-            new Rectangle2D(minX - 1, minY - 1, if (w < 0) 0 else w, if (h < 0) 0 else h)
-          }
-
-          override def handle(nano: Long) {
-            if (startNano == 0) startNano = nano
-
-            val currentState = (nano - startNano) / 1000 / 1000 / 500
-            if (currentState != state) {
-              state = currentState
-              val gc = sfxImageCanvas.graphicsContext2D
-              gc.setLineWidth(LineWidth)
-              gc.setLineDashes()
-              gc.setStroke(Color.RED)
-              gc.setLineDashes(5.0, 5.0)
-
-              if ((state % 2) == 0) {
-                lines.foreach { l =>
-                  println("draw line " + l)
-                  gc.strokeLine(l._1, l._2, l._3, l._4)
-                }
-              }
-              else {
-                println("clear line " + union)
-                redrawRect(union)
-              }
-
-              if (3 <= currentState) {
-                stop()
-                selectedImage = Some(
-                  si.copy(
-                    skewCorrected = Some(skewCorrectedImage)
-                  )
-                )
-                redraw()
-              }
-            }
-          }
-        }
-
-        new ShowResultAnimation(showLines).start()
-      } (_.disconnect()).get
+      }
     }
+
+//        new ShowResultAnimation(showLines).start()
   }
 
   @FXML

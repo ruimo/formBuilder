@@ -1,5 +1,9 @@
 package com.ruimo.forms.projects.project0
 
+import java.io.FileInputStream
+import java.net.{HttpURLConnection, URL}
+import java.nio.file.{Files, Path}
+import java.util.zip.ZipInputStream
 import javafx.scene.input.MouseEvent
 import javafx.scene.paint.Color
 
@@ -11,7 +15,12 @@ import scala.reflect.ClassTag
 import scalafx.geometry.{Point2D, Rectangle2D}
 import scalafx.scene.canvas.{GraphicsContext => SfxGraphicsContext}
 import com.ruimo.graphics.twodim.Area
-import com.ruimo.scoins.Percent
+import com.ruimo.scoins.{Percent, Zip}
+
+import scalafx.scene.image.Image
+import com.ruimo.scoins.LoanPattern._
+
+import scala.annotation.tailrec
 
 object AbsoluteFieldImpl {
   val LineWidth = 2.0
@@ -224,36 +233,25 @@ case class BottomCropFieldImpl(rect: Rectangle2D) extends CropFieldImpl(rect) wi
   def withNewRect(newRect: Rectangle2D): this.type = copy(rect = newRect).asInstanceOf[this.type]
 }
 
-case class SkewCorrectionImpl(
-  enabled: Boolean,
+case class SkewCorrectionConditionImpl(
   direction: SkewCorrectionDirection = SkewCorrectionDirectionHorizontal,
   lineCount: Int = 1,
   maxAngleToDetect: Double = 2.0
-) extends SkewCorrection {
-  def withEnabled(newEnabled: Boolean): SkewCorrection = copy(
-    enabled = newEnabled
-  )
-
-  lazy val asJson: JsValue = Json.obj(
-    "enabled" -> enabled,
+) extends SkewCorrectionCondition {
+  lazy val asJson: JsObject = Json.obj(
     "direction" -> direction.asJson,
     "lineCount" -> JsNumber(lineCount),
     "maxAngleToDetect" -> JsNumber(maxAngleToDetect)
   )
 }
 
-case class EdgeCropImpl(
-  enabled: Boolean,
+case class EdgeCropConditionImpl(
   topArea: Option[Area],
   bottomArea: Option[Area],
   leftArea: Option[Area],
   rightArea: Option[Area]
-) extends EdgeCrop {
-  def withEnabled(newEnabled: Boolean): EdgeCrop = copy(
-    enabled = newEnabled
-  )
-
-  lazy val asJson: JsValue = {
+) extends EdgeCropCondition {
+  lazy val asJson: JsObject = {
     def areaToJson(area: Area) = JsArray(
       Seq(
         JsNumber(area.x.value), JsNumber(area.y.value), JsNumber(area.w.value), JsNumber(area.h.value)
@@ -261,11 +259,10 @@ case class EdgeCropImpl(
     )
 
     JsObject(
-      Seq("enabled" -> JsBoolean(enabled)) ++
-        topArea.map { a => "top" -> areaToJson(a) }.toSeq ++
-        bottomArea.map { a => "bottom" -> areaToJson(a) }.toSeq ++
-        leftArea.map { a => "left" -> areaToJson(a) }.toSeq ++
-        rightArea.map { a => "right" -> areaToJson(a) }.toSeq
+      topArea.map { a => "top" -> areaToJson(a) }.toSeq ++
+      bottomArea.map { a => "bottom" -> areaToJson(a) }.toSeq ++
+      leftArea.map { a => "left" -> areaToJson(a) }.toSeq ++
+      rightArea.map { a => "right" -> areaToJson(a) }.toSeq
     )
   }
 }
@@ -282,7 +279,7 @@ class ProjectImpl(
   val listener: ProjectListener
 ) extends com.ruimo.forms.Project {
   val version = VersionOne
-  private[this] var skCorrection: SkewCorrection = SkewCorrectionImpl(false)
+  private[this] var skCorrection: SkewCorrection = SkewCorrection(false, SkewCorrectionConditionImpl())
   private[this] var absFields = new AbsoluteFieldTable(projectContext)
   private[this] var _leftCropField: Option[LeftCropField] = None
   private[this] var _rightCropField: Option[RightCropField] = None
@@ -293,6 +290,7 @@ class ProjectImpl(
   private[this] var _isTopCropFieldSelected: Boolean = false
   private[this] var _isBottomCropFieldSelected: Boolean = false
   private[this] var _isEdgeCropEnabled: Boolean = false
+  private[this] var _cachedImage: imm.Map[(Path, Boolean, Boolean), (SkewCorrectionResult, Image)] = Map()
 
   def withListener(newListener: ProjectListener): Project = new ProjectImpl(
     this.projectContext,
@@ -758,12 +756,112 @@ class ProjectImpl(
       )
     }
 
-    EdgeCropImpl(
+    EdgeCrop(
       _isEdgeCropEnabled,
-      _topCropField.map(cropFieldToArea),
-      _bottomCropField.map(cropFieldToArea),
-      _leftCropField.map(cropFieldToArea),
-      _rightCropField.map(cropFieldToArea)
+      EdgeCropConditionImpl(
+        _topCropField.map(cropFieldToArea),
+        _bottomCropField.map(cropFieldToArea),
+        _leftCropField.map(cropFieldToArea),
+        _rightCropField.map(cropFieldToArea)
+      )
     )
+  }
+
+  override def cachedImage(selectedImage: SelectedImage): (SkewCorrectionResult, Image) = {
+    val key = (selectedImage.file, skewCorrection.enabled, cropEnabled)
+    _cachedImage.get(key) match {
+      case Some(img) => img
+      case None => {
+        val img = retrievePreparedImage(selectedImage)
+        _cachedImage = _cachedImage.updated(key, img)
+        img
+      }
+    }
+  }
+
+  private def extention(path: Path): Option[String] = {
+    val fname = path.getFileName().toString()
+    val idx = fname.lastIndexOf(".")
+    if (idx == -1) None else Some(fname.substring(idx))
+  }
+
+  private def prepareFileForCaptureApi(image: SelectedImage): Path = {
+    println("skewCorrection = " + skewCorrection.asJson)
+
+    val configFile = Files.createTempFile(null, null)
+    val fileName = "image001" + extention(image.file).getOrElse("")
+    Files.write(
+      configFile,
+      Json.obj(
+        "inputFiles" -> JsArray(Seq(JsString(fileName))),
+        "skewCorrection" -> skewCorrection.asJson,
+        "crop" -> edgeCrop(image.image.getWidth(), image.image.getHeight()).asJson
+      ).toString.getBytes("utf-8")
+    )
+
+    val zipFile = Files.createTempFile(null, null)
+    Zip.deflate(
+      zipFile,
+      Seq(
+        "config.json" -> configFile,
+        fileName -> image.file
+      )
+    )
+
+    Files.delete(configFile)
+
+    zipFile
+  }
+
+  def retrievePreparedImage(si: SelectedImage): (SkewCorrectionResult, Image) = {
+    val fileToSubmit: Path = prepareFileForCaptureApi(si)
+    val url = new URL("http://localhost:9000/prepare")
+
+    using(url.openConnection().asInstanceOf[HttpURLConnection]) { conn =>
+      conn.setDoOutput(true)
+      conn.setDoInput(true)
+      conn.setRequestMethod("POST")
+      conn.setRequestProperty("Content-Type", "application/zip")
+      using(conn.getOutputStream) { os =>
+        os.write(Files.readAllBytes(fileToSubmit))
+      }
+
+      val statusCode = conn.getResponseCode
+      println("status = " + statusCode)
+
+      using(new ZipInputStream(conn.getInputStream())) { zipIn =>
+        @tailrec def parseZip(
+                               resp: Option[SkewCorrectionResult], skewCorrectedImage: Option[Image]
+                             ): (SkewCorrectionResult, Image) = {
+          val entry = zipIn.getNextEntry()
+          if (entry == null) (resp.get, skewCorrectedImage.get)
+          else {
+            entry.getName match {
+              case "response.json" =>
+                // Json.parse() closes input stream...
+                val json: JsValue = using(Files.createTempFile(null, null)) { tmp =>
+                  Files.copy(zipIn, tmp, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+                  zipIn.closeEntry()
+                  Json.parse(new FileInputStream(tmp.toFile))
+                }(f => Files.delete(f)).get
+                parseZip(Some(SkewCorrectionResult.parse(json)), skewCorrectedImage)
+              case fname: String =>
+                if (resp.get.correctedFiles.head == fname) {
+                  val i = Some(new Image(zipIn))
+                  zipIn.closeEntry()
+                  parseZip(resp, i)
+                }
+                else {
+                  // Ignore...
+                  zipIn.closeEntry()
+                  parseZip(resp, skewCorrectedImage)
+                }
+            }
+          }
+        }
+
+        parseZip(None, None)
+      }.get
+    }(c => c.disconnect()).get
   }
 }

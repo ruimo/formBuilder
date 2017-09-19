@@ -12,4 +12,7 @@ package object forms {
 
   type ProjectImpl = projects.project0.ProjectImpl
   val ProjectImpl = projects.project0.ProjectImpl
+
+  type SkewCorrectionConditionImpl = projects.project0.SkewCorrectionConditionImpl
+  val SkewCorrectionConditionImpl = projects.project0.SkewCorrectionConditionImpl
 }

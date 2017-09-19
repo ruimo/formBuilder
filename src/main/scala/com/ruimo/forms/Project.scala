@@ -1,11 +1,14 @@
 package com.ruimo.forms
 
+import java.nio.file.Path
 import javafx.scene.Cursor
+
+import scalafx.scene.image.Image
 import scalafx.geometry.{Point2D, Rectangle2D}
 import javafx.scene.input.MouseEvent
 
 import com.ruimo.graphics.twodim.Area
-import play.api.libs.json.{JsObject, JsString, JsValue}
+import play.api.libs.json.{JsBoolean, JsObject, JsString, JsValue}
 
 import scalafx.scene.canvas.{GraphicsContext => SfxGraphicsContext}
 import scala.collection.{immutable => imm}
@@ -36,25 +39,43 @@ sealed trait Field extends Widget[Field] {
   def southWestResize(from: Point2D, to: Point2D): R
 }
 
-trait SkewCorrection {
-  def enabled: Boolean
+case class SkewCorrection(
+  enabled: Boolean,
+  condition: SkewCorrectionCondition
+) {
+  def asJson: JsObject = JsObject(
+    Seq(
+      "enabled" -> JsBoolean(enabled)
+    ) ++ condition.asJson.fields
+  )
+}
+
+trait SkewCorrectionCondition {
   def direction: SkewCorrectionDirection
   def lineCount: Int
   def maxAngleToDetect: Double
 
-  def withEnabled(newEnabled: Boolean): SkewCorrection
-  def asJson: JsValue
+  def asJson: JsObject
 }
 
-trait EdgeCrop {
-  def enabled: Boolean
+case class EdgeCrop(
+  enabled: Boolean,
+  condition: EdgeCropCondition
+) {
+  def asJson: JsObject = JsObject(
+    Seq(
+      "enabled" -> JsBoolean(enabled)
+    ) ++ condition.asJson.fields
+  )
+}
+
+trait EdgeCropCondition {
   def topArea: Option[Area]
   def bottomArea: Option[Area]
   def leftArea: Option[Area]
   def rightArea: Option[Area]
 
-  def withEnabled(newEnabled: Boolean): EdgeCrop
-  def asJson: JsValue
+  def asJson: JsObject
 }
 
 trait RectField extends Field {
@@ -471,6 +492,8 @@ trait Project {
   def selectTopCropField(selected: Boolean): Unit
   def selectRightCropField(selected: Boolean): Unit
   def selectBottomCropField(selected: Boolean): Unit
+
+  def cachedImage(file: SelectedImage): (SkewCorrectionResult, Image)
 }
 
 class ProjectContext(
