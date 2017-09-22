@@ -670,24 +670,26 @@ class MainController extends Initializable {
         rect.minX, rect.minY, rect.width, rect.height
       )
     }
-    project.leftCropField.foreach { cf =>
-      if (cf.intersects(rect)) {
-        cf.draw(gc, project.isLeftCropFieldSelected)
+    if (! project.cropEnabled) {
+      project.leftCropField.foreach { cf =>
+        if (cf.intersects(rect)) {
+          cf.draw(gc, project.isLeftCropFieldSelected)
+        }
       }
-    }
-    project.topCropField.foreach { cf =>
-      if (cf.intersects(rect)) {
-        cf.draw(gc, project.isLeftCropFieldSelected)
+      project.topCropField.foreach { cf =>
+        if (cf.intersects(rect)) {
+          cf.draw(gc, project.isLeftCropFieldSelected)
+        }
       }
-    }
-    project.rightCropField.foreach { cf =>
-      if (cf.intersects(rect)) {
-        cf.draw(gc, project.isRightCropFieldSelected)
+      project.rightCropField.foreach { cf =>
+        if (cf.intersects(rect)) {
+          cf.draw(gc, project.isRightCropFieldSelected)
+        }
       }
-    }
-    project.bottomCropField.foreach { cf =>
-      if (cf.intersects(rect)) {
-        cf.draw(gc, project.isBottomCropFieldSelected)
+      project.bottomCropField.foreach { cf =>
+        if (cf.intersects(rect)) {
+          cf.draw(gc, project.isBottomCropFieldSelected)
+        }
       }
     }
     project.absoluteFields.normalFields.foreach { af =>
@@ -851,30 +853,12 @@ class MainController extends Initializable {
 //    myStage.show()
   }
 
-  @FXML
-  def skewCorrectionEnabledClicked(e: ActionEvent) {
-println("skewCorrectionEnabledClicked")
+  private def showSkewAnimation(skewResult: SkewCorrectionResult, image: Image) {
+    val orgCropEnabled = project.cropEnabled
+    project.skewCorrection = project.skewCorrection.copy(enabled = false)
+    project.cropEnabled = false
+    redraw()
 
-    if (sfxSkewCorrectionCheck.selected() == project.skewCorrection.enabled) return
-
-    selectedImage.foreach { si =>
-      if (sfxSkewCorrectionCheck.selected()) {
-        val (skewResult: SkewCorrectionResult, image: Image) = project.cachedImage(si)
-
-      }
-      else {
-      }
-    }
-  }
-
-  @FXML
-  def cropEnabledCheckClicked(e: ActionEvent) {
-    project.cropEnabled = sfxCropCheck.selected()
-println("cropEnabledCheckClicked => " + sfxCropCheck.selected)
-  }
-
-  @FXML
-  def applyToImageClicked(e: ActionEvent) {
     class ShowResultAnimation(
       val lines: Seq[(Double, Double, Double, Double)]
     ) extends AnimationTimer {
@@ -929,18 +913,76 @@ println("cropEnabledCheckClicked => " + sfxCropCheck.selected)
 
           if (3 <= currentState) {
             stop()
-//                selectedImage = Some(
-//                  si.copy(
-//                    skewCorrected = Some(skewCorrectedImage)
-//                  )
-//                )
+            project.skewCorrection = project.skewCorrection.copy(enabled = true)
+            project.cropEnabled = orgCropEnabled
             redraw()
           }
         }
       }
     }
 
-//        new ShowResultAnimation(showLines).start()
+    val showLines: Seq[(Double, Double, Double, Double)] = skewResult.foundLines.map { l =>
+      val ro = l.ro
+      val th = l.theta + Pi / 2
+      println("ro = " + ro + ", th = " + th)
+
+      if (Pi / 2 - 0.1 < th && th < Pi / 2 + 0.1) { // horizontal
+        val line = NearlyHorizontalLine(ro, th)
+        val w = image.width.get()
+
+        (0d, line.y(0), w, line.y(w))
+      }
+      else {
+        val line = NearlyVerticalLine(ro, th)
+        val h = image.height.get()
+
+        (line.x(0), 0d, line.x(h), h)
+      }
+    }
+
+    new ShowResultAnimation(showLines).start()
+  }
+
+  @FXML
+  def skewCorrectionEnabledClicked(e: ActionEvent) {
+    println(
+      "skewCorrectionEnabledClicked sfxSkewCorrectionCheck.selected() = " + sfxSkewCorrectionCheck.selected() +
+        ", project.skewCorrection.enabled = " + project.skewCorrection.enabled
+    )
+
+    if (sfxSkewCorrectionCheck.selected() == project.skewCorrection.enabled) return
+
+    selectedImage.foreach { si =>
+      try {
+        if (sfxSkewCorrectionCheck.selected()) {
+          val (skewResult: Option[SkewCorrectionResult], image: Image) = project.cachedImage(si, isSkewCorrectionEnabled = true)
+          skewResult.foreach { sr =>
+            showSkewAnimation(sr, si.image)
+          }
+        }
+        else {
+          project.skewCorrection = project.skewCorrection.copy(enabled = false)
+          redraw()
+        }
+      }
+      catch {
+        case t: Throwable =>
+          t.printStackTrace()
+          sfxSkewCorrectionCheck.selected = false
+          sfxCropCheck.selected = false
+      }
+    }
+  }
+
+  @FXML
+  def cropEnabledCheckClicked(e: ActionEvent) {
+    println("sfxCropCheck.selected() = " + sfxCropCheck.selected() + ", project.cropEnabled = " + project.cropEnabled)
+    project.cropEnabled = sfxCropCheck.selected()
+    redraw()
+  }
+
+  @FXML
+  def applyToImageClicked(e: ActionEvent) {
   }
 
   @FXML

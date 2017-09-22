@@ -43,9 +43,9 @@ case class SkewCorrection(
   enabled: Boolean,
   condition: SkewCorrectionCondition
 ) {
-  def asJson: JsObject = JsObject(
+  def asJson(en: Boolean = enabled): JsObject = JsObject(
     Seq(
-      "enabled" -> JsBoolean(enabled)
+      "enabled" -> JsBoolean(en)
     ) ++ condition.asJson.fields
   )
 }
@@ -62,11 +62,13 @@ case class EdgeCrop(
   enabled: Boolean,
   condition: EdgeCropCondition
 ) {
-  def asJson: JsObject = JsObject(
-    Seq(
-      "enabled" -> JsBoolean(enabled)
-    ) ++ condition.asJson.fields
-  )
+  def asJson(en: Boolean = enabled): JsObject = {
+    JsObject(
+      Seq(
+        "enabled" -> JsBoolean(en)
+      ) ++ condition.asJson.fields
+    )
+  }
 }
 
 trait EdgeCropCondition {
@@ -404,6 +406,8 @@ class AbsoluteFieldTable(
       projectContext.onSelectedAbsoluteFieldRemoved(f)
       projectContext.onSelectedAbsoluteFieldAdded(f)
     }
+
+    _normalCro
   }
 
   def possibleMouseOperation(x: Double, y: Double): MouseOperation = {
@@ -493,8 +497,13 @@ trait Project {
   def selectRightCropField(selected: Boolean): Unit
   def selectBottomCropField(selected: Boolean): Unit
 
-  def cachedImage(file: SelectedImage): (SkewCorrectionResult, Image)
+  def cachedImage(
+    file: SelectedImage,
+    isSkewCorrectionEnabled: Boolean = skewCorrection.enabled,
+    isCropEnabled: Boolean = cropEnabled
+  ): (Option[SkewCorrectionResult], Image)
 }
+
 
 class ProjectContext(
   val onNormalAbsoluteFieldAdded: AbsoluteField => Unit,
