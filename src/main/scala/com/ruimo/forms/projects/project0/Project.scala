@@ -814,6 +814,9 @@ class ProjectImpl(
   }
 
   def retrievePreparedImage(si: SelectedImage): (SkewCorrectionResult, Image) = {
+    if (! skewCorrection.enabled && ! cropEnabled)
+      return (SkewCorrectionResult.Null, si.image)
+
     val fileToSubmit: Path = prepareFileForCaptureApi(si)
     val url = new URL("http://localhost:9000/prepare")
 
