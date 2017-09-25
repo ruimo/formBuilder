@@ -84,10 +84,6 @@
                                     <AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" />
                                     <Button fx:id="skewCorrectionDetail" mnemonicParsing="false" onAction="#skewCorrectionDetailClicked" text="..." GridPane.columnIndex="2" />
                                     <HBox alignment="BOTTOM_RIGHT" prefHeight="100.0" prefWidth="200.0" spacing="10.0" GridPane.columnIndex="1" GridPane.columnSpan="2" GridPane.halignment="RIGHT" GridPane.rowIndex="2">
-                                       <children>
-                                          <Button fx:id="applyToImage" alignment="BOTTOM_RIGHT" mnemonicParsing="false" onAction="#applyToImageClicked" text="適用" />
-                                          <Button fx:id="resetImage" alignment="BOTTOM_RIGHT" mnemonicParsing="false" onAction="#resetImageClicked" text="リセット" />
-                                       </children>
                                        <opaqueInsets>
                                           <Insets />
                                        </opaqueInsets>
@@ -119,8 +115,9 @@
                <toggleGroup>
                   <ToggleGroup fx:id="addSelect" />
                </toggleGroup></ToggleButton>
-            <ToggleButton fx:id="addModeButton" mnemonicParsing="false" onAction="#addModeClicked" text="フィールド&#10;追加" toggleGroup="$addSelect" />
-            <ToggleButton mnemonicParsing="false" onAction="#addCropModeClicked" text="余白検出&#10;領域追加" toggleGroup="$addSelect" />
+            <ToggleButton fx:id="addModeButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#addModeClicked" text="フィールド&#10;追加" toggleGroup="$addSelect" />
+            <ToggleButton maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#addCropModeClicked" text="余白検出&#10;領域追加" toggleGroup="$addSelect" />
+            <Button fx:id="runCapture" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#runCaptureClicked" text="認識実行" />
          </children>
          <padding>
             <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />

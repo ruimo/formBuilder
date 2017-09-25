@@ -22,6 +22,12 @@ case class SkewCorrectionResult(
 )
 
 object SkewCorrectionResult {
+  val Null: SkewCorrectionResult = {
+    SkewCorrectionResult(
+      imm.Seq(), imm.Seq()
+    )
+  }
+
   def parse(json: JsValue): SkewCorrectionResult = SkewCorrectionResult(
     foundLines = (json \ "skewCorrection" \ "foundLines").as[Seq[JsValue]].map(SkewCorrectionFoundLine.parse).toList,
     correctedFiles = (json \ "skewCorrection" \ "correctedFiles").as[Seq[String]].toList

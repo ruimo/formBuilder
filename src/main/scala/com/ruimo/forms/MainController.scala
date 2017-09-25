@@ -4,9 +4,6 @@ import java.util.zip.ZipInputStream
 import javafx.animation.AnimationTimer
 
 import scala.math.{Pi, abs, cos, sin}
-import com.ruimo.scoins.Zip
-import com.ruimo.scoins.PathUtil
-import java.net.URL
 import java.io._
 
 import scalafx.scene.canvas.{GraphicsContext => SfxGraphicsContext}
@@ -48,10 +45,6 @@ import play.api.libs.json._
 
 import scalafx.geometry.{Point2D, Rectangle2D}
 import Helpers.toRect
-import org.w3c.dom.events.EventListener
-
-import scala.annotation.tailrec
-import scala.Enumeration
 
 case class EditorContext(
   drawWidget: (Widget[_], Boolean) => Unit,
@@ -89,7 +82,7 @@ object ModeEditors {
       def onMouseEntered(e: MouseEvent): ModeEditor = this
       def onMouseExited(e: MouseEvent): ModeEditor = this
       def onMouseMoved(e: MouseEvent): ModeEditor = this
-      def switchToAddMode(e: ActionEvent): ModeEditor = this
+      def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
       def switchToAddCropMode(e: ActionEvent): ModeEditor = this
       def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
     }
@@ -670,24 +663,26 @@ class MainController extends Initializable {
         rect.minX, rect.minY, rect.width, rect.height
       )
     }
-    project.leftCropField.foreach { cf =>
-      if (cf.intersects(rect)) {
-        cf.draw(gc, project.isLeftCropFieldSelected)
+    if (! project.cropEnabled) {
+      project.leftCropField.foreach { cf =>
+        if (cf.intersects(rect)) {
+          cf.draw(gc, project.isLeftCropFieldSelected)
+        }
       }
-    }
-    project.topCropField.foreach { cf =>
-      if (cf.intersects(rect)) {
-        cf.draw(gc, project.isLeftCropFieldSelected)
+      project.topCropField.foreach { cf =>
+        if (cf.intersects(rect)) {
+          cf.draw(gc, project.isLeftCropFieldSelected)
+        }
       }
-    }
-    project.rightCropField.foreach { cf =>
-      if (cf.intersects(rect)) {
-        cf.draw(gc, project.isRightCropFieldSelected)
+      project.rightCropField.foreach { cf =>
+        if (cf.intersects(rect)) {
+          cf.draw(gc, project.isRightCropFieldSelected)
+        }
       }
-    }
-    project.bottomCropField.foreach { cf =>
-      if (cf.intersects(rect)) {
-        cf.draw(gc, project.isBottomCropFieldSelected)
+      project.bottomCropField.foreach { cf =>
+        if (cf.intersects(rect)) {
+          cf.draw(gc, project.isBottomCropFieldSelected)
+        }
       }
     }
     project.absoluteFields.normalFields.foreach { af =>
@@ -809,11 +804,6 @@ class MainController extends Initializable {
     }
   }
 
-//  @FXML
-//  def skewCorrectionChanged(e: ActionEvent) {
-//    project.skewCorrection = project.skewCorrection.withEnabled(skCorChkBox.isSelected())
-//  }
-
   @FXML
   def skewCorrectionDetailClicked(e: ActionEvent) {
     println("skewCorrectionDetail")
@@ -851,30 +841,12 @@ class MainController extends Initializable {
 //    myStage.show()
   }
 
-  @FXML
-  def skewCorrectionEnabledClicked(e: ActionEvent) {
-println("skewCorrectionEnabledClicked")
+  private def showSkewAnimation(skewResult: SkewCorrectionResult, image: Image) {
+    val orgCropEnabled = project.cropEnabled
+    project.skewCorrection = project.skewCorrection.copy(enabled = false)
+    project.cropEnabled = false
+    redraw()
 
-    if (sfxSkewCorrectionCheck.selected() == project.skewCorrection.enabled) return
-
-    selectedImage.foreach { si =>
-      if (sfxSkewCorrectionCheck.selected()) {
-        val (skewResult: SkewCorrectionResult, image: Image) = project.cachedImage(si)
-
-      }
-      else {
-      }
-    }
-  }
-
-  @FXML
-  def cropEnabledCheckClicked(e: ActionEvent) {
-    project.cropEnabled = sfxCropCheck.selected()
-println("cropEnabledCheckClicked => " + sfxCropCheck.selected)
-  }
-
-  @FXML
-  def applyToImageClicked(e: ActionEvent) {
     class ShowResultAnimation(
       val lines: Seq[(Double, Double, Double, Double)]
     ) extends AnimationTimer {
@@ -929,23 +901,72 @@ println("cropEnabledCheckClicked => " + sfxCropCheck.selected)
 
           if (3 <= currentState) {
             stop()
-//                selectedImage = Some(
-//                  si.copy(
-//                    skewCorrected = Some(skewCorrectedImage)
-//                  )
-//                )
+            project.skewCorrection = project.skewCorrection.copy(enabled = true)
+            project.cropEnabled = orgCropEnabled
             redraw()
           }
         }
       }
     }
 
-//        new ShowResultAnimation(showLines).start()
+    val showLines: Seq[(Double, Double, Double, Double)] = skewResult.foundLines.map { l =>
+      val ro = l.ro
+      val th = l.theta + Pi / 2
+      println("ro = " + ro + ", th = " + th)
+
+      if (Pi / 2 - 0.1 < th && th < Pi / 2 + 0.1) { // horizontal
+        val line = NearlyHorizontalLine(ro, th)
+        val w = image.width.get()
+
+        (0d, line.y(0), w, line.y(w))
+      }
+      else {
+        val line = NearlyVerticalLine(ro, th)
+        val h = image.height.get()
+
+        (line.x(0), 0d, line.x(h), h)
+      }
+    }
+
+    new ShowResultAnimation(showLines).start()
   }
 
   @FXML
-  def resetImageClicked(e: ActionEvent) {
-    println("hit resetImage")
+  def skewCorrectionEnabledClicked(e: ActionEvent) {
+    println(
+      "skewCorrectionEnabledClicked sfxSkewCorrectionCheck.selected() = " + sfxSkewCorrectionCheck.selected() +
+        ", project.skewCorrection.enabled = " + project.skewCorrection.enabled
+    )
+
+    if (sfxSkewCorrectionCheck.selected() == project.skewCorrection.enabled) return
+
+    selectedImage.foreach { si =>
+      try {
+        if (sfxSkewCorrectionCheck.selected()) {
+          val (skewResult: Option[SkewCorrectionResult], image: Image) = project.cachedImage(si, isSkewCorrectionEnabled = true)
+          skewResult.foreach { sr =>
+            showSkewAnimation(sr, si.image)
+          }
+        }
+        else {
+          project.skewCorrection = project.skewCorrection.copy(enabled = false)
+          redraw()
+        }
+      }
+      catch {
+        case t: Throwable =>
+          t.printStackTrace()
+          sfxSkewCorrectionCheck.selected = false
+          sfxCropCheck.selected = false
+      }
+    }
+  }
+
+  @FXML
+  def cropEnabledCheckClicked(e: ActionEvent) {
+    println("sfxCropCheck.selected() = " + sfxCropCheck.selected() + ", project.cropEnabled = " + project.cropEnabled)
+    project.cropEnabled = sfxCropCheck.selected()
+    redraw()
   }
 
   @FXML
@@ -1013,39 +1034,24 @@ println("cropEnabledCheckClicked => " + sfxCropCheck.selected)
   @FXML
   def canvasMouseMoved(e: MouseEvent) {
     editor.onMouseMoved(e)
-    // if (selectModeButton.isSelected) {
-    //   project.possibleMouseOperation(e.getX, e.getY) match {
-    //     case CanDoNothing =>
-    //       stage.scene.get().setCursor(Cursor.DEFAULT)
+  }
 
-    //     case CanMove(f) =>
-    //       stage.scene.get().setCursor(Cursor.MOVE)
+  @FXML
+  def runCaptureClicked(e: ActionEvent) {
+    println("runCapture")
 
-    //     case CanNorthResize(f) =>
-    //       stage.scene.get().setCursor(Cursor.N_RESIZE)
+    selectedImage.foreach { si =>
+      val resp: CaptureResponse = project.runCapture(si)
 
-    //     case CanEastResize(f) =>
-    //       stage.scene.get().setCursor(Cursor.E_RESIZE)
-
-    //     case CanWestResize(f) =>
-    //       stage.scene.get().setCursor(Cursor.W_RESIZE)
-
-    //     case CanSouthResize(f) =>
-    //       stage.scene.get().setCursor(Cursor.S_RESIZE)
-
-    //     case CanNorthWestResize(f) =>
-    //       stage.scene.get().setCursor(Cursor.NW_RESIZE)
-
-    //     case CanNorthEastResize(f) =>
-    //       stage.scene.get().setCursor(Cursor.NE_RESIZE)
-
-    //     case CanSouthWestResize(f) =>
-    //       stage.scene.get().setCursor(Cursor.SW_RESIZE)
-
-    //     case CanSouthEastResize(f) =>
-    //       stage.scene.get().setCursor(Cursor.SE_RESIZE)
-    //   }
-    // }
+      val alert = new Alert(AlertType.Information)
+      alert.setTitle("処理結果")
+      alert.setContentText(
+        resp.result.map { e =>
+          e.fieldName + ": " + e.rawText
+        }.mkString("\r\n")
+      )
+      alert.showAndWait()
+    }
   }
 
   override def initialize(url: URL, resourceBundle: ResourceBundle) {
