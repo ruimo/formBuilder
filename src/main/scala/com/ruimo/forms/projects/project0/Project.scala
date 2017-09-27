@@ -308,7 +308,7 @@ class ProjectImpl(
   @volatile
   private[this] var _isEdgeCropEnabled: Boolean = false
   @volatile
-  private[this] var _cachedImage: imm.Map[(Path, Boolean, Boolean), (Option[SkewCorrectionResult], Image)] = Map()
+  private[this] var _cachedImage: imm.Map[(Path, Boolean, Boolean), (Option[PrepareResult], Image)] = Map()
 
   def withListener(newListener: ProjectListener): Project = new ProjectImpl(
     this.projectContext,
@@ -346,7 +346,7 @@ class ProjectImpl(
     if (! isTopCropFieldSelected) {
       _topCropField.foreach { f =>
         if (f.intersects(rect)) {
-          addTopCropField(f, true)
+          selectTopCropField(true)
         }
       }
     }
@@ -354,7 +354,7 @@ class ProjectImpl(
     if (! isLeftCropFieldSelected) {
       _leftCropField.foreach { f =>
         if (f.intersects(rect)) {
-          addLeftCropField(f, true)
+          selectLeftCropField(true)
         }
       }
     }
@@ -362,7 +362,7 @@ class ProjectImpl(
     if (! isRightCropFieldSelected) {
       _rightCropField.foreach { f =>
         if (f.intersects(rect)) {
-          addRightCropField(f, true)
+          selectRightCropField(true)
         }
       }
     }
@@ -370,7 +370,7 @@ class ProjectImpl(
     if (! isBottomCropFieldSelected) {
       _bottomCropField.foreach { f =>
         if (f.intersects(rect)) {
-          addBottomCropField(f, true)
+          selectBottomCropField(true)
         }
       }
     }
@@ -628,14 +628,7 @@ class ProjectImpl(
   }
 
   def redrawCropField(f: CropField, isSelected: Boolean) {
-    if (isSelected) {
-      projectContext.onSelectedCropFieldRemoved(f)
-      projectContext.onSelectedCropFieldAdded(f)
-    }
-    else {
-      projectContext.onNormalCropFieldRemoved(f)
-      projectContext.onNormalCropFieldAdded(f)
-    }
+    projectContext.redrawCropField(f)
   }
 
   def redraw() {
@@ -735,28 +728,28 @@ class ProjectImpl(
   def selectLeftCropField(selected: Boolean) {
     leftCropField.foreach { cf =>
       _isLeftCropFieldSelected = selected
-      onCropFieldAdded(cf, selected)
+      projectContext.selectCropField(cf, selected)
     }
   }
 
   def selectTopCropField(selected: Boolean) {
     topCropField.foreach { cf =>
       _isTopCropFieldSelected = selected
-      onCropFieldAdded(cf, selected)
+      projectContext.selectCropField(cf, selected)
     }
   }
 
   def selectRightCropField(selected: Boolean) {
     rightCropField.foreach { cf =>
       _isRightCropFieldSelected = selected
-      onCropFieldAdded(cf, selected)
+      projectContext.selectCropField(cf, selected)
     }
   }
 
   def selectBottomCropField(selected: Boolean) {
     bottomCropField.foreach { cf =>
       _isBottomCropFieldSelected = selected
-      onCropFieldAdded(cf, selected)
+      projectContext.selectCropField(cf, selected)
     }
   }
 
@@ -791,7 +784,7 @@ class ProjectImpl(
     selectedImage: SelectedImage,
     isSkewCorrectionEnabled: Boolean = skewCorrection.enabled,
     isCropEnabled: Boolean = cropEnabled
-  ): Either[(Option[SkewCorrectionResult], Image), Future[(Option[SkewCorrectionResult], Image)]] = {
+  ): Either[(Option[PrepareResult], Image), Future[(Option[PrepareResult], Image)]] = {
     println("cachedImage isSkewCorrectionEnabled = " + isSkewCorrectionEnabled + ", isCropEnabled = " + isCropEnabled)
 
     val key = (selectedImage.file, isSkewCorrectionEnabled, isCropEnabled) 
@@ -939,7 +932,7 @@ class ProjectImpl(
     si: SelectedImage,
     isSkewCorrectionEnabled: Boolean,
     isCropEnabled: Boolean
-  ): Future[(Option[SkewCorrectionResult], Image)] = {
+  ): Future[(Option[PrepareResult], Image)] = {
     if (! isSkewCorrectionEnabled && ! isCropEnabled) return Future.successful((None, si.image))
     prepareFileForPrepareApi(si, isSkewCorrectionEnabled, isCropEnabled).map { fileToSubmit =>
       val url = new URL("http://localhost:9000/prepare")
@@ -958,10 +951,10 @@ class ProjectImpl(
 
         using(new ZipInputStream(conn.getInputStream())) { zipIn =>
           @tailrec def parseZip(
-            resp: Option[SkewCorrectionResult], skewCorrectedImage: Option[Image]
-          ): (Option[SkewCorrectionResult], Image) = {
+            resp: Option[PrepareResult], finalImageFileName: Option[String], finalImage: Option[Image]
+          ): (Option[PrepareResult], Image) = {
             val entry = zipIn.getNextEntry()
-            if (entry == null) (resp, skewCorrectedImage.get)
+            if (entry == null) (resp, finalImage.get)
             else {
               entry.getName match {
                 case "response.json" =>
@@ -969,27 +962,47 @@ class ProjectImpl(
                   val json: JsValue = using(Files.createTempFile(null, null)) { tmp =>
                     Files.copy(zipIn, tmp, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
                     zipIn.closeEntry()
+                    println("Response json: " + Files.readAllLines(tmp))
                     Json.parse(new FileInputStream(tmp.toFile))
                   }(f => Files.delete(f)).get
-                  parseZip(Some(SkewCorrectionResult.parse(json)), skewCorrectedImage)
+                  val prepareResult = PrepareResult.parse(json)
+                  val fileName: Option[String] = prepareResult.cropResult.flatMap { cr =>
+                    cr match {
+                      case CropResultSuccess(correctedFiles) => Some(correctedFiles.head)
+                      case CropResultCannotFindEdge => None
+                    }
+                  }.orElse {
+                    prepareResult.skewCorrectionResult.map { scr =>
+                      scr.correctedFiles.head
+                    }
+                  }
+                  parseZip(Some(prepareResult), fileName, finalImage)
                 case fname: String =>
-                  if (resp.get.correctedFiles.head == fname) {
+                  if (fname == finalImageFileName.get) {
                     val i = Some(new Image(zipIn))
                     zipIn.closeEntry()
-                    parseZip(resp, i)
+                    parseZip(resp, finalImageFileName, i)
                   }
                   else {
-                    // Ignore...
-                    zipIn.closeEntry()
-                    parseZip(resp, skewCorrectedImage)
+                    parseZip(resp, finalImageFileName, finalImage)
                   }
               }
             }
           }
 
-          parseZip(None, None)
+          parseZip(None, None, None)
         }.get
       }(c => c.disconnect()).get
     }
   }
+
+  override def invalidateCachedImage(skewCorrected: Boolean = false, cropped: Boolean = false) {
+    _cachedImage = _cachedImage.filter { case (key, value) =>
+      val shouldDrop = skewCorrected && key._2 || cropped && key._3
+      ! shouldDrop
+    }
+  }
+
+  override def cropFieldsAreReady: Boolean =
+    _topCropField.isDefined && _leftCropField.isDefined && _rightCropField.isDefined && _bottomCropField.isDefined
 }

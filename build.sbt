@@ -17,6 +17,7 @@ lazy val root = (project in file(".")).
         Attributed.blank(file(jh) / "lib/ext/jfxrt.jar")
     },
     fork in run := true,
+    scalacOptions := Seq("-unchecked", "-deprecation", "-feature"),
     libraryDependencies ++= Seq(
       "org.scalafx" % "scalafx_2.12" % "8.0.102-R11",
       "com.ruimo" %% "scoins" % "1.12",

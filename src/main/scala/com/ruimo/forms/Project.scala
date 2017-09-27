@@ -350,9 +350,11 @@ trait Project {
     file: SelectedImage,
     isSkewCorrectionEnabled: Boolean = skewCorrection.enabled,
     isCropEnabled: Boolean = cropEnabled
-  ): Either[(Option[SkewCorrectionResult], Image), Future[(Option[SkewCorrectionResult], Image)]]
+  ): Either[(Option[PrepareResult], Image), Future[(Option[PrepareResult], Image)]]
 
+  def invalidateCachedImage(skewCorrected: Boolean = false, cropped: Boolean = false): Unit
   def runCapture(si: SelectedImage): Future[CaptureResponse]
+  def cropFieldsAreReady: Boolean
 }
 
 
@@ -364,5 +366,7 @@ class ProjectContext(
   val onNormalCropFieldAdded: CropField => Unit,
   val onSelectedCropFieldAdded: CropField => Unit,
   val onNormalCropFieldRemoved: CropField => Unit,
-  val onSelectedCropFieldRemoved: CropField => Unit
+  val onSelectedCropFieldRemoved: CropField => Unit,
+  val redrawCropField: CropField => Unit,
+  val selectCropField: (CropField, Boolean) => Unit
 )

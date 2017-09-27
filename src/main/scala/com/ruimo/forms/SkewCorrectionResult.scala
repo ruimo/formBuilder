@@ -29,7 +29,7 @@ object SkewCorrectionResult {
   }
 
   def parse(json: JsValue): SkewCorrectionResult = SkewCorrectionResult(
-    foundLines = (json \ "skewCorrection" \ "foundLines").as[Seq[JsValue]].map(SkewCorrectionFoundLine.parse).toList,
-    correctedFiles = (json \ "skewCorrection" \ "correctedFiles").as[Seq[String]].toList
+    foundLines = (json \ "foundLines").as[Seq[JsValue]].map(SkewCorrectionFoundLine.parse).toList,
+    correctedFiles = (json \ "correctedFiles").as[Seq[String]].toList
   )
 }

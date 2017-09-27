@@ -654,7 +654,7 @@ class MainController extends Initializable {
   lazy val sfxImageListView = new SfxListView(imageListView.asInstanceOf[ListView[File]])
   lazy val sfxImageCanvas = new SfxCanvas(imageCanvas)
 
-  def doBigJob[T](in: Either[T, Future[T]])(f: T => Unit) {
+  def doBigJob[T](in: Either[T, Future[T]])(f: T => Unit)(onError: Throwable => Unit) {
     in match {
       case Left(value) => f(value)
       case Right(future) =>
@@ -664,8 +664,20 @@ class MainController extends Initializable {
         dlg.show()
 
         future.map { ret =>
-          f(ret)
-          dlg.close()
+          Platform.runLater(() -> {
+            f(ret)
+            // Avoid JavaFX bug to close dialog.
+            dlg.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL);
+            dlg.close()
+          })
+        }.failed.foreach { t =>
+          t.printStackTrace
+          Platform.runLater(() -> {
+            // Avoid JavaFX bug to close dialog.
+            dlg.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL);
+            dlg.close()
+            onError(t)
+          })
         }
     }
   }
@@ -675,11 +687,24 @@ class MainController extends Initializable {
     val gc = sfxImageCanvas.graphicsContext2D
     selectedImage.foreach { si =>
       doBigJob(project.cachedImage(si)) { img =>
+        img._1.foreach { prepareResult =>
+          prepareResult.cropResult.foreach { cr =>
+            cr match {
+              case s: CropResultSuccess =>
+              case CropResultCannotFindEdge =>
+                project.cropEnabled = false
+                showCropError()
+            }
+          }
+        }
+
         gc.drawImage(
           img._2,
           rect.minX, rect.minY, rect.width, rect.height,
           rect.minX, rect.minY, rect.width, rect.height
         )
+      } { t =>
+        showGeneralError()
       }
     }
     if (! project.cropEnabled) {
@@ -810,7 +835,15 @@ class MainController extends Initializable {
     redraw()
   }
 
-  def redraw() {
+  def showCropError() {
+    val err = new Alert(AlertType.Error)
+    err.setTitle("余白切り取りにエラー")
+    err.setContentText("余白の切り取りに失敗しました。切り取り範囲を確認してください。")
+    err.show()
+  }
+
+  def redraw(onError: Option[Throwable => Unit] = None) {
+    println("redraw()")
     selectedImage.foreach { selectedImage =>
       doBigJob(project.cachedImage(selectedImage)) { i =>
         val img = i._2
@@ -820,7 +853,24 @@ class MainController extends Initializable {
         val ctx = sfxImageCanvas.graphicsContext2D
         ctx.clearRect(0, 0, sfxImageCanvas.width.toDouble, sfxImageCanvas.height.toDouble)
         ctx.drawImage(img, 0, 0)
+        i._1.foreach { prepareResult =>
+          prepareResult.cropResult.foreach { cr =>
+            cr match {
+              case s: CropResultSuccess =>
+              case CropResultCannotFindEdge =>
+                project.cropEnabled = false
+                showCropError()
+            }
+          }
+        }
         project.redraw()
+      } { t =>
+        onError match {
+          case Some(h) =>
+            h(t)
+            showGeneralError()
+          case None => showGeneralError()
+        }
       }
     }
   }
@@ -965,10 +1015,15 @@ class MainController extends Initializable {
       try {
         if (sfxSkewCorrectionCheck.selected()) {
           doBigJob(project.cachedImage(si, isSkewCorrectionEnabled = true)) {
-            case (skewResult: Option[SkewCorrectionResult], image: Image) =>
-              skewResult.foreach { sr =>
-                showSkewAnimation(sr, si.image)
+            case (prepareResult: Option[PrepareResult], image: Image) =>
+              prepareResult.foreach { pr =>
+                pr.skewCorrectionResult.foreach { sr =>
+                  showSkewAnimation(sr, si.image)
+                }
               }
+          } { t =>
+            sfxSkewCorrectionCheck.selected = false
+            showGeneralError()
           }
         }
         else {
@@ -988,8 +1043,19 @@ class MainController extends Initializable {
   @FXML
   def cropEnabledCheckClicked(e: ActionEvent) {
     println("sfxCropCheck.selected() = " + sfxCropCheck.selected() + ", project.cropEnabled = " + project.cropEnabled)
-    project.cropEnabled = sfxCropCheck.selected()
-    redraw()
+    if (sfxCropCheck.selected() && ! project.cropFieldsAreReady) {
+      sfxCropCheck.selected = false
+      val err = new Alert(AlertType.Error)
+      err.setTitle("操作エラー")
+      err.setContentText("余白検出領域を4箇所全て設定してください。")
+      err.show()
+    }
+    else {
+      project.cropEnabled = sfxCropCheck.selected()
+      redraw(
+        Some((t: Throwable) => project.cropEnabled = false)
+      )
+    }
   }
 
   @FXML
@@ -1073,6 +1139,8 @@ class MainController extends Initializable {
           }.mkString("\r\n")
         )
         alert.showAndWait()
+      } { t =>
+        showGeneralError()
       }
     }
   }
@@ -1105,15 +1173,25 @@ class MainController extends Initializable {
           redrawRect(f.drawArea)
         },
         onNormalCropFieldAdded = (f: CropField) => {
+          project.invalidateCachedImage(cropped = true)
           f.draw(sfxImageCanvas.graphicsContext2D, false)
         },
         onSelectedCropFieldAdded = (f: CropField) => {
+          project.invalidateCachedImage(cropped = true)
           f.draw(sfxImageCanvas.graphicsContext2D, true)
         },
         onNormalCropFieldRemoved = (f: CropField) => {
+          project.invalidateCachedImage(cropped = true)
           redrawRect(f.drawArea)
         },
         onSelectedCropFieldRemoved = (f: CropField) => {
+          project.invalidateCachedImage(cropped = true)
+          redrawRect(f.drawArea)
+        },
+        redrawCropField = (f: CropField) => {
+          redrawRect(f.drawArea)
+        },
+        selectCropField = (f: CropField, selected: Boolean) => {
           redrawRect(f.drawArea)
         }
       ),
@@ -1137,5 +1215,12 @@ class MainController extends Initializable {
       )
     )
     editor.initialize()
+  }
+
+  def showGeneralError() {
+    val err = new Alert(AlertType.Error)
+    err.setTitle("サーバ・エラー")
+    err.setContentText("サーバ処理に失敗しました。")
+    err.show()
   }
 }
