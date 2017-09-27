@@ -1,5 +1,6 @@
 package com.ruimo.forms
 
+import scala.concurrent.Future
 import java.util.zip.ZipInputStream
 import javafx.animation.AnimationTimer
 
@@ -653,15 +654,33 @@ class MainController extends Initializable {
   lazy val sfxImageListView = new SfxListView(imageListView.asInstanceOf[ListView[File]])
   lazy val sfxImageCanvas = new SfxCanvas(imageCanvas)
 
+  def doBigJob[T](in: Either[T, Future[T]])(f: T => Unit) {
+    in match {
+      case Left(value) => f(value)
+      case Right(future) =>
+        val dlg = new Alert(AlertType.None)
+        dlg.setTitle("サーバ通信中")
+        dlg.setContentText("サーバと通信しています")
+        dlg.show()
+
+        future.map { ret =>
+          f(ret)
+          dlg.close()
+        }
+    }
+  }
+
   def redrawRect(rect: Rectangle2D): Unit = {
     println("redrawRect(" + rect + ")")
     val gc = sfxImageCanvas.graphicsContext2D
     selectedImage.foreach { si =>
-      gc.drawImage(
-        project.cachedImage(si)._2,
-        rect.minX, rect.minY, rect.width, rect.height,
-        rect.minX, rect.minY, rect.width, rect.height
-      )
+      doBigJob(project.cachedImage(si)) { img =>
+        gc.drawImage(
+          img._2,
+          rect.minX, rect.minY, rect.width, rect.height,
+          rect.minX, rect.minY, rect.width, rect.height
+        )
+      }
     }
     if (! project.cropEnabled) {
       project.leftCropField.foreach { cf =>
@@ -793,14 +812,16 @@ class MainController extends Initializable {
 
   def redraw() {
     selectedImage.foreach { selectedImage =>
-      val img: Image = project.cachedImage(selectedImage)._2
+      doBigJob(project.cachedImage(selectedImage)) { i =>
+        val img = i._2
 
-      sfxImageCanvas.width = img.width.toDouble
-      sfxImageCanvas.height = img.height.toDouble
-      val ctx = sfxImageCanvas.graphicsContext2D
-      ctx.clearRect(0, 0, sfxImageCanvas.width.toDouble, sfxImageCanvas.height.toDouble)
-      ctx.drawImage(img, 0, 0)
-      project.redraw()
+        sfxImageCanvas.width = img.width.toDouble
+        sfxImageCanvas.height = img.height.toDouble
+        val ctx = sfxImageCanvas.graphicsContext2D
+        ctx.clearRect(0, 0, sfxImageCanvas.width.toDouble, sfxImageCanvas.height.toDouble)
+        ctx.drawImage(img, 0, 0)
+        project.redraw()
+      }
     }
   }
 
@@ -943,9 +964,11 @@ class MainController extends Initializable {
     selectedImage.foreach { si =>
       try {
         if (sfxSkewCorrectionCheck.selected()) {
-          val (skewResult: Option[SkewCorrectionResult], image: Image) = project.cachedImage(si, isSkewCorrectionEnabled = true)
-          skewResult.foreach { sr =>
-            showSkewAnimation(sr, si.image)
+          doBigJob(project.cachedImage(si, isSkewCorrectionEnabled = true)) {
+            case (skewResult: Option[SkewCorrectionResult], image: Image) =>
+              skewResult.foreach { sr =>
+                showSkewAnimation(sr, si.image)
+              }
           }
         }
         else {
@@ -1041,16 +1064,16 @@ class MainController extends Initializable {
     println("runCapture")
 
     selectedImage.foreach { si =>
-      val resp: CaptureResponse = project.runCapture(si)
-
-      val alert = new Alert(AlertType.Information)
-      alert.setTitle("処理結果")
-      alert.setContentText(
-        resp.result.map { e =>
-          e.fieldName + ": " + e.rawText
-        }.mkString("\r\n")
-      )
-      alert.showAndWait()
+      doBigJob(Right(project.runCapture(si))) { resp: CaptureResponse =>
+        val alert = new Alert(AlertType.Information)
+        alert.setTitle("処理結果")
+        alert.setContentText(
+          resp.result.map { e =>
+            e.fieldName + ": " + e.rawText
+          }.mkString("\r\n")
+        )
+        alert.showAndWait()
+      }
     }
   }
 

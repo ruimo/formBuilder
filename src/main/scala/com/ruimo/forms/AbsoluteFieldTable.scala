@@ -10,7 +10,9 @@ import scalafx.geometry.{Point2D, Rectangle2D}
 class AbsoluteFieldTable(
   projectContext: ProjectContext
 ) {
+  @volatile
   private[this] var _normalAbsoluteFields: imm.Seq[AbsoluteField] = imm.Seq()
+  @volatile
   private[this] var _selectedAbsoluteFields: imm.Seq[AbsoluteField] = imm.Seq()
 
   def normalFields: imm.Seq[AbsoluteField] = _normalAbsoluteFields

@@ -1,5 +1,6 @@
 package com.ruimo.forms
 
+import scala.concurrent.Future
 import java.nio.file.Path
 import javafx.scene.Cursor
 import javafx.scene.input.MouseEvent
@@ -349,9 +350,9 @@ trait Project {
     file: SelectedImage,
     isSkewCorrectionEnabled: Boolean = skewCorrection.enabled,
     isCropEnabled: Boolean = cropEnabled
-  ): (Option[SkewCorrectionResult], Image)
+  ): Either[(Option[SkewCorrectionResult], Image), Future[(Option[SkewCorrectionResult], Image)]]
 
-  def runCapture(si: SelectedImage): CaptureResponse
+  def runCapture(si: SelectedImage): Future[CaptureResponse]
 }
 
 

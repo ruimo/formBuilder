@@ -1,5 +1,6 @@
 package com.ruimo.forms.projects.project0
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import java.io.FileInputStream
 import java.net.{HttpURLConnection, URL}
 import java.nio.file.{Files, Path}
@@ -20,6 +21,8 @@ import scalafx.scene.image.Image
 import com.ruimo.scoins.LoanPattern._
 
 import scala.annotation.tailrec
+import scala.concurrent.Future
+import scala.util.{Failure, Success}
 
 object AbsoluteFieldImpl {
   val LineWidth = 2.0
@@ -282,17 +285,29 @@ class ProjectImpl(
   val listener: ProjectListener
 ) extends com.ruimo.forms.Project {
   val version = VersionOne
-  private[this] var skCorrection: SkewCorrection = SkewCorrection(false, SkewCorrectionConditionImpl())
-  private[this] var absFields = new AbsoluteFieldTable(projectContext)
+  @volatile
+  private[this] var _skewCorrection: SkewCorrection = SkewCorrection(false, SkewCorrectionConditionImpl())
+  @volatile
+  private[this] var _absFields = new AbsoluteFieldTable(projectContext)
+  @volatile
   private[this] var _leftCropField: Option[LeftCropField] = None
+  @volatile
   private[this] var _rightCropField: Option[RightCropField] = None
+  @volatile
   private[this] var _topCropField: Option[TopCropField] = None
+  @volatile
   private[this] var _bottomCropField: Option[BottomCropField] = None
+  @volatile
   private[this] var _isLeftCropFieldSelected: Boolean = false
+  @volatile
   private[this] var _isRightCropFieldSelected: Boolean = false
+  @volatile
   private[this] var _isTopCropFieldSelected: Boolean = false
+  @volatile
   private[this] var _isBottomCropFieldSelected: Boolean = false
+  @volatile
   private[this] var _isEdgeCropEnabled: Boolean = false
+  @volatile
   private[this] var _cachedImage: imm.Map[(Path, Boolean, Boolean), (Option[SkewCorrectionResult], Image)] = Map()
 
   def withListener(newListener: ProjectListener): Project = new ProjectImpl(
@@ -300,23 +315,23 @@ class ProjectImpl(
     newListener
   )
 
-  def absoluteFields: AbsoluteFieldTable = absFields
+  def absoluteFields: AbsoluteFieldTable = _absFields
 
-  def skewCorrection: SkewCorrection = skCorrection
+  def skewCorrection: SkewCorrection = _skewCorrection
 
   def skewCorrection_=(newSkewCorrection: SkewCorrection) {
-    if (newSkewCorrection != skCorrection) {
-      this.skCorrection = newSkewCorrection
+    if (newSkewCorrection != _skewCorrection) {
+      this._skewCorrection = newSkewCorrection
       listener.onSkewCorrectionChanged(newSkewCorrection)
     }
   }
   
   def addAbsoluteField(f: AbsoluteField, isSelected: Boolean) {
-    absFields.addAbsoluteField(f, isSelected)
+    _absFields.addAbsoluteField(f, isSelected)
   }
 
   def deselectAllFields() {
-    absFields.deselectAllFields()
+    _absFields.deselectAllFields()
     selectBottomCropField(false)
     selectRightCropField(false)
     selectTopCropField(false)
@@ -324,7 +339,7 @@ class ProjectImpl(
   }
 
   def selectAbsoluteFields(rect: Rectangle2D, e: MouseEvent) {
-    absFields.selectFields(rect, e)
+    _absFields.selectFields(rect, e)
   }
 
   def selectCropFields(rect: Rectangle2D, e: MouseEvent) {
@@ -362,7 +377,7 @@ class ProjectImpl(
   }
 
   def selectSingleFieldAt(x: Double, y: Double) {
-    if (absFields.selectSingleAbsoluteFieldAt(x, y).isEmpty) {
+    if (_absFields.selectSingleAbsoluteFieldAt(x, y).isEmpty) {
       leftCropField.find { _.drawArea.contains(x, y) }.orElse {
         topCropField.find { _.drawArea.contains(x, y) }.orElse {
           rightCropField.find { _.drawArea.contains(x, y) }.orElse {
@@ -392,18 +407,18 @@ class ProjectImpl(
   }
 
   def selectAbsoluteField(f: AbsoluteField) {
-    absFields.selectAbsoluteField(f)
+    _absFields.selectAbsoluteField(f)
   }
 
   def deleteAllSelectedFields() {
-    absFields.deleteAllSelectedFields()
+    _absFields.deleteAllSelectedFields()
   }
 
   def getSelectedFieldAt(x: Double, y: Double): Option[Field] =
     getSelectedAbsoluteFieldAt(x, y).orElse(getSelectedCropFieldAt(x, y))
 
   def getSelectedAbsoluteFieldAt(x: Double, y: Double): Option[AbsoluteField] =
-    absFields.getSelectedFieldAt(x, y)
+    _absFields.getSelectedFieldAt(x, y)
 
   def getCropFieldAt(x: Double, y: Double, isSelected: Boolean): Option[CropField] =
     _leftCropField.filter(isSelected == isLeftCropFieldSelected && _.contains(x, y)).orElse(
@@ -420,7 +435,7 @@ class ProjectImpl(
     getNormalAbsoluteFieldAt(x, y).orElse(getNormalCropFieldAt(x, y))
 
   def getNormalAbsoluteFieldAt(x: Double, y: Double): Option[AbsoluteField] =
-    absFields.getNormalFieldAt(x, y)
+    _absFields.getNormalFieldAt(x, y)
 
   def getNormalCropFieldAt(x: Double, y: Double): Option[CropField] = getCropFieldAt(x, y, false)
 
@@ -470,7 +485,7 @@ class ProjectImpl(
   }
 
   def moveSelectedAbsoluteFields(from: Point2D, to: Point2D) {
-    absFields.moveSelectedFields(from, to)
+    _absFields.moveSelectedFields(from, to)
   }
 
   def modifySelectedCropField[T <: CropField](
@@ -495,35 +510,35 @@ class ProjectImpl(
   }
 
   def northResizeSelectedAbsoluteFields(from: Point2D, to: Point2D) {
-    absFields.northResizeSelectedFields(from, to)
+    _absFields.northResizeSelectedFields(from, to)
   }
 
   def eastResizeSelectedAbsoluteFields(from: Point2D, to: Point2D) {
-    absFields.eastResizeSelectedFields(from, to)
+    _absFields.eastResizeSelectedFields(from, to)
   }
 
   def westResizeSelectedAbsoluteFields(from: Point2D, to: Point2D) {
-    absFields.westResizeSelectedFields(from, to)
+    _absFields.westResizeSelectedFields(from, to)
   }
 
   def southResizeSelectedAbsoluteFields(from: Point2D, to: Point2D) {
-    absFields.southResizeSelectedFields(from, to)
+    _absFields.southResizeSelectedFields(from, to)
   }
 
   def northEastResizeSelectedAbsoluteFields(from: Point2D, to: Point2D) {
-    absFields.northEastResizeSelectedFields(from, to)
+    _absFields.northEastResizeSelectedFields(from, to)
   }
 
   def northWestResizeSelectedAbsoluteFields(from: Point2D, to: Point2D) {
-    absFields.northWestResizeSelectedFields(from, to)
+    _absFields.northWestResizeSelectedFields(from, to)
   }
 
   def southEastResizeSelectedAbsoluteFields(from: Point2D, to: Point2D) {
-    absFields.southEastResizeSelectedFields(from, to)
+    _absFields.southEastResizeSelectedFields(from, to)
   }
 
   def southWestResizeSelectedAbsoluteFields(from: Point2D, to: Point2D) {
-    absFields.southWestResizeSelectedFields(from, to)
+    _absFields.southWestResizeSelectedFields(from, to)
   }
 
   def northResizeSelectedCropFields(from: Point2D, to: Point2D) {
@@ -591,7 +606,7 @@ class ProjectImpl(
   }
 
   def renameSelectedAbsoluteField(f: AbsoluteField, newName: String) {
-    absFields.renameSelectedField(f, newName)
+    _absFields.renameSelectedField(f, newName)
   }
 
   def onCropFieldRemoved(f: CropField, isSelected: Boolean) {
@@ -624,7 +639,7 @@ class ProjectImpl(
   }
 
   def redraw() {
-    absFields.redraw()
+    _absFields.redraw()
     if (! cropEnabled) {
       topCropField.foreach { f =>
         redrawCropField(f, isTopCropFieldSelected)
@@ -642,7 +657,7 @@ class ProjectImpl(
   }
 
   def possibleMouseOperation(x: Double, y: Double): MouseOperation = {
-    var ret = absFields.possibleMouseOperation(x, y)
+    var ret = _absFields.possibleMouseOperation(x, y)
     if (ret != CanDoNothing) return ret
 
     ret = topCropField.map { _.possibleMouseOperation(x, y) }.getOrElse(CanDoNothing)
@@ -776,16 +791,20 @@ class ProjectImpl(
     selectedImage: SelectedImage,
     isSkewCorrectionEnabled: Boolean = skewCorrection.enabled,
     isCropEnabled: Boolean = cropEnabled
-  ): (Option[SkewCorrectionResult], Image) = {
+  ): Either[(Option[SkewCorrectionResult], Image), Future[(Option[SkewCorrectionResult], Image)]] = {
     println("cachedImage isSkewCorrectionEnabled = " + isSkewCorrectionEnabled + ", isCropEnabled = " + isCropEnabled)
 
     val key = (selectedImage.file, isSkewCorrectionEnabled, isCropEnabled) 
     _cachedImage.get(key) match {
-      case Some(img) => img
+      case Some(img) => Left(img)
       case None => {
-        val img = retrievePreparedImage(selectedImage, isSkewCorrectionEnabled, isCropEnabled)
-        _cachedImage = _cachedImage.updated(key, img)
-        img
+        val fimg = retrievePreparedImage(selectedImage, isSkewCorrectionEnabled, isCropEnabled)
+        Right(
+          fimg.map { img =>
+            _cachedImage = _cachedImage.updated(key, img)
+            img
+          }
+        )
       }
     }
   }
@@ -796,165 +815,181 @@ class ProjectImpl(
     if (idx == -1) None else Some(fname.substring(idx))
   }
 
-  private def prepareFileForCaptureApi(image: SelectedImage): Path = {
+  private def prepareFileForCaptureApi(image: SelectedImage): Future[Path] = {
     println("prepareFileForCaptureApi()")
 
     val configFile = Files.createTempFile(null, null)
     val fileName = "image001" + extention(image.file).getOrElse("")
-    val (cropTargetWidth: Double, cropTargetHeight: Double) = if (skewCorrection.enabled) {
-      val img = cachedImage(image, true, false)
-      (img._2.getWidth(), img._2.getHeight())
+    val cropTarget: Future[(Double, Double)] = if (skewCorrection.enabled) {
+      val fimg = cachedImage(image, true, false).fold(Future.successful, identity)
+      fimg.map { img =>
+        (img._2.getWidth(), img._2.getHeight())
+      }
     }
     else {
-      (image.image.getWidth(), image.image.getHeight())
+      Future.successful(image.image.getWidth() -> image.image.getHeight())
     }
-    val (captureTargetWidth: Double, captureTargetHeight: Double) = {
-      val img = cachedImage(image)
-      (img._2.getWidth(), img._2.getHeight())
+    val captureTarget: Future[(Double, Double)] = {
+      val fimg = cachedImage(image).fold(Future.successful, identity)
+      fimg.map { img => (img._2.getWidth(), img._2.getHeight()) }
     }
 
-    val json: JsObject = Json.obj(
-      "inputFiles" -> JsArray(Seq(JsString(fileName))),
-      "skewCorrection" -> skewCorrection.asJson(skewCorrection.enabled),
-      "crop" -> edgeCrop(cropTargetWidth, cropTargetHeight).asJson(cropEnabled),
-      "absoluteFields" -> absFields.asJson(captureTargetWidth, captureTargetHeight)
-    )
-    println("Json to send: " + json)
-    Files.write(configFile, json.toString.getBytes("utf-8"))
+    val json: Future[JsObject] =
+      cropTarget.flatMap { cropt =>
+        captureTarget.map { capt =>
+          Json.obj(
+            "inputFiles" -> JsArray(Seq(JsString(fileName))),
+            "skewCorrection" -> skewCorrection.asJson(skewCorrection.enabled),
+            "crop" -> edgeCrop(cropt._1, cropt._2).asJson(cropEnabled),
+            "absoluteFields" -> _absFields.asJson(capt._1, capt._2)
+          )
+        }
+      }
 
-    val zipFile = Files.createTempFile(null, null)
-    Zip.deflate(
-      zipFile,
-      Seq(
-        "config.json" -> configFile,
-        fileName -> image.file
+    json.map { js =>
+      Files.write(configFile, js.toString.getBytes("utf-8"))
+
+      val zipFile = Files.createTempFile(null, null)
+      Zip.deflate(
+        zipFile,
+        Seq(
+          "config.json" -> configFile,
+          fileName -> image.file
+        )
       )
-    )
 
-    Files.delete(configFile)
+      Files.delete(configFile)
 
-    zipFile
+      zipFile
+    }
   }
 
   private def prepareFileForPrepareApi(
     image: SelectedImage,
     isSkewCorrectionEnabled: Boolean,
     isCropEnabled: Boolean
-  ): Path = {
+  ): Future[Path] = {
     println("prepareFileForPrepareApi()")
 
     val configFile = Files.createTempFile(null, null)
     val fileName = "image001" + extention(image.file).getOrElse("")
-    val (cropTargetWidth: Double, cropTargetHeight: Double) = if (skewCorrection.enabled) {
-      val img = cachedImage(image, true, false)
-      (img._2.getWidth(), img._2.getHeight())
+    val cropTarget: Future[(Double, Double)] = if (! isCropEnabled) {
+      Future.successful(0d -> 0d)
+    }
+    else if (skewCorrection.enabled) {
+      cachedImage(image, true, false).fold(Future.successful, identity).map { i =>
+        i._2.getWidth() -> i._2.getHeight()
+      }
     }
     else {
-      (image.image.getWidth(), image.image.getHeight())
+      Future.successful(image.image.getWidth() -> image.image.getHeight())
     }
 
-    val json: JsObject = Json.obj(
-      "inputFiles" -> JsArray(Seq(JsString(fileName))),
-      "skewCorrection" -> skewCorrection.asJson(isSkewCorrectionEnabled),
-      "crop" -> edgeCrop(cropTargetWidth, cropTargetHeight).asJson(isCropEnabled)
-    )
-    println("Json to send: " + json)
-    Files.write(configFile, json.toString.getBytes("utf-8"))
-
-    val zipFile = Files.createTempFile(null, null)
-    Zip.deflate(
-      zipFile,
-      Seq(
-        "config.json" -> configFile,
-        fileName -> image.file
+    cropTarget.map { cropt =>
+      val json = Json.obj(
+        "inputFiles" -> JsArray(Seq(JsString(fileName))),
+        "skewCorrection" -> skewCorrection.asJson(isSkewCorrectionEnabled),
+        "crop" -> edgeCrop(cropt._1, cropt._2).asJson(isCropEnabled)
       )
-    )
+      println("Json to send: " + json)
+      Files.write(configFile, json.toString.getBytes("utf-8"))
 
-    Files.delete(configFile)
+      val zipFile = Files.createTempFile(null, null)
+      Zip.deflate(
+        zipFile,
+        Seq(
+          "config.json" -> configFile,
+          fileName -> image.file
+        )
+      )
 
-    zipFile
+      Files.delete(configFile)
+
+      zipFile
+    }
   }
 
-  def runCapture(si: SelectedImage): CaptureResponse = {
-    val fileToSubmit: Path = prepareFileForCaptureApi(si)
-    val url = new URL("http://localhost:9000/capture")
+  def runCapture(si: SelectedImage): Future[CaptureResponse] = {
+    prepareFileForCaptureApi(si).map { fileToSubmit =>
+      val url = new URL("http://localhost:9000/capture")
 
-    using(url.openConnection().asInstanceOf[HttpURLConnection]) { conn =>
-      conn.setDoOutput(true)
-      conn.setDoInput(true)
-      conn.setRequestMethod("POST")
-      conn.setRequestProperty("Content-Type", "application/zip")
-      using(conn.getOutputStream) { os =>
-        os.write(Files.readAllBytes(fileToSubmit))
-      }
+      using(url.openConnection().asInstanceOf[HttpURLConnection]) { conn =>
+        conn.setDoOutput(true)
+        conn.setDoInput(true)
+        conn.setRequestMethod("POST")
+        conn.setRequestProperty("Content-Type", "application/zip")
+        using(conn.getOutputStream) { os =>
+          os.write(Files.readAllBytes(fileToSubmit))
+        }
 
-      val statusCode = conn.getResponseCode
-      println("status = " + statusCode)
+        val statusCode = conn.getResponseCode
+        println("status = " + statusCode)
 
-      val jsonResult: JsValue = using(conn.getInputStream()) { is =>
-        Json.parse(is)
-      }.get
+        val jsonResult: JsValue = using(conn.getInputStream()) { is =>
+          Json.parse(is)
+        }.get
 
-      println("result: " + jsonResult)
-      CaptureResponse.parse(jsonResult)
-    }(c => c.disconnect()).get
+        println("result: " + jsonResult)
+        CaptureResponse.parse(jsonResult)
+      }(c => c.disconnect()).get
+    }
   }
 
   def retrievePreparedImage(
     si: SelectedImage,
     isSkewCorrectionEnabled: Boolean,
     isCropEnabled: Boolean
-  ): (Option[SkewCorrectionResult], Image) = {
-    if (! isSkewCorrectionEnabled && ! isCropEnabled) return (None, si.image)
+  ): Future[(Option[SkewCorrectionResult], Image)] = {
+    if (! isSkewCorrectionEnabled && ! isCropEnabled) return Future.successful((None, si.image))
+    prepareFileForPrepareApi(si, isSkewCorrectionEnabled, isCropEnabled).map { fileToSubmit =>
+      val url = new URL("http://localhost:9000/prepare")
 
-    val fileToSubmit: Path = prepareFileForPrepareApi(si, isSkewCorrectionEnabled, isCropEnabled)
-    val url = new URL("http://localhost:9000/prepare")
-
-    using(url.openConnection().asInstanceOf[HttpURLConnection]) { conn =>
-      conn.setDoOutput(true)
-      conn.setDoInput(true)
-      conn.setRequestMethod("POST")
-      conn.setRequestProperty("Content-Type", "application/zip")
-      using(conn.getOutputStream) { os =>
-        os.write(Files.readAllBytes(fileToSubmit))
-      }
-
-      val statusCode = conn.getResponseCode
-      println("status = " + statusCode)
-
-      using(new ZipInputStream(conn.getInputStream())) { zipIn =>
-        @tailrec def parseZip(
-          resp: Option[SkewCorrectionResult], skewCorrectedImage: Option[Image]
-        ): (Option[SkewCorrectionResult], Image) = {
-          val entry = zipIn.getNextEntry()
-          if (entry == null) (resp, skewCorrectedImage.get)
-          else {
-            entry.getName match {
-              case "response.json" =>
-                // Json.parse() closes input stream...
-                val json: JsValue = using(Files.createTempFile(null, null)) { tmp =>
-                  Files.copy(zipIn, tmp, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-                  zipIn.closeEntry()
-                  Json.parse(new FileInputStream(tmp.toFile))
-                }(f => Files.delete(f)).get
-                parseZip(Some(SkewCorrectionResult.parse(json)), skewCorrectedImage)
-              case fname: String =>
-                if (resp.get.correctedFiles.head == fname) {
-                  val i = Some(new Image(zipIn))
-                  zipIn.closeEntry()
-                  parseZip(resp, i)
-                }
-                else {
-                  // Ignore...
-                  zipIn.closeEntry()
-                  parseZip(resp, skewCorrectedImage)
-                }
-            }
-          }
+      using(url.openConnection().asInstanceOf[HttpURLConnection]) { conn =>
+        conn.setDoOutput(true)
+        conn.setDoInput(true)
+        conn.setRequestMethod("POST")
+        conn.setRequestProperty("Content-Type", "application/zip")
+        using(conn.getOutputStream) { os =>
+          os.write(Files.readAllBytes(fileToSubmit))
         }
 
-        parseZip(None, None)
-      }.get
-    }(c => c.disconnect()).get
+        val statusCode = conn.getResponseCode
+        println("status = " + statusCode)
+
+        using(new ZipInputStream(conn.getInputStream())) { zipIn =>
+          @tailrec def parseZip(
+            resp: Option[SkewCorrectionResult], skewCorrectedImage: Option[Image]
+          ): (Option[SkewCorrectionResult], Image) = {
+            val entry = zipIn.getNextEntry()
+            if (entry == null) (resp, skewCorrectedImage.get)
+            else {
+              entry.getName match {
+                case "response.json" =>
+                  // Json.parse() closes input stream...
+                  val json: JsValue = using(Files.createTempFile(null, null)) { tmp =>
+                    Files.copy(zipIn, tmp, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+                    zipIn.closeEntry()
+                    Json.parse(new FileInputStream(tmp.toFile))
+                  }(f => Files.delete(f)).get
+                  parseZip(Some(SkewCorrectionResult.parse(json)), skewCorrectedImage)
+                case fname: String =>
+                  if (resp.get.correctedFiles.head == fname) {
+                    val i = Some(new Image(zipIn))
+                    zipIn.closeEntry()
+                    parseZip(resp, i)
+                  }
+                  else {
+                    // Ignore...
+                    zipIn.closeEntry()
+                    parseZip(resp, skewCorrectedImage)
+                  }
+              }
+            }
+          }
+
+          parseZip(None, None)
+        }.get
+      }(c => c.disconnect()).get
+    }
   }
 }
