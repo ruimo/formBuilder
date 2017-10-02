@@ -1,5 +1,7 @@
 package com.ruimo.forms
 
+import scala.annotation.tailrec
+import scala.collection.JavaConverters._
 import scala.concurrent.Future
 import java.util.zip.ZipInputStream
 import javafx.animation.AnimationTimer
@@ -819,10 +821,75 @@ class MainController extends Initializable {
     val fc = new FileChooser {
       title = "Select image file"
       extensionFilters.add(new FileChooser.ExtensionFilter("Image Files", "*.png"))
+      extensionFilters.add(new FileChooser.ExtensionFilter("Image Files", "*.tif"))
+      extensionFilters.add(new FileChooser.ExtensionFilter("PDF Files", "*.pdf"))
     }
-    Option(fc.showOpenMultipleDialog(stage)).foreach { files =>
-      imageTable.addFiles(files)
+
+    Option(fc.showOpenMultipleDialog(stage)).foreach { ftbl =>
+      @tailrec def grouped(
+        files: Seq[File], pngFiles: Vector[File], pdfFiles: Vector[File], tifFiles: Vector[File]
+      ): (Vector[File], Vector[File], Vector[File]) = {
+        if (files.isEmpty) (pngFiles, pdfFiles, tifFiles)
+        else {
+          val head = files.head
+          val fileName = head.getName.toLowerCase
+          if (fileName.endsWith(".pdf")) grouped(files.tail, pngFiles, pdfFiles :+ head, tifFiles)
+          else if (fileName.endsWith(".tif")) grouped(files.tail, pngFiles, pdfFiles, tifFiles :+ head)
+          else grouped(files.tail, pngFiles :+ head, pdfFiles, tifFiles)
+        }
+      }
+
+      val (pngFiles: Vector[File], pdfFiles: Vector[File], tifFiles: Vector[File]) = grouped(
+        ftbl, Vector(), Vector(), Vector()
+      )
+
+      imageTable.addFiles(pngFiles)
+
+      if (! pdfFiles.isEmpty || ! tifFiles.isEmpty) {
+        val alert = new SfxAlert(AlertType.Confirmation)
+        alert.title = "ファイルの変換"
+        alert.contentText = "pdf/tiffファイルは、pngファイルに変換します。"
+        alert.showAndWait().map(_.delegate) match {
+          case Some(ButtonType.APPLY) =>
+            doBigJob {
+              convertFiles(pdfFiles ++ tifFiles)
+            } {
+              imageTable.addFiles
+            } { t =>
+              showGeneralError()
+            }
+          case Some(_) =>
+          case None =>
+        }
+      }
     }
+  }
+
+  def convertFiles(files: imm.Seq[File]): Either[imm.Seq[File], Future[imm.Seq[File]]] = {
+    Right(
+      Future {
+        val url = new URL("http://localhost:9000/convert")
+        files.flatMap { f =>
+          using(url.openConnection().asInstanceOf[HttpURLConnection]) { conn =>
+            conn.setDoOutput(true)
+            conn.setDoInput(true)
+            conn.setRequestMethod("POST")
+            conn.setRequestProperty("Content-Type", "application/octet-stream")
+            using(conn.getOutputStream) { os =>
+              os.write(Files.readAllBytes(f.toPath))
+            }
+            val statusCode = conn.getResponseCode
+            println("status = " + statusCode)
+          
+            PathUtil.withTempFile { zipFile =>
+              Files.copy(conn.getInputStream(), zipFile)
+              
+
+            }.get
+          }(c => c.disconnect()).get
+        }
+      }
+    )
   }
 
   @FXML
