@@ -21,7 +21,8 @@ import scalafx.application.Platform
 import scalafx.scene.image.Image
 import scalafx.stage.{FileChooser, Modality, Stage, StageStyle}
 import java.net.{HttpURLConnection, URL}
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Path, Paths, StandardCopyOption}
+import java.util
 import java.util.ResourceBundle
 import java.util.zip.{ZipEntry, ZipOutputStream}
 import javafx.scene.{Cursor, Scene}
@@ -42,7 +43,7 @@ import play.api.libs.ws.JsonBodyWritables._
 import scala.concurrent.ExecutionContext.Implicits.global
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
-import com.ruimo.scoins.LoanPattern
+import com.ruimo.scoins.{LoanPattern, PathUtil, Zip}
 import com.ruimo.scoins.LoanPattern._
 import play.api.libs.json._
 
@@ -820,9 +821,7 @@ class MainController extends Initializable {
   def imageOpenMenuClicked(event: ActionEvent) {
     val fc = new FileChooser {
       title = "Select image file"
-      extensionFilters.add(new FileChooser.ExtensionFilter("Image Files", "*.png"))
-      extensionFilters.add(new FileChooser.ExtensionFilter("Image Files", "*.tif"))
-      extensionFilters.add(new FileChooser.ExtensionFilter("PDF Files", "*.pdf"))
+      extensionFilters.add(new FileChooser.ExtensionFilter("Image Files", Seq("*.png", "*.tif", "*.pdf")))
     }
 
     Option(fc.showOpenMultipleDialog(stage)).foreach { ftbl =>
@@ -850,7 +849,8 @@ class MainController extends Initializable {
         alert.title = "ファイルの変換"
         alert.contentText = "pdf/tiffファイルは、pngファイルに変換します。"
         alert.showAndWait().map(_.delegate) match {
-          case Some(ButtonType.APPLY) =>
+          case Some(ButtonType.OK) =>
+            println("Convert confirmed")
             doBigJob {
               convertFiles(pdfFiles ++ tifFiles)
             } {
@@ -858,8 +858,10 @@ class MainController extends Initializable {
             } { t =>
               showGeneralError()
             }
-          case Some(_) =>
+          case Some(btn) =>
+            println("Button: " + btn)
           case None =>
+            println("Canceled")
         }
       }
     }
@@ -869,22 +871,42 @@ class MainController extends Initializable {
     Right(
       Future {
         val url = new URL("http://localhost:9000/convert")
+        println("Calling convert api")
         files.flatMap { f =>
           using(url.openConnection().asInstanceOf[HttpURLConnection]) { conn =>
             conn.setDoOutput(true)
             conn.setDoInput(true)
             conn.setRequestMethod("POST")
             conn.setRequestProperty("Content-Type", "application/octet-stream")
-            using(conn.getOutputStream) { os =>
-              os.write(Files.readAllBytes(f.toPath))
+            PathUtil.withTempFile(None, None) { zipFileToSubmit =>
+              val json = Json.obj(
+                "inputFile" -> f.getName
+              )
+              PathUtil.withTempFile(None, None) { configFile =>
+                Files.write(configFile, json.toString.getBytes("utf-8"))
+                Zip.deflate(
+                  zipFileToSubmit,
+                  Seq(
+                    "config.json" -> configFile,
+                    f.getName -> f.toPath
+                  )
+                )
+              }
+
+              using(conn.getOutputStream) { os =>
+                os.write(Files.readAllBytes(zipFileToSubmit))
+              }
             }
             val statusCode = conn.getResponseCode
             println("status = " + statusCode)
           
-            PathUtil.withTempFile { zipFile =>
-              Files.copy(conn.getInputStream(), zipFile)
-              
-
+            PathUtil.withTempFile(None, None) { zipFile =>
+              Files.copy(conn.getInputStream(), zipFile, StandardCopyOption.REPLACE_EXISTING)
+              val out: Path = Files.createTempDirectory(null)
+              OnShutdown.addDeleteDirectory(out)
+              println("Convert result: " + out)
+              Zip.explode(zipFile, out)
+              out.toFile.listFiles().toList
             }.get
           }(c => c.disconnect()).get
         }
@@ -896,10 +918,12 @@ class MainController extends Initializable {
   def imageSelected(e: MouseEvent) {
     val imageFile = e.getSource().asInstanceOf[ListView[File]].getSelectionModel().getSelectedItem()
     println("Image selected " + imageFile)
-    val img = new Image(imageFile.toURI().toString())
-    selectedImage = Some(SelectedImage(imageFile.toPath, img))
+    if (imageFile != null) {
+      val img = new Image(imageFile.toURI().toString())
+      selectedImage = Some(SelectedImage(imageFile.toPath, img))
 
-    redraw()
+      redraw()
+    }
   }
 
   def showCropError() {
