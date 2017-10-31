@@ -610,6 +610,7 @@ class Editor(
 case class SelectedImage(file: Path, image: Image)
 
 class MainController extends Initializable {
+  val settingsLoader: SettingsLoader = Settings.Loader
   private var imageTable: ImageTable = new ImageTable
   private var stage: Stage = _
   private var project: Project = _
@@ -989,6 +990,14 @@ class MainController extends Initializable {
         val model = ctrl.model
         println("apply skew correction detail " + model)
         project.skewCorrection = SkewCorrection(project.skewCorrection.enabled, model)
+        project.invalidateCachedImage(true, true)
+        project.invalidateCachedImage(true, false)
+        if (sfxSkewCorrectionCheck.selected()) {
+          sfxSkewCorrectionCheck.selected = false
+          skewCorrectionEnabledClicked(null)
+          sfxSkewCorrectionCheck.selected = true
+          skewCorrectionEnabledClicked(null)
+        }
 
       case Some(_) => println("canceled")
       case None => println("bt = none")
@@ -1233,6 +1242,26 @@ class MainController extends Initializable {
       } { t =>
         showGeneralError()
       }
+    }
+  }
+
+  @FXML
+  def authSettingsMenuClicked(e: ActionEvent) {
+    println("authSettingsMenuClicked")
+    val loader = new FXMLLoader(getClass().getResource("auth.fxml"))
+    val root: DialogPane = loader.load()
+    val ctrl = loader.getController().asInstanceOf[AuthController]
+    val settings: Settings = settingsLoader.settings
+    ctrl.model = settings.auth
+    val alert = new SfxAlert(AlertType.Confirmation)
+    alert.dialogPane = new SfxDialogPane(root)
+    alert.title = "認証設定"
+    alert.showAndWait().map(_.delegate) match {
+      case Some(ButtonType.APPLY) =>
+        val newAuth: AuthSettings = ctrl.model
+        settingsLoader.update(settings.copy(auth = newAuth))
+      case Some(_) => println("canceled")
+      case None => println("bt = none")
     }
   }
 

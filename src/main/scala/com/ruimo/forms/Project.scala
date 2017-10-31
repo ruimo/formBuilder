@@ -90,7 +90,9 @@ case class EdgeCrop(
     JsObject(
       Seq(
         "enabled" -> JsBoolean(en)
-      ) ++ condition.asJson.fields
+      ) ++ (
+        if (en) condition.asJson.fields else Seq()
+      )
     )
   }
 }

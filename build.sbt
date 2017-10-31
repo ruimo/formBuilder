@@ -25,6 +25,7 @@ lazy val root = (project in file(".")).
       "com.typesafe.play" %% "play-ws-standalone-json" % "1.0.2",
       "com.typesafe.play" % "play-json_2.12" % "2.6.3",
       "com.ruimo" %% "graphics" % "1.2",
-      scalaTest % Test
+      "com.typesafe" % "config" % "1.3.1",
+      "org.specs2" %% "specs2-core" % "4.0.0" % "test"
     )
   )

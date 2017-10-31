@@ -25,7 +25,6 @@ class SkewCorrectionDetailController extends Initializable {
 
   override def initialize(url: URL, resourceBundle: ResourceBundle) {
     println("SkewCorrectionDetailController initialize")
-println("hvComboBox =" + hvComboBox)
     sfxHvComboBox += HorizontalLineDetection
     sfxHvComboBox += VerticalLineDetection
     sfxHvComboBox.value = HorizontalLineDetection
@@ -45,12 +44,8 @@ println("hvComboBox =" + hvComboBox)
     else
       VerticalLineDetection
 
-println("hvComboBox =" + hvComboBox)
-println("dir =" + dir)
-
     sfxHvComboBox.value = dir
     lineCountText.setText(newModel.lineCount.toString)
     maxAngleText.setText(newModel.maxAngleToDetect.toString)
-
   }
 }

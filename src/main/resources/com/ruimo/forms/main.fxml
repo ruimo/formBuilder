@@ -20,7 +20,7 @@
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/8.0.60" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.ruimo.forms.MainController">
+<BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/9" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.ruimo.forms.MainController">
    <top>
       <MenuBar BorderPane.alignment="CENTER">
         <menus>
@@ -33,6 +33,11 @@
               <items>
                 <MenuItem onAction="#imageOpenMenuClicked" text="開く(_O)" />
               </items>
+            </Menu>
+            <Menu text="オプション(_O)">
+               <items>
+                  <MenuItem onAction="#authSettingsMenuClicked" text="認証(_A)" />
+               </items>
             </Menu>
           <Menu mnemonicParsing="false" text="Help">
             <items>

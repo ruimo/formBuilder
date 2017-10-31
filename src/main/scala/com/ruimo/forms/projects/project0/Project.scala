@@ -258,11 +258,13 @@ case class EdgeCropConditionImpl(
   rightArea: Option[Area]
 ) extends EdgeCropCondition {
   lazy val asJson: JsObject = {
-    def areaToJson(area: Area) = JsArray(
-      Seq(
-        JsNumber(area.x.value), JsNumber(area.y.value), JsNumber(area.w.value), JsNumber(area.h.value)
+    def areaToJson(area: Area) = {
+      JsArray(
+        Seq(
+          JsNumber(area.x.value), JsNumber(area.y.value), JsNumber(area.w.value), JsNumber(area.h.value)
+        )
       )
-    )
+    }
 
     JsObject(
       topArea.map { a => "top" -> areaToJson(a) }.toSeq ++
@@ -789,8 +791,12 @@ class ProjectImpl(
 
     val key = (selectedImage.file, isSkewCorrectionEnabled, isCropEnabled) 
     _cachedImage.get(key) match {
-      case Some(img) => Left(img)
+      case Some(img) => {
+        println("cachedImage found.")
+        Left(img)
+      }
       case None => {
+        println("cachedImage not found. Call server to obtain image.")
         val fimg = retrievePreparedImage(selectedImage, isSkewCorrectionEnabled, isCropEnabled)
         Right(
           fimg.map { img =>
@@ -998,7 +1004,7 @@ class ProjectImpl(
 
   override def invalidateCachedImage(skewCorrected: Boolean = false, cropped: Boolean = false) {
     _cachedImage = _cachedImage.filter { case (key, value) =>
-      val shouldDrop = skewCorrected && key._2 || cropped && key._3
+      val shouldDrop = skewCorrected == key._2 && cropped == key._3
       ! shouldDrop
     }
   }
