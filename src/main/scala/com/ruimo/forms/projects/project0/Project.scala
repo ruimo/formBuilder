@@ -1,13 +1,24 @@
 package com.ruimo.forms.projects.project0
 
+import play.api.libs.ws.DefaultBodyReadables._
+import play.api.libs.ws.DefaultBodyWritables._
+
 import scala.concurrent.ExecutionContext.Implicits.global
-import java.io.FileInputStream
+import java.io.{FileInputStream, InputStream}
 import java.net.{HttpURLConnection, URL}
-import java.nio.file.{Files, Path}
+import java.nio.ByteBuffer
+import java.nio.channels.FileChannel
+import java.nio.file.{Files, Path, Paths, StandardOpenOption}
+import java.util.concurrent.TimeUnit
 import java.util.zip.ZipInputStream
 import javafx.scene.input.MouseEvent
 import javafx.scene.paint.Color
 
+import akka.actor.ActorSystem
+import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.StreamConverters
+import play.api.libs.ws._
+import play.api.libs.ws.ahc._
 import com.ruimo.forms._
 import play.api.libs.json._
 
@@ -15,14 +26,15 @@ import scala.collection.{immutable => imm}
 import scalafx.geometry.{Point2D, Rectangle2D}
 import scalafx.scene.canvas.{GraphicsContext => SfxGraphicsContext}
 import com.ruimo.graphics.twodim.Area
-import com.ruimo.scoins.{Percent, Zip}
+import com.ruimo.scoins.{PathUtil, Percent, Zip}
 
 import scalafx.scene.image.Image
 import com.ruimo.scoins.LoanPattern._
 
 import scala.annotation.tailrec
-import scala.concurrent.Future
-import scala.util.{Failure, Success}
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.util.{Failure, Success, Try}
 
 object AbsoluteFieldImpl {
   val LineWidth = 2.0
@@ -310,7 +322,7 @@ class ProjectImpl(
   @volatile
   private[this] var _isEdgeCropEnabled: Boolean = false
   @volatile
-  private[this] var _cachedImage: imm.Map[(Path, Boolean, Boolean), (Option[PrepareResult], Image)] = Map()
+  private[this] var _cachedImage: imm.Map[(Path, Boolean, Boolean), RetrievePreparedImageResultOk] = Map()
 
   def withListener(newListener: ProjectListener): Project = new ProjectImpl(
     this.projectContext,
@@ -786,7 +798,7 @@ class ProjectImpl(
     selectedImage: SelectedImage,
     isSkewCorrectionEnabled: Boolean = skewCorrection.enabled,
     isCropEnabled: Boolean = cropEnabled
-  ): Either[(Option[PrepareResult], Image), Future[(Option[PrepareResult], Image)]] = {
+  ): Either[RetrievePreparedImageResult, Future[RetrievePreparedImageResult]] = {
     println("cachedImage isSkewCorrectionEnabled = " + isSkewCorrectionEnabled + ", isCropEnabled = " + isCropEnabled)
 
     val key = (selectedImage.file, isSkewCorrectionEnabled, isCropEnabled) 
@@ -797,11 +809,14 @@ class ProjectImpl(
       }
       case None => {
         println("cachedImage not found. Call server to obtain image.")
-        val fimg = retrievePreparedImage(selectedImage, isSkewCorrectionEnabled, isCropEnabled)
+        val fimg: Future[RetrievePreparedImageResult] = retrievePreparedImage(selectedImage, isSkewCorrectionEnabled, isCropEnabled)
         Right(
-          fimg.map { img =>
-            _cachedImage = _cachedImage.updated(key, img)
-            img
+          fimg.map {
+            case ok: RetrievePreparedImageResultOk =>
+              _cachedImage = _cachedImage.updated(key, ok)
+              ok
+            case fail: RetrievePreparedImageFailure =>
+              fail
           }
         )
       }
@@ -819,29 +834,43 @@ class ProjectImpl(
 
     val configFile = Files.createTempFile(null, null)
     val fileName = "image001" + extention(image.file).getOrElse("")
-    val cropTarget: Future[(Double, Double)] = if (skewCorrection.enabled) {
-      val fimg = cachedImage(image, true, false).fold(Future.successful, identity)
-      fimg.map { img =>
-        (img._2.getWidth(), img._2.getHeight())
+    val cropTarget: Future[Either[RetrievePreparedImageFailure, (Double, Double)]] = if (skewCorrection.enabled) {
+      val fimg: Future[RetrievePreparedImageResult] = cachedImage(image, true, false).fold(Future.successful, identity)
+      fimg.map {
+        case img: RetrievePreparedImageResultOk =>
+          Right(img.image.getWidth(), img.image.getHeight())
+        case fail: RetrievePreparedImageFailure =>
+          Left(fail)
       }
     }
     else {
-      Future.successful(image.image.getWidth() -> image.image.getHeight())
+      Future.successful(Right(image.image.getWidth() -> image.image.getHeight()))
     }
-    val captureTarget: Future[(Double, Double)] = {
-      val fimg = cachedImage(image).fold(Future.successful, identity)
-      fimg.map { img => (img._2.getWidth(), img._2.getHeight()) }
+    val captureTarget: Future[Either[RetrievePreparedImageFailure, (Double, Double)]] = {
+      val fimg: Future[RetrievePreparedImageResult] = cachedImage(image).fold(Future.successful, identity)
+      fimg.map {
+        case img: RetrievePreparedImageResultOk =>
+          Right(img.image.getWidth(), img.image.getHeight())
+        case fail: RetrievePreparedImageFailure =>
+          Left(fail)
+      }
     }
 
-    val json: Future[JsObject] =
-      cropTarget.flatMap { cropt =>
-        captureTarget.map { capt =>
-          Json.obj(
-            "inputFiles" -> JsArray(Seq(JsString(fileName))),
-            "skewCorrection" -> skewCorrection.asJson(skewCorrection.enabled),
-            "crop" -> edgeCrop(cropt._1, cropt._2).asJson(cropEnabled),
-            "absoluteFields" -> _absFields.asJson(capt._1, capt._2)
-          )
+    val json: Future[Either[RetrievePreparedImageFailure, JsObject]] =
+      cropTarget.flatMap { (crpt: Either[RetrievePreparedImageFailure, (Double, Double)]) =>
+        captureTarget.map { (cp: Either[RetrievePreparedImageFailure, (Double, Double)]) =>
+          crpt.flatMap { (cropt: (Double, Double)) =>
+            cp.flatMap { (capt: (Double, Double)) =>
+              Right(
+                Json.obj(
+                  "inputFiles" -> JsArray(Seq(JsString(fileName))),
+                  "skewCorrection" -> skewCorrection.asJson(skewCorrection.enabled),
+                  "crop" -> edgeCrop(cropt._1, cropt._2).asJson(cropEnabled),
+                  "absoluteFields" -> _absFields.asJson(capt._1, capt._2)
+                )
+              )
+            }
+          }
         }
       }
 
@@ -867,44 +896,54 @@ class ProjectImpl(
     image: SelectedImage,
     isSkewCorrectionEnabled: Boolean,
     isCropEnabled: Boolean
-  ): Future[Path] = {
+  ): Future[Either[RetrievePreparedImageFailure, Path]] = {
     println("prepareFileForPrepareApi()")
 
     val configFile = Files.createTempFile(null, null)
     val fileName = "image001" + extention(image.file).getOrElse("")
-    val cropTarget: Future[(Double, Double)] = if (! isCropEnabled) {
-      Future.successful(0d -> 0d)
+    val cropTarget: Future[Either[RetrievePreparedImageFailure, (Double, Double)]] = if (! isCropEnabled) {
+      Future.successful(Right(0d -> 0d))
     }
     else if (skewCorrection.enabled) {
-      cachedImage(image, true, false).fold(Future.successful, identity).map { i =>
-        i._2.getWidth() -> i._2.getHeight()
+      cachedImage(image, true, false).fold(Future.successful, identity).map {
+        case ok: RetrievePreparedImageResultOk =>
+          Right(ok.image.getWidth() -> ok.image.getHeight())
+        case fail: RetrievePreparedImageFailure => Left(fail)
       }
     }
     else {
-      Future.successful(image.image.getWidth() -> image.image.getHeight())
+      Future.successful(Right(image.image.getWidth() -> image.image.getHeight()))
     }
 
-    cropTarget.map { cropt =>
-      val json = Json.obj(
-        "inputFiles" -> JsArray(Seq(JsString(fileName))),
-        "skewCorrection" -> skewCorrection.asJson(isSkewCorrectionEnabled),
-        "crop" -> edgeCrop(cropt._1, cropt._2).asJson(isCropEnabled)
-      )
-      println("Json to send: " + json)
-      Files.write(configFile, json.toString.getBytes("utf-8"))
+    val auth = Settings.Loader.settings.auth
 
-      val zipFile = Files.createTempFile(null, null)
-      Zip.deflate(
-        zipFile,
-        Seq(
-          "config.json" -> configFile,
-          fileName -> image.file
+    cropTarget.map { (cpt: Either[RetrievePreparedImageFailure, (Double, Double)]) =>
+      cpt.map { cropt =>
+        val json = Json.obj(
+          "auth" -> Json.obj(
+            "userName" -> auth.userName.value,
+            "apiKey" -> auth.applicationToken.value
+          ),
+          "inputFiles" -> JsArray(Seq(JsString(fileName))),
+          "skewCorrection" -> skewCorrection.asJson(isSkewCorrectionEnabled),
+          "crop" -> edgeCrop(cropt._1, cropt._2).asJson(isCropEnabled)
         )
-      )
+        println("Json to send: " + json)
+        Files.write(configFile, json.toString.getBytes("utf-8"))
 
-      Files.delete(configFile)
+        val zipFile = Files.createTempFile(null, null)
+        Zip.deflate(
+          zipFile,
+          Seq(
+            "config.json" -> configFile,
+            fileName -> image.file
+          )
+        )
 
-      zipFile
+        Files.delete(configFile)
+
+        zipFile
+      }
     }
   }
 
@@ -934,71 +973,89 @@ class ProjectImpl(
     }
   }
 
+  def parseResponse(f: Path): RetrievePreparedImageResult = {
+    using(new ZipInputStream(new FileInputStream(f.toFile))) { zipIn =>
+      @tailrec def parseZip(
+        resp: Option[PrepareResult], finalImageFileName: Option[String], finalImage: Option[Image]
+      ): RetrievePreparedImageResult = {
+        val entry = zipIn.getNextEntry()
+        if (entry == null) new RetrievePreparedImageResultOk(resp, finalImage.get)
+        else {
+          entry.getName match {
+            case "response.json" =>
+              // Json.parse() closes input stream...
+              val json: JsValue = using(Files.createTempFile(null, null)) { tmp =>
+                Files.copy(zipIn, tmp, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+                zipIn.closeEntry()
+                println("Response json: " + Files.readAllLines(tmp))
+                Json.parse(new FileInputStream(tmp.toFile))
+              }(f => Files.delete(f)).get
+              val prepareResult = PrepareResult.parse(json)
+              val fileName: Option[String] = prepareResult.cropResult.flatMap { cr =>
+                cr match {
+                  case CropResultSuccess(correctedFiles) => Some(correctedFiles.head)
+                  case CropResultCannotFindEdge => None
+                }
+              }.orElse {
+                prepareResult.skewCorrectionResult.map { scr =>
+                  scr.correctedFiles.head
+                }
+              }
+              parseZip(Some(prepareResult), fileName, finalImage)
+            case fname: String =>
+              if (fname == finalImageFileName.get) {
+                val i = Some(new Image(zipIn))
+                zipIn.closeEntry()
+                parseZip(resp, finalImageFileName, i)
+              }
+              else {
+                parseZip(resp, finalImageFileName, finalImage)
+              }
+          }
+        }
+      }
+
+      parseZip(None, None, None)
+    }.get
+  }
+
   def retrievePreparedImage(
     si: SelectedImage,
     isSkewCorrectionEnabled: Boolean,
     isCropEnabled: Boolean
-  ): Future[(Option[PrepareResult], Image)] = {
-    if (! isSkewCorrectionEnabled && ! isCropEnabled) return Future.successful((None, si.image))
-    prepareFileForPrepareApi(si, isSkewCorrectionEnabled, isCropEnabled).map { fileToSubmit =>
-      val url = new URL("http://localhost:9000/prepare")
+  ): Future[RetrievePreparedImageResult] = {
+    if (! isSkewCorrectionEnabled && ! isCropEnabled) Future.successful(new RetrievePreparedImageResultOk(None, si.image))
+    else {
+      prepareFileForPrepareApi(si, isSkewCorrectionEnabled, isCropEnabled).map { (fileToSubmit: Either[RetrievePreparedImageFailure, Path]) =>
+        fileToSubmit.map { f =>
+          val urlPath = Settings.Loader.settings.auth.url.resolve("prepare")
 
-      using(url.openConnection().asInstanceOf[HttpURLConnection]) { conn =>
-        conn.setDoOutput(true)
-        conn.setDoInput(true)
-        conn.setRequestMethod("POST")
-        conn.setRequestProperty("Content-Type", "application/zip")
-        using(conn.getOutputStream) { os =>
-          os.write(Files.readAllBytes(fileToSubmit))
-        }
-
-        val statusCode = conn.getResponseCode
-        println("status = " + statusCode)
-
-        using(new ZipInputStream(conn.getInputStream())) { zipIn =>
-          @tailrec def parseZip(
-            resp: Option[PrepareResult], finalImageFileName: Option[String], finalImage: Option[Image]
-          ): (Option[PrepareResult], Image) = {
-            val entry = zipIn.getNextEntry()
-            if (entry == null) (resp, finalImage.get)
-            else {
-              entry.getName match {
-                case "response.json" =>
-                  // Json.parse() closes input stream...
-                  val json: JsValue = using(Files.createTempFile(null, null)) { tmp =>
-                    Files.copy(zipIn, tmp, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-                    zipIn.closeEntry()
-                    println("Response json: " + Files.readAllLines(tmp))
-                    Json.parse(new FileInputStream(tmp.toFile))
-                  }(f => Files.delete(f)).get
-                  val prepareResult = PrepareResult.parse(json)
-                  val fileName: Option[String] = prepareResult.cropResult.flatMap { cr =>
-                    cr match {
-                      case CropResultSuccess(correctedFiles) => Some(correctedFiles.head)
-                      case CropResultCannotFindEdge => None
-                    }
-                  }.orElse {
-                    prepareResult.skewCorrectionResult.map { scr =>
-                      scr.correctedFiles.head
-                    }
-                  }
-                  parseZip(Some(prepareResult), fileName, finalImage)
-                case fname: String =>
-                  if (fname == finalImageFileName.get) {
-                    val i = Some(new Image(zipIn))
-                    zipIn.closeEntry()
-                    parseZip(resp, finalImageFileName, i)
-                  }
-                  else {
-                    parseZip(resp, finalImageFileName, finalImage)
-                  }
+          Await.result(
+            Ws().url(urlPath).addHttpHeaders(
+              "Content-Type" -> "application/zip"
+            ).post(
+              Files.readAllBytes(f)
+            ).map { resp =>
+              println("status = " + resp.status)
+              println("statusText = " + resp.statusText)
+              resp.status match {
+                case 200 =>
+                  PathUtil.withTempFile(None, None) { f =>
+                    using(FileChannel.open(f, StandardOpenOption.CREATE, StandardOpenOption.WRITE)) { ch =>
+                      ch.write(resp.bodyAsBytes.toByteBuffer)
+                    }.get
+                    parseResponse(f)
+                  }.get
+                case 403 =>
+                  RetrievePreparedImageAuthError(resp.status, resp.statusText, resp.body)
+                case _ =>
+                  RetrievePreparedImageUnknownError(resp.status, resp.statusText, resp.body)
               }
-            }
-          }
-
-          parseZip(None, None, None)
-        }.get
-      }(c => c.disconnect()).get
+            },
+            Duration.apply(60, TimeUnit.SECONDS)
+          )
+        }.fold(identity, identity)
+      }
     }
   }
 

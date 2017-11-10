@@ -7,11 +7,32 @@ import com.ruimo.scoins.LoanPattern
 import play.api.libs.json.{JsBoolean, JsObject, JsString, JsValue, Json}
 import com.typesafe.config.{Config, ConfigFactory, ConfigObject, ConfigValueFactory}
 
+import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 
 case class UserName(value: String) extends AnyVal
 case class ApplicationToken(value: String) extends AnyVal
-case class Url(value: String) extends AnyVal
+trait Url {
+  def resolve(childPath: String): String
+  def value: String
+}
+object Url {
+  def apply(value: String): Url = {
+    @tailrec def chop(path: String): String =
+      if (path.endsWith("/")) chop(path.substring(0, path.length() - 1)) else path
+
+    UrlImpl(chop(value))
+  }
+}
+
+private case class UrlImpl(value: String) extends Url {
+  def resolve(childPath: String): String = {
+    if (childPath.startsWith("/"))
+      throw new IllegalArgumentException("childpath '" + childPath + "' should not starts with /.")
+
+    value + "/" + childPath
+  }
+}
 
 case class Settings(
   auth: AuthSettings

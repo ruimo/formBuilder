@@ -2,7 +2,7 @@ package com.ruimo.forms
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
 import java.util.zip.ZipInputStream
 import javafx.animation.AnimationTimer
 
@@ -21,9 +21,11 @@ import scalafx.application.Platform
 import scalafx.scene.image.Image
 import scalafx.stage.{FileChooser, Modality, Stage, StageStyle}
 import java.net.{HttpURLConnection, URL}
-import java.nio.file.{Files, Path, Paths, StandardCopyOption}
+import java.nio.channels.FileChannel
+import java.nio.file._
 import java.util
 import java.util.ResourceBundle
+import java.util.concurrent.TimeUnit
 import java.util.zip.{ZipEntry, ZipOutputStream}
 import javafx.scene.{Cursor, Scene}
 
@@ -49,6 +51,9 @@ import play.api.libs.json._
 
 import scalafx.geometry.{Point2D, Rectangle2D}
 import Helpers.toRect
+
+import scala.collection.immutable.Seq
+import scala.concurrent.duration.Duration
 
 case class EditorContext(
   drawWidget: (Widget[_], Boolean) => Unit,
@@ -690,23 +695,28 @@ class MainController extends Initializable {
     println("redrawRect(" + rect + ")")
     val gc = sfxImageCanvas.graphicsContext2D
     selectedImage.foreach { si =>
-      doBigJob(project.cachedImage(si)) { img =>
-        img._1.foreach { prepareResult =>
-          prepareResult.cropResult.foreach { cr =>
-            cr match {
-              case s: CropResultSuccess =>
-              case CropResultCannotFindEdge =>
-                project.cropEnabled = false
-                showCropError()
+      doBigJob(project.cachedImage(si)) {
+        case ok: RetrievePreparedImageResultOk =>
+          ok.serverResp.foreach { prepareResult =>
+            prepareResult.cropResult.foreach { cr =>
+              cr match {
+                case s: CropResultSuccess =>
+                case CropResultCannotFindEdge =>
+                  project.cropEnabled = false
+                  showCropError()
+              }
             }
           }
-        }
 
-        gc.drawImage(
-          img._2,
-          rect.minX, rect.minY, rect.width, rect.height,
-          rect.minX, rect.minY, rect.width, rect.height
-        )
+          gc.drawImage(
+            ok.image,
+            rect.minX, rect.minY, rect.width, rect.height,
+            rect.minX, rect.minY, rect.width, rect.height
+          )
+        case authFail: RetrievePreparedImageAuthError =>
+          authError()
+        case serverFail: RetrievePreparedImageUnknownError =>
+          showGeneralError()
       } { t =>
         showGeneralError()
       }
@@ -827,7 +837,7 @@ class MainController extends Initializable {
 
     Option(fc.showOpenMultipleDialog(stage)).foreach { ftbl =>
       @tailrec def grouped(
-        files: Seq[File], pngFiles: Vector[File], pdfFiles: Vector[File], tifFiles: Vector[File]
+        files: imm.Seq[File], pngFiles: Vector[File], pdfFiles: Vector[File], tifFiles: Vector[File]
       ): (Vector[File], Vector[File], Vector[File]) = {
         if (files.isEmpty) (pngFiles, pdfFiles, tifFiles)
         else {
@@ -840,7 +850,7 @@ class MainController extends Initializable {
       }
 
       val (pngFiles: Vector[File], pdfFiles: Vector[File], tifFiles: Vector[File]) = grouped(
-        ftbl, Vector(), Vector(), Vector()
+        ftbl.toList, Vector(), Vector(), Vector()
       )
 
       imageTable.addFiles(pngFiles)
@@ -854,8 +864,21 @@ class MainController extends Initializable {
             println("Convert confirmed")
             doBigJob {
               convertFiles(pdfFiles ++ tifFiles)
-            } {
-              imageTable.addFiles
+            } { (results: imm.Seq[ConvertFilesResult]) =>
+              imageTable.addFiles(
+                results.foldLeft(Vector[File]()) { (sum, r) =>
+                  r match {
+                    case ok: ConvertFilesResultOk =>
+                      sum ++ ok.files
+                    case authFail: ConvertFilesAuthError =>
+                      authError()
+                      sum
+                    case serverFail: ConvertFilesUnknownError =>
+                      showGeneralError()
+                      sum
+                  }
+                }
+              )
             } { t =>
               showGeneralError()
             }
@@ -868,48 +891,62 @@ class MainController extends Initializable {
     }
   }
 
-  def convertFiles(files: imm.Seq[File]): Either[imm.Seq[File], Future[imm.Seq[File]]] = {
+  def convertFiles(files: imm.Seq[File]): Either[imm.Seq[ConvertFilesResult], Future[imm.Seq[ConvertFilesResult]]] = {
+    val auth = Settings.Loader.settings.auth
+
     Right(
       Future {
-        val url = new URL("http://localhost:9000/convert")
-        println("Calling convert api")
-        files.flatMap { f =>
-          using(url.openConnection().asInstanceOf[HttpURLConnection]) { conn =>
-            conn.setDoOutput(true)
-            conn.setDoInput(true)
-            conn.setRequestMethod("POST")
-            conn.setRequestProperty("Content-Type", "application/octet-stream")
-            PathUtil.withTempFile(None, None) { zipFileToSubmit =>
-              val json = Json.obj(
-                "inputFile" -> f.getName
-              )
-              PathUtil.withTempFile(None, None) { configFile =>
-                Files.write(configFile, json.toString.getBytes("utf-8"))
-                Zip.deflate(
-                  zipFileToSubmit,
-                  Seq(
-                    "config.json" -> configFile,
-                    f.getName -> f.toPath
-                  )
-                )
-              }
+        val urlPath = Settings.Loader.settings.auth.url.resolve("convert")
 
-              using(conn.getOutputStream) { os =>
-                os.write(Files.readAllBytes(zipFileToSubmit))
-              }
-            }
-            val statusCode = conn.getResponseCode
-            println("status = " + statusCode)
-          
-            PathUtil.withTempFile(None, None) { zipFile =>
-              Files.copy(conn.getInputStream(), zipFile, StandardCopyOption.REPLACE_EXISTING)
-              val out: Path = Files.createTempDirectory(null)
-              OnShutdown.addDeleteDirectory(out)
-              println("Convert result: " + out)
-              Zip.explode(zipFile, out)
-              out.toFile.listFiles().toList
+        files.map { (f: File) =>
+          PathUtil.withTempFile(None, None) { (zipFileToSubmit: Path) =>
+            val json = Json.obj(
+              "auth" -> Json.obj(
+                "userName" -> auth.userName.value,
+                "apiKey" -> auth.applicationToken.value
+              ),
+              "inputFile" -> f.getName
+            )
+            PathUtil.withTempFile(None, None) { (configFile: Path) =>
+              Files.write(configFile, json.toString.getBytes("utf-8"))
+              Zip.deflate(
+                zipFileToSubmit,
+                Seq(
+                  "config.json" -> configFile,
+                  f.getName -> f.toPath
+                )
+              )
+
+              Await.result(
+                Ws().url(urlPath).addHttpHeaders(
+                  "Content-Type" -> "application/zip"
+                ).post(
+                  zipFileToSubmit.toFile
+                ).map { resp =>
+                  println("status = " + resp.status)
+                  println("statusText = " + resp.statusText)
+                  resp.status match {
+                    case 200 =>
+                      PathUtil.withTempFile(None, None) { zipFile =>
+                        using(FileChannel.open(zipFile, StandardOpenOption.CREATE, StandardOpenOption.WRITE)) { ch =>
+                          ch.write(resp.bodyAsBytes.toByteBuffer)
+                        }.get
+                        val out: Path = Files.createTempDirectory(null)
+                        OnShutdown.addDeleteDirectory(out)
+                        println("Convert result: " + out)
+                        Zip.explode(zipFile, out)
+                        new ConvertFilesResultOk(out.toFile.listFiles().toList)
+                      }.get
+                    case 403 =>
+                      ConvertFilesAuthError(resp.status, resp.statusText, resp.body)
+                    case _ =>
+                      ConvertFilesUnknownError(resp.status, resp.statusText, resp.body, f.toPath)
+                  }
+                },
+                Duration.apply(60, TimeUnit.SECONDS)
+              )
             }.get
-          }(c => c.disconnect()).get
+          }.get
         }
       }
     )
@@ -937,25 +974,30 @@ class MainController extends Initializable {
   def redraw(onError: Option[Throwable => Unit] = None) {
     println("redraw()")
     selectedImage.foreach { selectedImage =>
-      doBigJob(project.cachedImage(selectedImage)) { i =>
-        val img = i._2
+      doBigJob(project.cachedImage(selectedImage)) {
+        case ok: RetrievePreparedImageResultOk =>
+          val img = ok.image
 
-        sfxImageCanvas.width = img.width.toDouble
-        sfxImageCanvas.height = img.height.toDouble
-        val ctx = sfxImageCanvas.graphicsContext2D
-        ctx.clearRect(0, 0, sfxImageCanvas.width.toDouble, sfxImageCanvas.height.toDouble)
-        ctx.drawImage(img, 0, 0)
-        i._1.foreach { prepareResult =>
-          prepareResult.cropResult.foreach { cr =>
-            cr match {
-              case s: CropResultSuccess =>
-              case CropResultCannotFindEdge =>
-                project.cropEnabled = false
-                showCropError()
+          sfxImageCanvas.width = img.width.toDouble
+          sfxImageCanvas.height = img.height.toDouble
+          val ctx = sfxImageCanvas.graphicsContext2D
+          ctx.clearRect(0, 0, sfxImageCanvas.width.toDouble, sfxImageCanvas.height.toDouble)
+          ctx.drawImage(img, 0, 0)
+          ok.serverResp.foreach { prepareResult =>
+            prepareResult.cropResult.foreach { cr =>
+              cr match {
+                case s: CropResultSuccess =>
+                case CropResultCannotFindEdge =>
+                  project.cropEnabled = false
+                  showCropError()
+              }
             }
           }
-        }
-        project.redraw()
+          project.redraw()
+        case authFail: RetrievePreparedImageAuthError =>
+          authError()
+        case serverFail: ConvertFilesUnknownError =>
+          showGeneralError()
       } { t =>
         onError match {
           case Some(h) =>
@@ -1115,12 +1157,18 @@ class MainController extends Initializable {
       try {
         if (sfxSkewCorrectionCheck.selected()) {
           doBigJob(project.cachedImage(si, isSkewCorrectionEnabled = true)) {
-            case (prepareResult: Option[PrepareResult], image: Image) =>
-              prepareResult.foreach { pr =>
+            case result: RetrievePreparedImageResultOk =>
+              result.serverResp.foreach { pr =>
                 pr.skewCorrectionResult.foreach { sr =>
                   showSkewAnimation(sr, si.image)
                 }
               }
+            case authFail: RetrievePreparedImageAuthError =>
+              sfxSkewCorrectionCheck.selected = false
+              authError()
+            case unknownError: RetrievePreparedImageUnknownError =>
+              sfxSkewCorrectionCheck.selected = false
+              showGeneralError()
           } { t =>
             sfxSkewCorrectionCheck.selected = false
             showGeneralError()
@@ -1341,6 +1389,13 @@ class MainController extends Initializable {
     val err = new Alert(AlertType.Error)
     err.setTitle("サーバ・エラー")
     err.setContentText("サーバ処理に失敗しました。")
+    err.show()
+  }
+
+  def authError() {
+    val err = new Alert(AlertType.Error)
+    err.setTitle("認証エラー")
+    err.setContentText("サーバでの認証に失敗しました。設定を確認してください。")
     err.show()
   }
 }
