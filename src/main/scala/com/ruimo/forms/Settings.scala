@@ -1,16 +1,14 @@
 package com.ruimo.forms
 
-import java.io.{BufferedReader, FileReader}
 import java.nio.file.{Files, Path, Paths}
 
-import com.ruimo.scoins.LoanPattern
 import play.api.libs.json.{JsBoolean, JsObject, JsString, JsValue, Json}
 import com.typesafe.config.{Config, ConfigFactory, ConfigObject, ConfigValueFactory}
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 
-case class UserName(value: String) extends AnyVal
+case class ContractedUserId(value: String) extends AnyVal
 case class ApplicationToken(value: String) extends AnyVal
 trait Url {
   def resolve(childPath: String): String
@@ -51,7 +49,7 @@ case class Settings(
 sealed trait AuthSettings {
   def asJson: JsValue
   def asConf: ConfigObject
-  def userName: UserName
+  def contractedUserId: ContractedUserId
   def applicationToken: ApplicationToken
   def url: Url
 }
@@ -59,25 +57,25 @@ sealed trait AuthSettings {
 case object NullAuthSettings extends AuthSettings {
   def asJson: JsValue = throw new RuntimeException
   def asConf: ConfigObject = throw new RuntimeException
-  def userName: UserName = throw new RuntimeException
+  def contractedUserId: ContractedUserId = throw new RuntimeException
   def applicationToken: ApplicationToken = throw new RuntimeException
   def url: Url = throw new RuntimeException
 }
 
 case class AuthSettingsImpl(
-  userName: UserName,
+  contractedUserId: ContractedUserId,
   applicationToken: ApplicationToken,
   url: Url
 ) extends AuthSettings {
   val asJson: JsValue = Json.obj(
-    "userName" -> userName.value,
+    "contractedUserId" -> contractedUserId.value,
     "applicationToken" -> applicationToken.value,
     "url" -> url.value
   )
 
   val asConf: ConfigObject = ConfigValueFactory.fromMap(
     Map(
-      "userName" -> userName.value,
+      "contractedUserId" -> contractedUserId.value,
       "applicationToken" -> applicationToken.value,
       "url" -> url.value
     ).asJava
@@ -116,7 +114,7 @@ object Settings {
 object AuthSettings {
   def load(config: Config): AuthSettings = {
     AuthSettingsImpl(
-      UserName(config.getString("userName")),
+      ContractedUserId(config.getString("contractedUserId")),
       ApplicationToken(config.getString("applicationToken")),
       Url(config.getString("url"))
     )

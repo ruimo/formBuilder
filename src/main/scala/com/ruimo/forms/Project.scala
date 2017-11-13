@@ -352,10 +352,10 @@ trait Project {
     file: SelectedImage,
     isSkewCorrectionEnabled: Boolean = skewCorrection.enabled,
     isCropEnabled: Boolean = cropEnabled
-  ): Either[RetrievePreparedImageResult, Future[RetrievePreparedImageResult]]
+  ): Either[RetrievePreparedImageRestResult, Future[RetrievePreparedImageRestResult]]
 
   def invalidateCachedImage(skewCorrected: Boolean = false, cropped: Boolean = false): Unit
-  def runCapture(si: SelectedImage): Future[CaptureResponse]
+  def runCapture(si: SelectedImage): Future[Either[CaptureRestFailure, CaptureResponse]]
   def cropFieldsAreReady: Boolean
 }
 

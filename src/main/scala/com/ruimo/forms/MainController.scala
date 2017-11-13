@@ -713,9 +713,9 @@ class MainController extends Initializable {
             rect.minX, rect.minY, rect.width, rect.height,
             rect.minX, rect.minY, rect.width, rect.height
           )
-        case authFail: RetrievePreparedImageAuthError =>
+        case authFail: RestAuthFailure =>
           authError()
-        case serverFail: RetrievePreparedImageUnknownError =>
+        case serverFail: RestUnknownFailure =>
           showGeneralError()
       } { t =>
         showGeneralError()
@@ -902,7 +902,7 @@ class MainController extends Initializable {
           PathUtil.withTempFile(None, None) { (zipFileToSubmit: Path) =>
             val json = Json.obj(
               "auth" -> Json.obj(
-                "userName" -> auth.userName.value,
+                "contractedUserId" -> auth.contractedUserId.value,
                 "apiKey" -> auth.applicationToken.value
               ),
               "inputFile" -> f.getName
@@ -994,9 +994,9 @@ class MainController extends Initializable {
             }
           }
           project.redraw()
-        case authFail: RetrievePreparedImageAuthError =>
+        case authFail: RestAuthFailure =>
           authError()
-        case serverFail: ConvertFilesUnknownError =>
+        case serverFail: RestUnknownFailure =>
           showGeneralError()
       } { t =>
         onError match {
@@ -1163,10 +1163,10 @@ class MainController extends Initializable {
                   showSkewAnimation(sr, si.image)
                 }
               }
-            case authFail: RetrievePreparedImageAuthError =>
+            case authFail: RestAuthFailure =>
               sfxSkewCorrectionCheck.selected = false
               authError()
-            case unknownError: RetrievePreparedImageUnknownError =>
+            case unknownError: RestUnknownFailure =>
               sfxSkewCorrectionCheck.selected = false
               showGeneralError()
           } { t =>
@@ -1278,15 +1278,33 @@ class MainController extends Initializable {
     println("runCapture")
 
     selectedImage.foreach { si =>
-      doBigJob(Right(project.runCapture(si))) { resp: CaptureResponse =>
-        val alert = new Alert(AlertType.Information)
-        alert.setTitle("処理結果")
-        alert.setContentText(
-          resp.result.map { e =>
-            e.fieldName + ": " + e.rawText
-          }.mkString("\r\n")
-        )
-        alert.showAndWait()
+      doBigJob(Right(project.runCapture(si))) {
+        case Right(resp) =>
+          val alert = new Alert(AlertType.Information)
+          alert.setTitle("処理結果")
+          alert.setContentText(
+            resp.result.map { e =>
+              e.fieldName + ": " + e.rawText
+            }.mkString("\r\n")
+          )
+          alert.showAndWait()
+        case Left(fail) =>
+          fail match {
+            case e: RestAuthFailure =>
+              val alert = new Alert(AlertType.Error)
+              alert.setTitle("認証失敗")
+              alert.setContentText(
+                "認証に失敗しました。認証の設定を確認してください。"
+              )
+              alert.showAndWait()
+            case e: RestUnknownFailure =>
+              val alert = new Alert(AlertType.Error)
+              alert.setTitle("サーバ通信エラー")
+              alert.setContentText(
+                "サーバとの通信に失敗しました。"
+              )
+              alert.showAndWait()
+          }
       } { t =>
         showGeneralError()
       }

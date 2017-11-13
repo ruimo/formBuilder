@@ -32,7 +32,7 @@ class SettingsSpec extends Specification {
         )
         val loader = new SettingsLoader(confFile)
         val settings = loader.settings
-        settings.auth.userName === UserName("userName0")
+        settings.auth.contractedUserId === ContractedUserId("userName0")
         settings.auth.applicationToken === ApplicationToken("applicationToken0")
         settings.auth.url === Url("url0")
       }.get
@@ -45,7 +45,7 @@ class SettingsSpec extends Specification {
         loader.update(
           Settings(
             AuthSettingsImpl(
-              UserName("userName0"), ApplicationToken("applicationToken0"), Url("url0")
+              ContractedUserId("userName0"), ApplicationToken("applicationToken0"), Url("url0")
             )
           )
         )
@@ -74,7 +74,7 @@ class SettingsSpec extends Specification {
         loader.update(
           settings.copy(
             auth = AuthSettingsImpl(
-              UserName("userName1"), ApplicationToken("applicationToken1"), Url("url1")
+              ContractedUserId("userName1"), ApplicationToken("applicationToken1"), Url("url1")
             )
           )
         )

@@ -9,7 +9,6 @@
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.RowConstraints?>
 
-
 <DialogPane xmlns="http://javafx.com/javafx/9" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.ruimo.forms.AuthController">
    <buttonTypes>
       <ButtonType fx:constant="APPLY" />
@@ -31,9 +30,9 @@
                <children>
                   <Label text="サーバ" />
                   <TextField fx:id="serverUrlText" GridPane.columnIndex="1" />
-                  <Label text="ユーザ名" GridPane.rowIndex="1" />
+                  <Label text="契約ユーザid" GridPane.rowIndex="1" />
                   <Label text="アプリケーショントークン" GridPane.hgrow="ALWAYS" GridPane.rowIndex="2" GridPane.vgrow="ALWAYS" />
-                  <TextField fx:id="userNameText" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+                  <TextField fx:id="contractedUserIdText" GridPane.columnIndex="1" GridPane.rowIndex="1" />
                   <TextField fx:id="applicationTokenText" GridPane.columnIndex="1" GridPane.rowIndex="2" />
                </children>
             </GridPane>

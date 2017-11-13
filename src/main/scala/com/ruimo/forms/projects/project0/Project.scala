@@ -798,7 +798,7 @@ class ProjectImpl(
     selectedImage: SelectedImage,
     isSkewCorrectionEnabled: Boolean = skewCorrection.enabled,
     isCropEnabled: Boolean = cropEnabled
-  ): Either[RetrievePreparedImageResult, Future[RetrievePreparedImageResult]] = {
+  ): Either[RetrievePreparedImageRestResult, Future[RetrievePreparedImageRestResult]] = {
     println("cachedImage isSkewCorrectionEnabled = " + isSkewCorrectionEnabled + ", isCropEnabled = " + isCropEnabled)
 
     val key = (selectedImage.file, isSkewCorrectionEnabled, isCropEnabled) 
@@ -809,13 +809,13 @@ class ProjectImpl(
       }
       case None => {
         println("cachedImage not found. Call server to obtain image.")
-        val fimg: Future[RetrievePreparedImageResult] = retrievePreparedImage(selectedImage, isSkewCorrectionEnabled, isCropEnabled)
+        val fimg: Future[RetrievePreparedImageRestResult] = retrievePreparedImage(selectedImage, isSkewCorrectionEnabled, isCropEnabled)
         Right(
           fimg.map {
             case ok: RetrievePreparedImageResultOk =>
               _cachedImage = _cachedImage.updated(key, ok)
               ok
-            case fail: RetrievePreparedImageFailure =>
+            case fail: RetrievePreparedImageRestFailure =>
               fail
           }
         )
@@ -829,40 +829,45 @@ class ProjectImpl(
     if (idx == -1) None else Some(fname.substring(idx))
   }
 
-  private def prepareFileForCaptureApi(image: SelectedImage): Future[Path] = {
+  private def prepareFileForCaptureApi(image: SelectedImage): Future[Either[RetrievePreparedImageRestFailure, Path]] = {
     println("prepareFileForCaptureApi()")
 
     val configFile = Files.createTempFile(null, null)
     val fileName = "image001" + extention(image.file).getOrElse("")
-    val cropTarget: Future[Either[RetrievePreparedImageFailure, (Double, Double)]] = if (skewCorrection.enabled) {
-      val fimg: Future[RetrievePreparedImageResult] = cachedImage(image, true, false).fold(Future.successful, identity)
+    val cropTarget: Future[Either[RetrievePreparedImageRestFailure, (Double, Double)]] = if (skewCorrection.enabled) {
+      val fimg: Future[RetrievePreparedImageRestResult] = cachedImage(image, true, false).fold(Future.successful, identity)
       fimg.map {
         case img: RetrievePreparedImageResultOk =>
           Right(img.image.getWidth(), img.image.getHeight())
-        case fail: RetrievePreparedImageFailure =>
+        case fail: RetrievePreparedImageRestFailure =>
           Left(fail)
       }
     }
     else {
       Future.successful(Right(image.image.getWidth() -> image.image.getHeight()))
     }
-    val captureTarget: Future[Either[RetrievePreparedImageFailure, (Double, Double)]] = {
-      val fimg: Future[RetrievePreparedImageResult] = cachedImage(image).fold(Future.successful, identity)
+    val captureTarget: Future[Either[RetrievePreparedImageRestFailure, (Double, Double)]] = {
+      val fimg: Future[RetrievePreparedImageRestResult] = cachedImage(image).fold(Future.successful, identity)
       fimg.map {
         case img: RetrievePreparedImageResultOk =>
           Right(img.image.getWidth(), img.image.getHeight())
-        case fail: RetrievePreparedImageFailure =>
+        case fail: RetrievePreparedImageRestFailure =>
           Left(fail)
       }
     }
 
-    val json: Future[Either[RetrievePreparedImageFailure, JsObject]] =
-      cropTarget.flatMap { (crpt: Either[RetrievePreparedImageFailure, (Double, Double)]) =>
-        captureTarget.map { (cp: Either[RetrievePreparedImageFailure, (Double, Double)]) =>
+    val auth = Settings.Loader.settings.auth
+    val json: Future[Either[RetrievePreparedImageRestFailure, JsObject]] =
+      cropTarget.flatMap { (crpt: Either[RetrievePreparedImageRestFailure, (Double, Double)]) =>
+        captureTarget.map { (cp: Either[RetrievePreparedImageRestFailure, (Double, Double)]) =>
           crpt.flatMap { (cropt: (Double, Double)) =>
             cp.flatMap { (capt: (Double, Double)) =>
               Right(
                 Json.obj(
+                  "auth" -> Json.obj(
+                    "contractedUserId" -> auth.contractedUserId.value,
+                    "apiKey" -> auth.applicationToken.value
+                  ),
                   "inputFiles" -> JsArray(Seq(JsString(fileName))),
                   "skewCorrection" -> skewCorrection.asJson(skewCorrection.enabled),
                   "crop" -> edgeCrop(cropt._1, cropt._2).asJson(cropEnabled),
@@ -874,21 +879,23 @@ class ProjectImpl(
         }
       }
 
-    json.map { js =>
-      Files.write(configFile, js.toString.getBytes("utf-8"))
+    json.map { (ejs: Either[RetrievePreparedImageRestFailure, JsObject]) =>
+      ejs.map { js =>
+        Files.write(configFile, js.toString.getBytes("utf-8"))
 
-      val zipFile = Files.createTempFile(null, null)
-      Zip.deflate(
-        zipFile,
-        Seq(
-          "config.json" -> configFile,
-          fileName -> image.file
+        val zipFile = Files.createTempFile(null, null)
+        Zip.deflate(
+          zipFile,
+          Seq(
+            "config.json" -> configFile,
+            fileName -> image.file
+          )
         )
-      )
 
-      Files.delete(configFile)
+        Files.delete(configFile)
 
-      zipFile
+        zipFile
+      }
     }
   }
 
@@ -896,19 +903,19 @@ class ProjectImpl(
     image: SelectedImage,
     isSkewCorrectionEnabled: Boolean,
     isCropEnabled: Boolean
-  ): Future[Either[RetrievePreparedImageFailure, Path]] = {
+  ): Future[Either[RetrievePreparedImageRestFailure, Path]] = {
     println("prepareFileForPrepareApi()")
 
     val configFile = Files.createTempFile(null, null)
     val fileName = "image001" + extention(image.file).getOrElse("")
-    val cropTarget: Future[Either[RetrievePreparedImageFailure, (Double, Double)]] = if (! isCropEnabled) {
+    val cropTarget: Future[Either[RetrievePreparedImageRestFailure, (Double, Double)]] = if (! isCropEnabled) {
       Future.successful(Right(0d -> 0d))
     }
     else if (skewCorrection.enabled) {
       cachedImage(image, true, false).fold(Future.successful, identity).map {
         case ok: RetrievePreparedImageResultOk =>
           Right(ok.image.getWidth() -> ok.image.getHeight())
-        case fail: RetrievePreparedImageFailure => Left(fail)
+        case fail: RetrievePreparedImageRestFailure => Left(fail)
       }
     }
     else {
@@ -917,11 +924,11 @@ class ProjectImpl(
 
     val auth = Settings.Loader.settings.auth
 
-    cropTarget.map { (cpt: Either[RetrievePreparedImageFailure, (Double, Double)]) =>
+    cropTarget.map { (cpt: Either[RetrievePreparedImageRestFailure, (Double, Double)]) =>
       cpt.map { cropt =>
         val json = Json.obj(
           "auth" -> Json.obj(
-            "userName" -> auth.userName.value,
+            "contractedUserId" -> auth.contractedUserId.value,
             "apiKey" -> auth.applicationToken.value
           ),
           "inputFiles" -> JsArray(Seq(JsString(fileName))),
@@ -947,37 +954,53 @@ class ProjectImpl(
     }
   }
 
-  def runCapture(si: SelectedImage): Future[CaptureResponse] = {
-    prepareFileForCaptureApi(si).map { fileToSubmit =>
-      val url = new URL("http://localhost:9000/capture")
+  def runCapture(si: SelectedImage): Future[Either[CaptureRestFailure, CaptureResponse]] = {
+    prepareFileForCaptureApi(si).map {
+      case Right(fileToSubmit) =>
+        val urlPath = Settings.Loader.settings.auth.url.resolve("capture")
 
-      using(url.openConnection().asInstanceOf[HttpURLConnection]) { conn =>
-        conn.setDoOutput(true)
-        conn.setDoInput(true)
-        conn.setRequestMethod("POST")
-        conn.setRequestProperty("Content-Type", "application/zip")
-        using(conn.getOutputStream) { os =>
-          os.write(Files.readAllBytes(fileToSubmit))
+        Await.result(
+          Ws().url(urlPath).addHttpHeaders(
+            "Content-Type" -> "application/zip"
+          ).post(
+            Files.readAllBytes(fileToSubmit)
+          ).map { resp =>
+            println("status = " + resp.status)
+            println("statusText = " + resp.statusText)
+            resp.status match {
+              case 200 =>
+                val jsonResult: JsValue = PathUtil.withTempFile(None, None) { f =>
+                  using(FileChannel.open(f, StandardOpenOption.CREATE, StandardOpenOption.WRITE)) { ch =>
+                    ch.write(resp.bodyAsBytes.toByteBuffer)
+                  }.get
+
+                  using(new FileInputStream(f.toFile)) { Json.parse }.get
+                }.get
+
+                println("result: " + jsonResult)
+                Right(CaptureResponse.parse(jsonResult))
+              case 403 =>
+                Left(RestAuthFailure(resp.status, resp.statusText, resp.body))
+              case _ =>
+                Left(RestUnknownFailure(resp.status, resp.statusText, resp.body))
+            }
+          },
+          Duration.apply(60, TimeUnit.SECONDS)
+        )
+      case Left(fail) =>
+        fail match {
+          case f: RestAuthFailure => Left(f)
+          case f: RestUnknownFailure => Left(f)
         }
-
-        val statusCode = conn.getResponseCode
-        println("status = " + statusCode)
-
-        val jsonResult: JsValue = using(conn.getInputStream()) { is =>
-          Json.parse(is)
-        }.get
-
-        println("result: " + jsonResult)
-        CaptureResponse.parse(jsonResult)
-      }(c => c.disconnect()).get
     }
   }
 
-  def parseResponse(f: Path): RetrievePreparedImageResult = {
+
+  def parseResponse(f: Path): RetrievePreparedImageRestResult = {
     using(new ZipInputStream(new FileInputStream(f.toFile))) { zipIn =>
       @tailrec def parseZip(
         resp: Option[PrepareResult], finalImageFileName: Option[String], finalImage: Option[Image]
-      ): RetrievePreparedImageResult = {
+      ): RetrievePreparedImageRestResult = {
         val entry = zipIn.getNextEntry()
         if (entry == null) new RetrievePreparedImageResultOk(resp, finalImage.get)
         else {
@@ -1023,10 +1046,10 @@ class ProjectImpl(
     si: SelectedImage,
     isSkewCorrectionEnabled: Boolean,
     isCropEnabled: Boolean
-  ): Future[RetrievePreparedImageResult] = {
+  ): Future[RetrievePreparedImageRestResult] = {
     if (! isSkewCorrectionEnabled && ! isCropEnabled) Future.successful(new RetrievePreparedImageResultOk(None, si.image))
     else {
-      prepareFileForPrepareApi(si, isSkewCorrectionEnabled, isCropEnabled).map { (fileToSubmit: Either[RetrievePreparedImageFailure, Path]) =>
+      prepareFileForPrepareApi(si, isSkewCorrectionEnabled, isCropEnabled).map { (fileToSubmit: Either[RetrievePreparedImageRestFailure, Path]) =>
         fileToSubmit.map { f =>
           val urlPath = Settings.Loader.settings.auth.url.resolve("prepare")
 
@@ -1047,9 +1070,9 @@ class ProjectImpl(
                     parseResponse(f)
                   }.get
                 case 403 =>
-                  RetrievePreparedImageAuthError(resp.status, resp.statusText, resp.body)
+                  RestAuthFailure(resp.status, resp.statusText, resp.body)
                 case _ =>
-                  RetrievePreparedImageUnknownError(resp.status, resp.statusText, resp.body)
+                  RestUnknownFailure(resp.status, resp.statusText, resp.body)
               }
             },
             Duration.apply(60, TimeUnit.SECONDS)

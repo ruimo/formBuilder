@@ -13,7 +13,7 @@ class AuthController extends Initializable {
   private[this] var serverUrlText: TextField = _
 
   @FXML
-  private[this] var userNameText: TextField = _
+  private[this] var contractedUserIdText: TextField = _
 
   @FXML
   private[this] var applicationTokenText: TextField = _
@@ -22,7 +22,7 @@ class AuthController extends Initializable {
   }
 
   def model: AuthSettings = AuthSettingsImpl(
-    UserName(userNameText.getText()),
+    ContractedUserId(contractedUserIdText.getText()),
     ApplicationToken(applicationTokenText.getText()),
     Url(serverUrlText.getText())
   )
@@ -30,12 +30,12 @@ class AuthController extends Initializable {
   def model_=(newModel: AuthSettings) {
     newModel match {
       case NullAuthSettings =>
-        userNameText.setText("")
+        contractedUserIdText.setText("")
         applicationTokenText.setText("")
         serverUrlText.setText("")
 
       case as: AuthSettingsImpl =>
-        userNameText.setText(as.userName.value)
+        contractedUserIdText.setText(as.contractedUserId.value)
         applicationTokenText.setText(as.applicationToken.value)
         serverUrlText.setText(as.url.value)
     }
