@@ -26,6 +26,7 @@
         <menus>
           <Menu text="ファイル(_F)">
             <items>
+              <MenuItem onAction="#saveMenuClicked" text="保管(_S)" />
               <MenuItem onAction="#exitMenuClicked" text="終了(_X)" />
             </items>
           </Menu>

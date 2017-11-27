@@ -300,6 +300,8 @@ class ProjectImpl(
 ) extends com.ruimo.forms.Project {
   val version = VersionOne
   @volatile
+  private[this] var _isDirty = false
+  @volatile
   private[this] var _skewCorrection: SkewCorrection = SkewCorrection(false, SkewCorrectionConditionImpl())
   @volatile
   private[this] var _absFields = new AbsoluteFieldTable(projectContext)
@@ -324,6 +326,8 @@ class ProjectImpl(
   @volatile
   private[this] var _cachedImage: imm.Map[(Path, Boolean, Boolean), RetrievePreparedImageResultOk] = Map()
 
+  def isDirty = _isDirty
+
   def withListener(newListener: ProjectListener): Project = new ProjectImpl(
     this.projectContext,
     newListener
@@ -337,11 +341,13 @@ class ProjectImpl(
     if (newSkewCorrection != _skewCorrection) {
       this._skewCorrection = newSkewCorrection
       listener.onSkewCorrectionChanged(newSkewCorrection)
+      _isDirty = true
     }
   }
   
   def addAbsoluteField(f: AbsoluteField, isSelected: Boolean) {
     _absFields.addAbsoluteField(f, isSelected)
+    _isDirty = true
   }
 
   def deselectAllFields() {
@@ -426,6 +432,7 @@ class ProjectImpl(
 
   def deleteAllSelectedFields() {
     _absFields.deleteAllSelectedFields()
+    _isDirty = true
   }
 
   def getSelectedFieldAt(x: Double, y: Double): Option[Field] =
@@ -456,50 +463,60 @@ class ProjectImpl(
   def moveSelectedFields(from: Point2D, to: Point2D) {
     moveSelectedAbsoluteFields(from, to)
     moveSelectedCropFields(from, to)
+    _isDirty = true
   }
 
   def northResizeSelectedFields(from: Point2D, to: Point2D) {
     northResizeSelectedAbsoluteFields(from, to)
     northResizeSelectedCropFields(from, to)
+    _isDirty = true
   }
 
   def eastResizeSelectedFields(from: Point2D, to: Point2D) {
     eastResizeSelectedAbsoluteFields(from, to)
     eastResizeSelectedCropFields(from, to)
+    _isDirty = true
   }
 
   def westResizeSelectedFields(from: Point2D, to: Point2D) {
     westResizeSelectedAbsoluteFields(from, to)
     westResizeSelectedCropFields(from, to)
+    _isDirty = true
   }
 
   def southResizeSelectedFields(from: Point2D, to: Point2D) {
     southResizeSelectedAbsoluteFields(from, to)
     southResizeSelectedCropFields(from, to)
+    _isDirty = true
   }
 
   def northWestResizeSelectedFields(from: Point2D, to: Point2D) {
     northWestResizeSelectedAbsoluteFields(from, to)
     northWestResizeSelectedCropFields(from, to)
+    _isDirty = true
   }
 
   def northEastResizeSelectedFields(from: Point2D, to: Point2D) {
     northEastResizeSelectedAbsoluteFields(from, to)
     northEastResizeSelectedCropFields(from, to)
+    _isDirty = true
   }
 
   def southWestResizeSelectedFields(from: Point2D, to: Point2D) {
     southWestResizeSelectedAbsoluteFields(from, to)
     southWestResizeSelectedCropFields(from, to)
+    _isDirty = true
   }
 
   def southEastResizeSelectedFields(from: Point2D, to: Point2D) {
     southEastResizeSelectedAbsoluteFields(from, to)
     southEastResizeSelectedCropFields(from, to)
+    _isDirty = true
   }
 
   def moveSelectedAbsoluteFields(from: Point2D, to: Point2D) {
     _absFields.moveSelectedFields(from, to)
+    _isDirty = true
   }
 
   def modifySelectedCropField[T <: CropField](
@@ -513,6 +530,7 @@ class ProjectImpl(
         projectContext.onSelectedCropFieldAdded(modified)
       }
     }
+    _isDirty = true
   }
 
   def moveSelectedCropFields(from: Point2D, to: Point2D) {
@@ -521,38 +539,47 @@ class ProjectImpl(
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
     modifySelectedCropField(rightCropField, isRightCropFieldSelected, modifier)
     modifySelectedCropField(bottomCropField, isBottomCropFieldSelected, modifier)
+    _isDirty = true
   }
 
   def northResizeSelectedAbsoluteFields(from: Point2D, to: Point2D) {
     _absFields.northResizeSelectedFields(from, to)
+    _isDirty = true
   }
 
   def eastResizeSelectedAbsoluteFields(from: Point2D, to: Point2D) {
     _absFields.eastResizeSelectedFields(from, to)
+    _isDirty = true
   }
 
   def westResizeSelectedAbsoluteFields(from: Point2D, to: Point2D) {
     _absFields.westResizeSelectedFields(from, to)
+    _isDirty = true
   }
 
   def southResizeSelectedAbsoluteFields(from: Point2D, to: Point2D) {
     _absFields.southResizeSelectedFields(from, to)
+    _isDirty = true
   }
 
   def northEastResizeSelectedAbsoluteFields(from: Point2D, to: Point2D) {
     _absFields.northEastResizeSelectedFields(from, to)
+    _isDirty = true
   }
 
   def northWestResizeSelectedAbsoluteFields(from: Point2D, to: Point2D) {
     _absFields.northWestResizeSelectedFields(from, to)
+    _isDirty = true
   }
 
   def southEastResizeSelectedAbsoluteFields(from: Point2D, to: Point2D) {
     _absFields.southEastResizeSelectedFields(from, to)
+    _isDirty = true
   }
 
   def southWestResizeSelectedAbsoluteFields(from: Point2D, to: Point2D) {
     _absFields.southWestResizeSelectedFields(from, to)
+    _isDirty = true
   }
 
   def northResizeSelectedCropFields(from: Point2D, to: Point2D) {
@@ -561,6 +588,7 @@ class ProjectImpl(
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
     modifySelectedCropField(rightCropField, isRightCropFieldSelected, modifier)
     modifySelectedCropField(bottomCropField, isBottomCropFieldSelected, modifier)
+    _isDirty = true
   }
 
   def eastResizeSelectedCropFields(from: Point2D, to: Point2D) {
@@ -569,6 +597,7 @@ class ProjectImpl(
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
     modifySelectedCropField(rightCropField, isRightCropFieldSelected, modifier)
     modifySelectedCropField(bottomCropField, isBottomCropFieldSelected, modifier)
+    _isDirty = true
   }
 
   def westResizeSelectedCropFields(from: Point2D, to: Point2D) {
@@ -577,6 +606,7 @@ class ProjectImpl(
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
     modifySelectedCropField(rightCropField, isRightCropFieldSelected, modifier)
     modifySelectedCropField(bottomCropField, isBottomCropFieldSelected, modifier)
+    _isDirty = true
   }
 
   def southResizeSelectedCropFields(from: Point2D, to: Point2D) {
@@ -585,6 +615,7 @@ class ProjectImpl(
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
     modifySelectedCropField(rightCropField, isRightCropFieldSelected, modifier)
     modifySelectedCropField(bottomCropField, isBottomCropFieldSelected, modifier)
+    _isDirty = true
   }
 
   def northEastResizeSelectedCropFields(from: Point2D, to: Point2D) {
@@ -593,6 +624,7 @@ class ProjectImpl(
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
     modifySelectedCropField(rightCropField, isRightCropFieldSelected, modifier)
     modifySelectedCropField(bottomCropField, isBottomCropFieldSelected, modifier)
+    _isDirty = true
   }
 
   def northWestResizeSelectedCropFields(from: Point2D, to: Point2D) {
@@ -601,6 +633,7 @@ class ProjectImpl(
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
     modifySelectedCropField(rightCropField, isRightCropFieldSelected, modifier)
     modifySelectedCropField(bottomCropField, isBottomCropFieldSelected, modifier)
+    _isDirty = true
   }
 
   def southEastResizeSelectedCropFields(from: Point2D, to: Point2D) {
@@ -609,6 +642,7 @@ class ProjectImpl(
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
     modifySelectedCropField(rightCropField, isRightCropFieldSelected, modifier)
     modifySelectedCropField(bottomCropField, isBottomCropFieldSelected, modifier)
+    _isDirty = true
   }
 
   def southWestResizeSelectedCropFields(from: Point2D, to: Point2D) {
@@ -617,10 +651,12 @@ class ProjectImpl(
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
     modifySelectedCropField(rightCropField, isRightCropFieldSelected, modifier)
     modifySelectedCropField(bottomCropField, isBottomCropFieldSelected, modifier)
+    _isDirty = true
   }
 
   def renameSelectedAbsoluteField(f: AbsoluteField, newName: String) {
     _absFields.renameSelectedField(f, newName)
+    _isDirty = true
   }
 
   def onCropFieldRemoved(f: CropField, isSelected: Boolean) {
@@ -630,6 +666,7 @@ class ProjectImpl(
     else {
       projectContext.onNormalCropFieldRemoved(f)
     }
+    _isDirty = true
   }
 
   def onCropFieldAdded(f: CropField, isSelected: Boolean) {
@@ -639,6 +676,7 @@ class ProjectImpl(
     else {
       projectContext.onNormalCropFieldAdded(f)
     }
+    _isDirty = true
   }
 
   def redrawCropField(f: CropField, isSelected: Boolean) {
@@ -770,6 +808,7 @@ class ProjectImpl(
   def cropEnabled_=(enabled: Boolean) {
     _isEdgeCropEnabled = enabled
     listener.onCropEnabledChanged(enabled)
+    _isDirty = true
   }
 
   def cropEnabled: Boolean = _isEdgeCropEnabled
@@ -856,7 +895,6 @@ class ProjectImpl(
       }
     }
 
-    val auth = Settings.Loader.settings.auth
     val json: Future[Either[RetrievePreparedImageRestFailure, JsObject]] =
       cropTarget.flatMap { (crpt: Either[RetrievePreparedImageRestFailure, (Double, Double)]) =>
         captureTarget.map { (cp: Either[RetrievePreparedImageRestFailure, (Double, Double)]) =>
@@ -864,10 +902,6 @@ class ProjectImpl(
             cp.flatMap { (capt: (Double, Double)) =>
               Right(
                 Json.obj(
-                  "auth" -> Json.obj(
-                    "contractedUserId" -> auth.contractedUserId.value,
-                    "apiKey" -> auth.applicationToken.value
-                  ),
                   "inputFiles" -> JsArray(Seq(JsString(fileName))),
                   "skewCorrection" -> skewCorrection.asJson(skewCorrection.enabled),
                   "crop" -> edgeCrop(cropt._1, cropt._2).asJson(cropEnabled),
@@ -922,15 +956,9 @@ class ProjectImpl(
       Future.successful(Right(image.image.getWidth() -> image.image.getHeight()))
     }
 
-    val auth = Settings.Loader.settings.auth
-
     cropTarget.map { (cpt: Either[RetrievePreparedImageRestFailure, (Double, Double)]) =>
       cpt.map { cropt =>
         val json = Json.obj(
-          "auth" -> Json.obj(
-            "contractedUserId" -> auth.contractedUserId.value,
-            "apiKey" -> auth.applicationToken.value
-          ),
           "inputFiles" -> JsArray(Seq(JsString(fileName))),
           "skewCorrection" -> skewCorrection.asJson(isSkewCorrectionEnabled),
           "crop" -> edgeCrop(cropt._1, cropt._2).asJson(isCropEnabled)
@@ -954,14 +982,16 @@ class ProjectImpl(
     }
   }
 
-  def runCapture(si: SelectedImage): Future[Either[CaptureRestFailure, CaptureResponse]] = {
+  def runCapture(si: SelectedImage): Future[Either[CaptureRestFailure, CaptureResultOk]] = {
     prepareFileForCaptureApi(si).map {
       case Right(fileToSubmit) =>
         val urlPath = Settings.Loader.settings.auth.url.resolve("capture")
+          val auth = Settings.Loader.settings.auth
 
         Await.result(
           Ws().url(urlPath).addHttpHeaders(
-            "Content-Type" -> "application/zip"
+            "Content-Type" -> "application/zip",
+            "Authorization" -> (auth.contractedUserId.value + "_" + auth.applicationToken.value)
           ).post(
             Files.readAllBytes(fileToSubmit)
           ).map { resp =>
@@ -978,7 +1008,7 @@ class ProjectImpl(
                 }.get
 
                 println("result: " + jsonResult)
-                Right(CaptureResponse.parse(jsonResult))
+                Right(CaptureResultOk.parse(jsonResult))
               case 403 =>
                 Left(RestAuthFailure(resp.status, resp.statusText, resp.body))
               case _ =>
@@ -1052,10 +1082,12 @@ class ProjectImpl(
       prepareFileForPrepareApi(si, isSkewCorrectionEnabled, isCropEnabled).map { (fileToSubmit: Either[RetrievePreparedImageRestFailure, Path]) =>
         fileToSubmit.map { f =>
           val urlPath = Settings.Loader.settings.auth.url.resolve("prepare")
+          val auth = Settings.Loader.settings.auth
 
           Await.result(
             Ws().url(urlPath).addHttpHeaders(
-              "Content-Type" -> "application/zip"
+              "Content-Type" -> "application/zip",
+              "Authorization" -> (auth.contractedUserId.value + "_" + auth.applicationToken.value)
             ).post(
               Files.readAllBytes(f)
             ).map { resp =>
@@ -1091,4 +1123,65 @@ class ProjectImpl(
 
   override def cropFieldsAreReady: Boolean =
     _topCropField.isDefined && _leftCropField.isDefined && _rightCropField.isDefined && _bottomCropField.isDefined
+
+  private def asJson: JsValue = {
+    Json.obj(
+      "fileName" -> "foo",
+      "Hello" -> "World"
+    )
+  }
+
+  private def prepareFileForSaveConfig: Path = {
+    println("prepareFileForSaveConfig()")
+
+    PathUtil.withTempFile(None, None) { projectFile =>
+      Files.write(projectFile, asJson.toString.getBytes("utf-8"))
+
+      PathUtil.withTempFile(None, None) { configFile =>
+        Files.write(configFile, "filename".getBytes("utf-8"))
+
+        val zipFile = Files.createTempFile(null, null)
+        Zip.deflate(
+          zipFile,
+          Seq(
+            "config.json" -> configFile,
+            "project.json" -> projectFile
+          )
+        )
+        zipFile
+      }.get
+    }.get
+  }
+
+  def saveConfig(): Future[SaveConfigRestResult] = {
+    val urlPath = Settings.Loader.settings.auth.url.resolve("saveConfig")
+    val auth = Settings.Loader.settings.auth
+
+    Ws().url(urlPath).addHttpHeaders(
+      "Content-Type" -> "application/zip",
+      "Authorization" -> (auth.contractedUserId.value + "_" + auth.applicationToken.value)
+    ).post(
+      Files.readAllBytes(prepareFileForSaveConfig)
+    ).map { resp =>
+      println("status = " + resp.status)
+      println("statusText = " + resp.statusText)
+      resp.status match {
+        case 200 =>
+          PathUtil.withTempFile(None, None) { f =>
+            using(FileChannel.open(f, StandardOpenOption.CREATE, StandardOpenOption.WRITE)) { ch =>
+              ch.write(resp.bodyAsBytes.toByteBuffer)
+            }.get
+            SaveConfigResultOk(
+              SaveConfigResult(
+                Revision(0)
+              )
+            )
+          }.get
+        case 403 =>
+          RestAuthFailure(resp.status, resp.statusText, resp.body)
+        case _ =>
+          RestUnknownFailure(resp.status, resp.statusText, resp.body)
+      }
+    }
+  }
 }

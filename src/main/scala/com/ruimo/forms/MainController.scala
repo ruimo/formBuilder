@@ -1,5 +1,6 @@
 package com.ruimo.forms
 
+import scalafx.scene.control.{ButtonType => SfxButtonType}
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.concurrent.{Await, Future}
@@ -35,6 +36,7 @@ import scalafx.scene.control.{CheckBox => SfxCheckBox}
 import javafx.scene.canvas.Canvas
 import javafx.scene.control._
 import javafx.scene.paint.Color
+import javafx.stage.WindowEvent
 
 import scalafx.scene.canvas.{Canvas => SfxCanvas}
 import scalafx.scene.control.{DialogPane => SfxDialogPane}
@@ -636,6 +638,52 @@ class MainController extends Initializable {
         }
       }
     })
+
+    hookWindowClose()
+  }
+
+  private[this] def hookWindowClose() {
+    stage.onCloseRequest = new EventHandler[WindowEvent]() {
+      def handle(e: WindowEvent) {
+        if (project.isDirty) {
+          val dlg = new SfxAlert(AlertType.Confirmation) {
+            title = "保管確認"
+            contentText = "帳票設定を保管しますか？"
+            buttonTypes = Seq(
+              SfxButtonType.Cancel, SfxButtonType.No, SfxButtonType.Yes
+            )
+          }
+          dlg.showAndWait() match {
+            case Some(SfxButtonType.Yes) =>
+              if (! saveProject()) {
+                e.consume()
+              }
+            case _ => e.consume()
+          }
+        }
+      }
+    }
+  }
+
+  private[this] def saveProject(): Boolean = {
+    val loader = new FXMLLoader(getClass().getResource("save.fxml"))
+    val root: DialogPane = loader.load()
+    val ctrl = loader.getController().asInstanceOf[SaveController]
+    val alert = new SfxAlert(AlertType.Confirmation)
+    alert.dialogPane = new SfxDialogPane(root)
+    alert.showAndWait() match {
+      case Some(SfxButtonType.Apply) =>
+        doBigJob {
+          Right(project.saveConfig())
+        } { (result: SaveConfigRestResult) =>
+
+        } { t =>
+          showGeneralError()
+        }
+        true
+      case _ =>
+        false
+    }
   }
 
   @FXML
@@ -829,6 +877,12 @@ class MainController extends Initializable {
   }
 
   @FXML
+  def saveMenuClicked(event: ActionEvent) {
+    println("saveMenuClicked()")
+
+  }
+
+  @FXML
   def imageOpenMenuClicked(event: ActionEvent) {
     val fc = new FileChooser {
       title = "Select image file"
@@ -901,10 +955,6 @@ class MainController extends Initializable {
         files.map { (f: File) =>
           PathUtil.withTempFile(None, None) { (zipFileToSubmit: Path) =>
             val json = Json.obj(
-              "auth" -> Json.obj(
-                "contractedUserId" -> auth.contractedUserId.value,
-                "apiKey" -> auth.applicationToken.value
-              ),
               "inputFile" -> f.getName
             )
             PathUtil.withTempFile(None, None) { (configFile: Path) =>
@@ -919,7 +969,8 @@ class MainController extends Initializable {
 
               Await.result(
                 Ws().url(urlPath).addHttpHeaders(
-                  "Content-Type" -> "application/zip"
+                  "Content-Type" -> "application/zip",
+                  "Authorization" -> (auth.contractedUserId.value + "_" + auth.applicationToken.value)
                 ).post(
                   zipFileToSubmit.toFile
                 ).map { resp =>
@@ -1283,7 +1334,7 @@ class MainController extends Initializable {
           val alert = new Alert(AlertType.Information)
           alert.setTitle("処理結果")
           alert.setContentText(
-            resp.result.map { e =>
+            resp.serverResp.map { e =>
               e.fieldName + ": " + e.rawText
             }.mkString("\r\n")
           )

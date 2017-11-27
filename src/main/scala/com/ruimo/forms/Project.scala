@@ -13,28 +13,12 @@ import play.api.libs.json.{JsBoolean, JsObject, JsString, JsValue}
 import scalafx.scene.canvas.{GraphicsContext => SfxGraphicsContext}
 import scala.collection.{immutable => imm}
 
-object CaptureResponse {
-  def parse(json: JsValue): CaptureResponse = {
-    val capturedFields = (json \ "capturedFields").as[Seq[JsValue]]
-    CaptureResponse(
-      capturedFields.map { e =>
-        CaptureResult(
-          (e \ "fieldName").as[String],
-          (e \ "base64Image").as[String],
-          (e \ "text").as[String],
-          (e \ "rawText").as[String]
-        )
-      }.toList
-    )
-  }
-}
+case class SaveConfigResponse(
+  result: SaveConfigResult
+)
 
 case class CaptureResponse(
   result: imm.Seq[CaptureResult]
-)
-
-case class CaptureResult(
-  fieldName: String, base64Image: String, text: String, rawText: String
 )
 
 sealed trait SkewCorrectionDirection {
@@ -286,6 +270,7 @@ object NullObjectListener extends ProjectListener {
 }
 
 trait Project {
+  def isDirty: Boolean
   val version: Version
   def listener: ProjectListener
 
@@ -355,8 +340,9 @@ trait Project {
   ): Either[RetrievePreparedImageRestResult, Future[RetrievePreparedImageRestResult]]
 
   def invalidateCachedImage(skewCorrected: Boolean = false, cropped: Boolean = false): Unit
-  def runCapture(si: SelectedImage): Future[Either[CaptureRestFailure, CaptureResponse]]
+  def runCapture(si: SelectedImage): Future[Either[CaptureRestFailure, CaptureResultOk]]
   def cropFieldsAreReady: Boolean
+  def saveConfig(): Future[SaveConfigRestResult]
 }
 
 
