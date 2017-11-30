@@ -1,5 +1,6 @@
 package com.ruimo.forms
 
+import com.ruimo.scoins.Percent
 import scala.concurrent.Future
 import java.nio.file.Path
 import javafx.scene.Cursor
@@ -33,18 +34,18 @@ case object SkewCorrectionDirectionVertical extends SkewCorrectionDirection {
 
 sealed trait Field extends Widget[Field] {
   type R <: Field
-  def drawArea: Rectangle2D
-  def draw(gc: SfxGraphicsContext, isSelected: Boolean): Unit
-  def possibleMouseOperation(x: Double, y: Double): MouseOperation
-  def move(from: Point2D, to: Point2D): R
-  def northResize(from: Point2D, to: Point2D): R
-  def eastResize(from: Point2D, to: Point2D): R
-  def westResize(from: Point2D, to: Point2D): R
-  def southResize(from: Point2D, to: Point2D): R
-  def northEastResize(from: Point2D, to: Point2D): R
-  def northWestResize(from: Point2D, to: Point2D): R
-  def southEastResize(from: Point2D, to: Point2D): R
-  def southWestResize(from: Point2D, to: Point2D): R
+  def drawArea(formSize: (Double, Double)): Rectangle2D
+  def draw(formSize: (Double, Double), gc: SfxGraphicsContext, isSelected: Boolean): Unit
+  def possibleMouseOperation(formSize: (Double, Double), x: Double, y: Double): MouseOperation
+  def move(formSize: (Double, Double), from: Point2D, to: Point2D): R
+  def northResize(formSize: (Double, Double), from: Point2D, to: Point2D): R
+  def eastResize(formSize: (Double, Double), from: Point2D, to: Point2D): R
+  def westResize(formSize: (Double, Double), from: Point2D, to: Point2D): R
+  def southResize(formSize: (Double, Double), from: Point2D, to: Point2D): R
+  def northEastResize(formSize: (Double, Double), from: Point2D, to: Point2D): R
+  def northWestResize(formSize: (Double, Double), from: Point2D, to: Point2D): R
+  def southEastResize(formSize: (Double, Double), from: Point2D, to: Point2D): R
+  def southWestResize(formSize: (Double, Double), from: Point2D, to: Point2D): R
 }
 
 case class SkewCorrection(
@@ -92,143 +93,188 @@ trait EdgeCropCondition {
 
 trait RectField extends Field {
   type R <: RectField
-  def withNewRect(rect: Rectangle2D): R
+  def withNewRect(rect: Rectangle2D, formSize: (Double, Double)): R
   def rect: Rectangle2D
+  def originalSize: (Double, Double)
+  def scaleX(currentSize: (Double, Double), x: Double): Double =
+    x * currentSize._1 / originalSize._1
+  // Not bug! Use width (not height) to scale y axis too.
+  def scaleY(currentSize: (Double, Double), y: Double): Double =
+    y * currentSize._1 / originalSize._1
 
-  def move(from: Point2D, to: Point2D): R = withNewRect(
-    new Rectangle2D(
-      this.rect.minX + (to.x - from.x),
-      this.rect.minY + (to.y - from.y),
-      this.rect.width,
-      this.rect.height
+  def move(formSize: (Double, Double), from: Point2D, to: Point2D): R = {
+    withNewRect(
+      new Rectangle2D(
+        scaleX(formSize, this.rect.minX) + (to.x - from.x),
+        scaleY(formSize, this.rect.minY) + (to.y - from.y),
+        scaleX(formSize, this.rect.width),
+        scaleY(formSize, this.rect.height)
+      ),
+      formSize
     )
-  )
+  }
 
-  override def northResize(from: Point2D, to: Point2D): R = {
+  override def northResize(formSize: (Double, Double), from: Point2D, to: Point2D): R = {
     var diff = to.y - from.y
-    if (this.rect.height <= diff) {
-      diff = this.rect.height - 1
+    val h = scaleY(formSize, this.rect.height)
+    if (h <= diff) {
+      diff = h - 1
     }
 
     withNewRect(
       new Rectangle2D(
-        this.rect.minX, this.rect.minY + diff,
-        this.rect.width, this.rect.height - diff
-      )
+        scaleX(formSize, this.rect.minX),
+        scaleY(formSize, this.rect.minY) + diff,
+        scaleX(formSize, this.rect.width),
+        h - diff
+      ),
+      formSize
     )
   }
 
-  override def southResize(from: Point2D, to: Point2D): R = {
+  override def southResize(formSize: (Double, Double), from: Point2D, to: Point2D): R = {
     var diff = from.y - to.y
-    if (this.rect.height <= diff) {
-      diff = this.rect.height - 1
+    val h = scaleY(formSize, this.rect.height)
+    if (h <= diff) {
+      diff = h - 1
     }
 
     withNewRect(
       new Rectangle2D(
-        this.rect.minX, this.rect.minY,
-        this.rect.width, this.rect.height - diff
-      )
+        scaleX(formSize, this.rect.minX),
+        scaleY(formSize, this.rect.minY),
+        scaleX(formSize, this.rect.width),
+        h - diff
+      ),
+      formSize
     )
   }
 
-  override def westResize(from: Point2D, to: Point2D): R = {
+  override def westResize(formSize: (Double, Double), from: Point2D, to: Point2D): R = {
     var diff = to.x - from.x
-    if (this.rect.width <= diff) {
-      diff = this.rect.width - 1
+    val w = scaleX(formSize, this.rect.width)
+    if (w <= diff) {
+      diff = w - 1
     }
 
     withNewRect(
       new Rectangle2D(
-        this.rect.minX + diff, this.rect.minY,
-        this.rect.width - diff, this.rect.height
-      )
+        scaleX(formSize, this.rect.minX) + diff,
+        scaleY(formSize, this.rect.minY),
+        w - diff,
+        scaleY(formSize, this.rect.height)
+      ),
+      formSize
     )
   }
 
-  override def eastResize(from: Point2D, to: Point2D): R = {
+  override def eastResize(formSize: (Double, Double), from: Point2D, to: Point2D): R = {
     var diff = from.x - to.x
-    if (this.rect.width <= diff) {
-      diff = this.rect.width - 1
+    val w = scaleX(formSize, this.rect.width)
+    if (w <= diff) {
+      diff = w - 1
     }
 
     withNewRect(
       new Rectangle2D(
-        this.rect.minX, this.rect.minY,
-        this.rect.width - diff, this.rect.height
-      )
+        scaleX(formSize, this.rect.minX),
+        scaleY(formSize, this.rect.minY),
+        w - diff,
+        scaleY(formSize, this.rect.height)
+      ),
+      formSize
     )
   }
 
-  override def northEastResize(from: Point2D, to: Point2D): R = {
+  override def northEastResize(formSize: (Double, Double), from: Point2D, to: Point2D): R = {
     var diffX = from.x - to.x
     var diffY = to.y - from.y
-    if (this.rect.width <= diffX) {
-      diffX = this.rect.width - 1
+    val w = scaleX(formSize, this.rect.width)
+    val h = scaleY(formSize, this.rect.height)
+    if (w <= diffX) {
+      diffX = w - 1
     }
-    if (this.rect.height <= diffY) {
-      diffY = this.rect.height - 1
+    if (h <= diffY) {
+      diffY = h - 1
     }
 
     withNewRect(
       new Rectangle2D(
-        this.rect.minX, this.rect.minY + diffY,
-        this.rect.width - diffX, this.rect.height - diffY
-      )
+        scaleX(formSize, this.rect.minX),
+        scaleY(formSize, this.rect.minY) + diffY,
+        w - diffX,
+        h - diffY
+      ),
+      formSize
     )
   }
 
-  override def northWestResize(from: Point2D, to: Point2D): R = {
+  override def northWestResize(formSize: (Double, Double), from: Point2D, to: Point2D): R = {
     var diffX = to.x - from.x
     var diffY = to.y - from.y
-    if (this.rect.width <= diffX) {
-      diffX = this.rect.width - 1
+    val w = scaleX(formSize, this.rect.width)
+    val h = scaleY(formSize, this.rect.height)
+    if (w <= diffX) {
+      diffX = w - 1
     }
-    if (this.rect.height <= diffY) {
-      diffY = this.rect.height - 1
+    if (h <= diffY) {
+      diffY = h - 1
     }
 
     withNewRect(
       new Rectangle2D(
-        this.rect.minX + diffX, this.rect.minY + diffY,
-        this.rect.width - diffX, this.rect.height - diffY
-      )
+        scaleX(formSize, this.rect.minX) + diffX,
+        scaleY(formSize, this.rect.minY) + diffY,
+        w - diffX,
+        h - diffY
+      ),
+      formSize
     )
   }
 
-  override def southWestResize(from: Point2D, to: Point2D): R = {
+  override def southWestResize(formSize: (Double, Double), from: Point2D, to: Point2D): R = {
     var diffX = to.x - from.x
     var diffY = from.y - to.y
-    if (this.rect.width <= diffX) {
-      diffX = this.rect.width - 1
+    val w = scaleX(formSize, this.rect.width)
+    val h = scaleY(formSize, this.rect.height)
+    if (w <= diffX) {
+      diffX = w - 1
     }
-    if (this.rect.height <= diffY) {
-      diffY = this.rect.height - 1
+    if (h <= diffY) {
+      diffY = h - 1
     }
 
     withNewRect(
       new Rectangle2D(
-        this.rect.minX + diffX, this.rect.minY,
-        this.rect.width - diffX, this.rect.height - diffY
-      )
+        scaleX(formSize, this.rect.minX) + diffX,
+        scaleY(formSize, this.rect.minY),
+        w - diffX,
+        h - diffY
+      ),
+      formSize
     )
   }
 
-  override def southEastResize(from: Point2D, to: Point2D): R = {
+  override def southEastResize(formSize: (Double, Double), from: Point2D, to: Point2D): R = {
     var diffX = from.x - to.x
     var diffY = from.y - to.y
-    if (this.rect.width <= diffX) {
-      diffX = this.rect.width - 1
+    val w = scaleX(formSize, this.rect.width)
+    val h = scaleY(formSize, this.rect.height)
+    if (w <= diffX) {
+      diffX = w - 1
     }
-    if (this.rect.height <= diffY) {
-      diffY = this.rect.height - 1
+    if (h <= diffY) {
+      diffY = h - 1
     }
 
     withNewRect(
       new Rectangle2D(
-        this.rect.minX, this.rect.minY,
-        this.rect.width - diffX, this.rect.height - diffY
-      )
+        scaleX(formSize, this.rect.minX),
+        scaleY(formSize, this.rect.minY),
+        w - diffX,
+        h - diffY
+      ),
+      formSize
     )
   }
 }
@@ -237,6 +283,7 @@ trait AbsoluteField extends Field with RectField {
   type R <: AbsoluteField
   def name: String
   def withName(newName: String): R
+  def asJson: JsObject
 }
 
 trait CropField extends Field with RectField {
@@ -245,6 +292,7 @@ trait CropField extends Field with RectField {
   def toTop: TopCropField
   def toRight: RightCropField
   def toBottom: BottomCropField
+  def asJson: JsObject
 }
 trait LeftCropField extends CropField {
   type R <: LeftCropField
@@ -278,33 +326,33 @@ trait Project {
   def addAbsoluteField(f: AbsoluteField, isSelected: Boolean): Unit
   def absoluteFields: AbsoluteFieldTable
   def deselectAllFields(): Unit
-  def selectAbsoluteFields(rect: Rectangle2D, e: MouseEvent): Unit
-  def selectCropFields(rect: Rectangle2D, e: MouseEvent): Unit
-  def selectSingleFieldAt(x: Double, y: Double): Unit
+  def selectAbsoluteFields(formSize: (Double, Double), rect: Rectangle2D, e: MouseEvent): Unit
+  def selectCropFields(formSize: (Double, Double), rect: Rectangle2D, e: MouseEvent): Unit
+  def selectSingleFieldAt(formSize: (Double, Double), x: Double, y: Double): Unit
   def selectField(f: Field): Unit
   def selectAbsoluteField(f: AbsoluteField): Unit
   def selectCropField(f: CropField): Unit
   def deleteAllSelectedFields(): Unit
-  def getSelectedFieldAt(x: Double, y: Double): Option[Field]
-  def getSelectedAbsoluteFieldAt(x: Double, y: Double): Option[AbsoluteField]
-  def getSelectedCropFieldAt(x: Double, y: Double): Option[CropField]
-  def getNormalFieldAt(x: Double, y: Double): Option[Field]
-  def getNormalAbsoluteFieldAt(x: Double, y: Double): Option[AbsoluteField]
-  def getNormalCropFieldAt(x: Double, y: Double): Option[CropField]
-  def moveSelectedFields(from: Point2D, to: Point2D): Unit
-  def moveSelectedAbsoluteFields(from: Point2D, to: Point2D): Unit
-  def moveSelectedCropFields(from: Point2D, to: Point2D): Unit
+  def getSelectedFieldAt(formSize: (Double, Double), x: Double, y: Double): Option[Field]
+  def getSelectedAbsoluteFieldAt(formSize: (Double, Double), x: Double, y: Double): Option[AbsoluteField]
+  def getSelectedCropFieldAt(formSize: (Double, Double), x: Double, y: Double): Option[CropField]
+  def getNormalFieldAt(formSize: (Double, Double), x: Double, y: Double): Option[Field]
+  def getNormalAbsoluteFieldAt(formSize: (Double, Double), x: Double, y: Double): Option[AbsoluteField]
+  def getNormalCropFieldAt(formSize: (Double, Double), x: Double, y: Double): Option[CropField]
+  def moveSelectedFields(formSize: (Double, Double), from: Point2D, to: Point2D): Unit
+  def moveSelectedAbsoluteFields(formSize: (Double, Double), from: Point2D, to: Point2D): Unit
+  def moveSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D): Unit
   def renameSelectedAbsoluteField(f: AbsoluteField, newName: String): Unit
   def redraw(): Unit
-  def possibleMouseOperation(x: Double, y: Double): MouseOperation
-  def northResizeSelectedFields(p0: Point2D, p1: Point2D)
-  def eastResizeSelectedFields(p0: Point2D, p1: Point2D)
-  def westResizeSelectedFields(p0: Point2D, p1: Point2D)
-  def southResizeSelectedFields(p0: Point2D, p1: Point2D)
-  def northWestResizeSelectedFields(p0: Point2D, p1: Point2D)
-  def northEastResizeSelectedFields(p0: Point2D, p1: Point2D)
-  def southWestResizeSelectedFields(p0: Point2D, p1: Point2D)
-  def southEastResizeSelectedFields(p0: Point2D, p1: Point2D)
+  def possibleMouseOperation(formSize: (Double, Double), x: Double, y: Double): MouseOperation
+  def northResizeSelectedFields(formSize: (Double, Double), p0: Point2D, p1: Point2D)
+  def eastResizeSelectedFields(formSize: (Double, Double), p0: Point2D, p1: Point2D)
+  def westResizeSelectedFields(formSize: (Double, Double), p0: Point2D, p1: Point2D)
+  def southResizeSelectedFields(formSize: (Double, Double), p0: Point2D, p1: Point2D)
+  def northWestResizeSelectedFields(formSize: (Double, Double), p0: Point2D, p1: Point2D)
+  def northEastResizeSelectedFields(formSize: (Double, Double), p0: Point2D, p1: Point2D)
+  def southWestResizeSelectedFields(formSize: (Double, Double), p0: Point2D, p1: Point2D)
+  def southEastResizeSelectedFields(formSize: (Double, Double), p0: Point2D, p1: Point2D)
 
   def skewCorrection: SkewCorrection
   def skewCorrection_=(newSkewCorrection: SkewCorrection)
@@ -342,7 +390,7 @@ trait Project {
   def invalidateCachedImage(skewCorrected: Boolean = false, cropped: Boolean = false): Unit
   def runCapture(si: SelectedImage): Future[Either[CaptureRestFailure, CaptureResultOk]]
   def cropFieldsAreReady: Boolean
-  def saveConfig(): Future[SaveConfigRestResult]
+  def saveConfig(configName: String): Future[SaveConfigRestResult]
 }
 
 

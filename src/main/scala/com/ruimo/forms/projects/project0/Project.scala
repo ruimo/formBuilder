@@ -40,56 +40,67 @@ object AbsoluteFieldImpl {
   val LineWidth = 2.0
 }
 
-case class AbsoluteFieldImpl(rect: Rectangle2D, name: String) extends AbsoluteField {
+case class AbsoluteFieldImpl(originalSize: (Double, Double), rect: Rectangle2D, name: String) extends AbsoluteField {
   import AbsoluteFieldImpl._
   override type R = AbsoluteFieldImpl
 
-  val drawArea = new Rectangle2D(
-    rect.minX - LineWidth / 2, rect.minY - LineWidth / 2,
-    rect.width + LineWidth, rect.height + LineWidth
+  def drawArea(formSize: (Double, Double)) = new Rectangle2D(
+    scaleX(formSize, rect.minX) - LineWidth / 2,
+    scaleY(formSize, rect.minY) - LineWidth / 2,
+    scaleX(formSize, rect.width) + LineWidth,
+    scaleY(formSize, rect.height) + LineWidth
   )
 
-  def draw(gc: SfxGraphicsContext, isSelected: Boolean) {
+  def draw(formSize: (Double, Double), gc: SfxGraphicsContext, isSelected: Boolean) {
     gc.setLineWidth(LineWidth)
     gc.setStroke(if (isSelected) Color.RED else Color.BLUE)
     gc.setLineDashes()
-    gc.strokeRect(rect.minX, rect.minY, rect.width, rect.height)
+    gc.strokeRect(
+      scaleX(formSize, rect.minX),
+      scaleY(formSize, rect.minY),
+      scaleX(formSize, rect.width),
+      scaleY(formSize, rect.height)
+    )
   }
 
-  def withNewRect(newRect: Rectangle2D): R = copy(rect = newRect)
+  def withNewRect(newRect: Rectangle2D, formSize: (Double, Double)): R = copy(rect = newRect, originalSize = formSize)
 
   def withName(newName: String): AbsoluteFieldImpl =
     if (newName != name) copy(name = newName) else this
 
-  def possibleMouseOperation(x: Double, y: Double): MouseOperation = {
+  def possibleMouseOperation(formSize: (Double, Double), x: Double, y: Double): MouseOperation = {
     val cornerSize = LineWidth * 2
+    val rminx = scaleX(formSize, rect.minX)
+    val rminy = scaleY(formSize, rect.minY)
+    val rmaxx = scaleX(formSize, rect.maxX)
+    val rmaxy = scaleY(formSize, rect.maxY)
 
-    if (rect.minX - cornerSize <= x && x <= rect.minX + cornerSize
-      && rect.minY - cornerSize <= y && y <= rect.minY + cornerSize) {
+    if (rminx - cornerSize <= x && x <= rminx + cornerSize
+      && rminy - cornerSize <= y && y <= rminy + cornerSize) {
       CanNorthWestResize(this)
     }
-    else if (rect.maxX - cornerSize <= x && x <= rect.maxX + cornerSize
-      && rect.minY - cornerSize <= y && y <= rect.minY + cornerSize) {
+    else if (rmaxx - cornerSize <= x && x <= rmaxx + cornerSize
+      && rminy - cornerSize <= y && y <= rminy + cornerSize) {
       CanNorthEastResize(this)
     }
-    else if (rect.minX - cornerSize <= x && x <= rect.minX + cornerSize
-      && rect.maxY - cornerSize <= y && y <= rect.maxY + cornerSize) {
+    else if (rminx - cornerSize <= x && x <= rminx + cornerSize
+      && rect.maxY - cornerSize <= y && y <= rmaxy + cornerSize) {
       CanSouthWestResize(this)
     }
-    else if (rect.maxX - cornerSize <= x && x <= rect.maxX + cornerSize
-      && rect.maxY - cornerSize <= y && y <= rect.maxY + cornerSize) {
+    else if (rmaxx - cornerSize <= x && x <= rmaxx + cornerSize
+      && rmaxy - cornerSize <= y && y <= rmaxy + cornerSize) {
       CanSouthEastResize(this)
     }
-    else if (rect.minX - cornerSize <= x && x <= rect.minX + cornerSize) {
+    else if (rminx - cornerSize <= x && x <= rminx + cornerSize) {
       CanWestResize(this)
     }
-    else if (rect.maxX - cornerSize <= x && x <= rect.maxX + cornerSize) {
+    else if (rmaxx - cornerSize <= x && x <= rmaxx + cornerSize) {
       CanEastResize(this)
     }
-    else if (rect.minY - cornerSize <= y && y <= rect.minY + cornerSize) {
+    else if (rminy - cornerSize <= y && y <= rminy + cornerSize) {
       CanNorthResize(this)
     }
-    else if (rect.maxY - cornerSize <= y && y <= rect.maxY + cornerSize) {
+    else if (rmaxy - cornerSize <= y && y <= rect.maxY + cornerSize) {
       CanSouthResize(this)
     }
     else if (rect.contains(x, y)) {
@@ -97,57 +108,73 @@ case class AbsoluteFieldImpl(rect: Rectangle2D, name: String) extends AbsoluteFi
     }
     else CanDoNothing
   }
+
+  def asJson: JsObject = Json.obj(
+    "originalSize" -> JsArray(Seq(JsNumber(originalSize._1), JsNumber(originalSize._2))),
+    "x" -> rect.getMinX(),
+    "y" -> rect.getMinY(),
+    "w" -> rect.getWidth(),
+    "h" -> rect.getHeight()
+  )
 }
 
 object CropFieldImpl {
   val LineWidth = 2.0
 }
 
-abstract class CropFieldImpl(rect: Rectangle2D) extends CropField {
+abstract class CropFieldImpl(originalSize: (Double, Double), rect: Rectangle2D) extends CropField {
   type R <: CropFieldImpl
   import CropFieldImpl._
 
-  override def draw(gc: SfxGraphicsContext, isSelected: Boolean) {
+  override def draw(formSize: (Double, Double), gc: SfxGraphicsContext, isSelected: Boolean) {
     gc.setLineWidth(LineWidth)
     gc.setStroke(if (isSelected) Color.RED else Color.BLUE)
     gc.setLineDashes()
-    gc.strokeRect(rect.minX, rect.minY, rect.width, rect.height)
+    gc.strokeRect(
+      scaleX(formSize, rect.minX), scaleY(formSize, rect.minY),
+      scaleX(formSize, rect.width), scaleY(formSize, rect.height)
+    )
   }
 
-  override def drawArea: Rectangle2D = new Rectangle2D(
-    rect.minX - LineWidth / 2, rect.minY - LineWidth / 2,
-    rect.width + LineWidth, rect.height + LineWidth
+  override def drawArea(formSize: (Double, Double)): Rectangle2D = new Rectangle2D(
+    scaleX(formSize, rect.minX) - LineWidth / 2,
+    scaleY(formSize, rect.minY) - LineWidth / 2,
+    scaleX(formSize, rect.width) + LineWidth,
+    scaleY(formSize, rect.height) + LineWidth
   )
 
-  override def possibleMouseOperation(x: Double, y: Double): MouseOperation = {
+  override def possibleMouseOperation(formSize: (Double, Double), x: Double, y: Double): MouseOperation = {
     val cornerSize = LineWidth * 2
+    val rminx = scaleX(formSize, rect.minX)
+    val rminy = scaleY(formSize, rect.minY)
+    val rmaxy = scaleY(formSize, rect.maxY)
 
-    if (rect.minX - cornerSize <= x && x <= rect.minX + cornerSize
-      && rect.minY - cornerSize <= y && y <= rect.minY + cornerSize) {
+    if (rminx - cornerSize <= x && x <= rminx + cornerSize
+      && rminy - cornerSize <= y && y <= rminy + cornerSize) {
       CanNorthWestResize(this)
     }
     else if (rect.maxX - cornerSize <= x && x <= rect.maxX + cornerSize
-      && rect.minY - cornerSize <= y && y <= rect.minY + cornerSize) {
+      && rminy - cornerSize <= y && y <= rminy + cornerSize) {
       CanNorthEastResize(this)
     }
-    else if (rect.minX - cornerSize <= x && x <= rect.minX + cornerSize
-      && rect.maxY - cornerSize <= y && y <= rect.maxY + cornerSize) {
+    else if (rminx - cornerSize <= x && x <= rminx + cornerSize
+      && rmaxy - cornerSize <= y && y <= rmaxy + cornerSize) {
       CanSouthWestResize(this)
     }
     else if (rect.maxX - cornerSize <= x && x <= rect.maxX + cornerSize
-      && rect.maxY - cornerSize <= y && y <= rect.maxY + cornerSize) {
+      && rmaxy - cornerSize <= y && y <= rmaxy + cornerSize) {
       CanSouthEastResize(this)
     }
-    else if (rect.minX - cornerSize <= x && x <= rect.minX + cornerSize) {
+    else if (rminx - cornerSize <= x && x <= rminx + cornerSize) {
       CanWestResize(this)
     }
     else if (rect.maxX - cornerSize <= x && x <= rect.maxX + cornerSize) {
       CanEastResize(this)
     }
-    else if (rect.minY - cornerSize <= y && y <= rect.minY + cornerSize) {
+    else if (rminy - cornerSize <= y && y <= rminy + cornerSize) {
       CanNorthResize(this)
     }
-    else if (rect.maxY - cornerSize <= y && y <= rect.maxY + cornerSize) {
+    else if (rmaxy - cornerSize <= y && y <= rmaxy + cornerSize) {
       CanSouthResize(this)
     }
     else if (rect.contains(x, y)) {
@@ -156,99 +183,131 @@ abstract class CropFieldImpl(rect: Rectangle2D) extends CropField {
     else CanDoNothing
   }
 
-  override def toLeft: LeftCropField = LeftCropFieldImpl(rect)
-  override def toRight: RightCropField = RightCropFieldImpl(rect)
-  override def toBottom: BottomCropField = BottomCropFieldImpl(rect)
-  override def toTop: TopCropField = TopCropFieldImpl(rect)
+  override def toLeft: LeftCropField = LeftCropFieldImpl(originalSize, rect)
+  override def toRight: RightCropField = RightCropFieldImpl(originalSize, rect)
+  override def toBottom: BottomCropField = BottomCropFieldImpl(originalSize, rect)
+  override def toTop: TopCropField = TopCropFieldImpl(originalSize, rect)
+  override def asJson: JsObject = Json.obj(
+    "originalSize" -> JsArray(Seq(JsNumber(originalSize._1), JsNumber(originalSize._2))),
+    "x" -> rect.getMinX(),
+    "y" -> rect.getMinY(),
+    "w" -> rect.getWidth(),
+    "h" -> rect.getHeight()
+  )
 }
 
-case class UnknownCropFieldImpl(rect: Rectangle2D) extends CropFieldImpl(rect) {
+case class UnknownCropFieldImpl(originalSize: (Double, Double), rect: Rectangle2D) extends CropFieldImpl(originalSize, rect) {
   override type R = UnknownCropFieldImpl
-  def withNewRect(newRect: Rectangle2D): R = copy(rect = newRect)
+  def withNewRect(newRect: Rectangle2D, formSize: (Double, Double)): R = copy(rect = newRect, originalSize = formSize)
 }
 
-case class TopCropFieldImpl(rect: Rectangle2D) extends CropFieldImpl(rect) with TopCropField {
+case class TopCropFieldImpl(originalSize: (Double, Double), rect: Rectangle2D) extends CropFieldImpl(originalSize, rect) with TopCropField {
   override type R = TopCropFieldImpl
   override def toTop: TopCropField = this
-  override def draw(gc: SfxGraphicsContext, isSelected: Boolean) {
+  override def draw(formSize: (Double, Double), gc: SfxGraphicsContext, isSelected: Boolean) {
     import CropFieldImpl.LineWidth
 
-    super.draw(gc, isSelected)
+    super.draw(formSize, gc, isSelected)
     if (rect.height > LineWidth && rect.width > LineWidth) {
+      val rminx = scaleX(formSize, rect.minX)
+      val rmaxx = scaleX(formSize, rect.maxX)
+      val w = scaleX(formSize, rect.width)
+      val rminy = scaleY(formSize, rect.minY)
+      val rmaxy = scaleY(formSize, rect.maxY)
       gc.strokeLine(
-        rect.minX + LineWidth / 2, rect.minY + LineWidth / 2,
-        rect.minX + rect.width / 2 - LineWidth / 2, rect.maxY - LineWidth / 2
+        rminx + LineWidth / 2, rminy + LineWidth / 2,
+        rminx + w / 2 - LineWidth / 2, rmaxy - LineWidth / 2
       )
       gc.strokeLine(
-        rect.minX + rect.width / 2 - LineWidth / 2, rect.maxY - LineWidth / 2,
-        rect.maxX - LineWidth / 2, rect.minY + LineWidth / 2
+        rminx + w / 2 - LineWidth / 2, rmaxy - LineWidth / 2,
+        rmaxx - LineWidth / 2, rminy + LineWidth / 2
       )
     }
   }
-  def withNewRect(newRect: Rectangle2D): R = copy(rect = newRect)
+  def withNewRect(newRect: Rectangle2D, formSize: (Double, Double)): R = copy(rect = newRect, originalSize = formSize)
 }
 
-case class LeftCropFieldImpl(rect: Rectangle2D) extends CropFieldImpl(rect) with LeftCropField {
+case class LeftCropFieldImpl(
+  originalSize: (Double, Double), rect: Rectangle2D
+) extends CropFieldImpl(originalSize, rect) with LeftCropField {
   type R = LeftCropFieldImpl
   override def toLeft: LeftCropField = this
-  override def draw(gc: SfxGraphicsContext, isSelected: Boolean) {
+  override def draw(formSize: (Double, Double), gc: SfxGraphicsContext, isSelected: Boolean) {
     import CropFieldImpl.LineWidth
 
-    super.draw(gc, isSelected)
-    if (rect.height > LineWidth && rect.width > LineWidth) {
+    super.draw(formSize, gc, isSelected)
+    val h = scaleY(formSize, rect.height)
+    val rminx = scaleX(formSize, rect.minX)
+    val rminy = scaleX(formSize, rect.minY)
+    val rmaxy = scaleX(formSize, rect.maxY)
+    if (h > LineWidth && rect.width > LineWidth) {
       gc.strokeLine(
-        rect.minX + LineWidth / 2, rect.minY + LineWidth / 2,
-        rect.maxX - LineWidth / 2, rect.minY + rect.height / 2 - LineWidth / 2
+        rminx + LineWidth / 2, rminy + LineWidth / 2,
+        rect.maxX - LineWidth / 2, rminy + h / 2 - LineWidth / 2
       )
       gc.strokeLine(
-        rect.maxX - LineWidth / 2, rect.minY + rect.height / 2 - LineWidth / 2,
-        rect.minX + LineWidth / 2, rect.maxY - LineWidth / 2
+        rect.maxX - LineWidth / 2, rminy + h / 2 - LineWidth / 2,
+        rminx + LineWidth / 2, rmaxy - LineWidth / 2
       )
     }
   }
-  def withNewRect(newRect: Rectangle2D): R = copy(rect = newRect)
+  def withNewRect(newRect: Rectangle2D, formSize: (Double, Double)): R = copy(rect = newRect, originalSize = formSize)
 }
 
-case class RightCropFieldImpl(rect: Rectangle2D) extends CropFieldImpl(rect) with RightCropField {
+case class RightCropFieldImpl(
+  originalSize: (Double, Double), rect: Rectangle2D
+) extends CropFieldImpl(originalSize, rect) with RightCropField {
   type R = RightCropFieldImpl
   override def toRight: RightCropField = this
-  override def draw(gc: SfxGraphicsContext, isSelected: Boolean) {
+  override def draw(formSize: (Double, Double), gc: SfxGraphicsContext, isSelected: Boolean) {
     import CropFieldImpl.LineWidth
 
-    super.draw(gc, isSelected)
-    if (rect.height > LineWidth && rect.width > LineWidth) {
+    super.draw(formSize, gc, isSelected)
+    val h = scaleY(formSize, rect.height)
+    val rminx = scaleX(formSize, rect.minX)
+    val rmaxx = scaleX(formSize, rect.maxX)
+    val rminy = scaleX(formSize, rect.minY)
+    val rmaxy = scaleX(formSize, rect.maxY)
+    if (h > LineWidth && rect.width > LineWidth) {
       gc.strokeLine(
-        rect.maxX - LineWidth / 2, rect.minY + LineWidth / 2,
-        rect.minX + LineWidth / 2, rect.minY + rect.height / 2 - LineWidth / 2
+        rmaxx - LineWidth / 2, rminy + LineWidth / 2,
+        rminx + LineWidth / 2, rminy + h / 2 - LineWidth / 2
       )
       gc.strokeLine(
-        rect.minX + LineWidth / 2, rect.minY + rect.height / 2 - LineWidth / 2,
-        rect.maxX - LineWidth / 2, rect.maxY - LineWidth / 2
+        rminx + LineWidth / 2, rminy + h / 2 - LineWidth / 2,
+        rmaxx - LineWidth / 2, rmaxy - LineWidth / 2
       )
     }
   }
-  def withNewRect(newRect: Rectangle2D): R = copy(rect = newRect)
+  def withNewRect(newRect: Rectangle2D, formSize: (Double, Double)): R = copy(rect = newRect, originalSize = formSize)
 }
 
-case class BottomCropFieldImpl(rect: Rectangle2D) extends CropFieldImpl(rect) with BottomCropField {
+case class BottomCropFieldImpl(
+  originalSize: (Double, Double), rect: Rectangle2D
+) extends CropFieldImpl(originalSize, rect) with BottomCropField {
   type R = BottomCropFieldImpl
   override def toBottom: BottomCropField = this
-  override def draw(gc: SfxGraphicsContext, isSelected: Boolean) {
+  override def draw(formSize: (Double, Double), gc: SfxGraphicsContext, isSelected: Boolean) {
     import CropFieldImpl.LineWidth
 
-    super.draw(gc, isSelected)
-    if (rect.height > LineWidth && rect.width > LineWidth) {
+    super.draw(formSize, gc, isSelected)
+    val h = scaleY(formSize, rect.height)
+    val w = scaleY(formSize, rect.width)
+    val rminx = scaleX(formSize, rect.minX)
+    val rminy = scaleY(formSize, rect.minY)
+    val rmaxy = scaleY(formSize, rect.maxY)
+    if (h > LineWidth && w > LineWidth) {
       gc.strokeLine(
-        rect.minX + LineWidth / 2, rect.maxY - LineWidth / 2,
-        rect.minX - LineWidth / 2 + rect.width / 2, rect.minY + LineWidth / 2
+        rminx + LineWidth / 2, rmaxy - LineWidth / 2,
+        rminx - LineWidth / 2 + w / 2, rminy + LineWidth / 2
       )
       gc.strokeLine(
-        rect.minX - LineWidth / 2 + rect.width / 2, rect.minY + LineWidth / 2,
-        rect.maxX - LineWidth / 2, rect.maxY - LineWidth / 2
+        rminx - LineWidth / 2 + w / 2, rminy + LineWidth / 2,
+        rect.maxX - LineWidth / 2, rmaxy - LineWidth / 2
       )
     }
   }
-  def withNewRect(newRect: Rectangle2D): this.type = copy(rect = newRect).asInstanceOf[this.type]
+  def withNewRect(newRect: Rectangle2D, formSize: (Double, Double)): this.type = copy(rect = newRect, originalSize = formSize).asInstanceOf[this.type]
 }
 
 case class SkewCorrectionConditionImpl(
@@ -358,14 +417,14 @@ class ProjectImpl(
     selectLeftCropField(false)
   }
 
-  def selectAbsoluteFields(rect: Rectangle2D, e: MouseEvent) {
-    _absFields.selectFields(rect, e)
+  def selectAbsoluteFields(formSize: (Double, Double), rect: Rectangle2D, e: MouseEvent) {
+    _absFields.selectFields(formSize, rect, e)
   }
 
-  def selectCropFields(rect: Rectangle2D, e: MouseEvent) {
+  def selectCropFields(formSize: (Double, Double), rect: Rectangle2D, e: MouseEvent) {
     if (! isTopCropFieldSelected) {
       _topCropField.foreach { f =>
-        if (f.intersects(rect)) {
+        if (f.intersects(formSize, rect)) {
           selectTopCropField(true)
         }
       }
@@ -373,7 +432,7 @@ class ProjectImpl(
 
     if (! isLeftCropFieldSelected) {
       _leftCropField.foreach { f =>
-        if (f.intersects(rect)) {
+        if (f.intersects(formSize, rect)) {
           selectLeftCropField(true)
         }
       }
@@ -381,7 +440,7 @@ class ProjectImpl(
 
     if (! isRightCropFieldSelected) {
       _rightCropField.foreach { f =>
-        if (f.intersects(rect)) {
+        if (f.intersects(formSize, rect)) {
           selectRightCropField(true)
         }
       }
@@ -389,19 +448,19 @@ class ProjectImpl(
 
     if (! isBottomCropFieldSelected) {
       _bottomCropField.foreach { f =>
-        if (f.intersects(rect)) {
+        if (f.intersects(formSize, rect)) {
           selectBottomCropField(true)
         }
       }
     }
   }
 
-  def selectSingleFieldAt(x: Double, y: Double) {
-    if (_absFields.selectSingleAbsoluteFieldAt(x, y).isEmpty) {
-      leftCropField.find { _.drawArea.contains(x, y) }.orElse {
-        topCropField.find { _.drawArea.contains(x, y) }.orElse {
-          rightCropField.find { _.drawArea.contains(x, y) }.orElse {
-            bottomCropField.find { _.drawArea.contains(x, y) }
+  def selectSingleFieldAt(formSize: (Double, Double), x: Double, y: Double) {
+    if (_absFields.selectSingleAbsoluteFieldAt(formSize, x, y).isEmpty) {
+      leftCropField.find { _.drawArea(formSize).contains(x, y) }.orElse {
+        topCropField.find { _.drawArea(formSize).contains(x, y) }.orElse {
+          rightCropField.find { _.drawArea(formSize).contains(x, y) }.orElse {
+            bottomCropField.find { _.drawArea(formSize).contains(x, y) }
           }
         }
       }.foreach { cf =>
@@ -435,87 +494,87 @@ class ProjectImpl(
     _isDirty = true
   }
 
-  def getSelectedFieldAt(x: Double, y: Double): Option[Field] =
-    getSelectedAbsoluteFieldAt(x, y).orElse(getSelectedCropFieldAt(x, y))
+  def getSelectedFieldAt(formSize: (Double, Double), x: Double, y: Double): Option[Field] =
+    getSelectedAbsoluteFieldAt(formSize, x, y).orElse(getSelectedCropFieldAt(formSize, x, y))
 
-  def getSelectedAbsoluteFieldAt(x: Double, y: Double): Option[AbsoluteField] =
-    _absFields.getSelectedFieldAt(x, y)
+  def getSelectedAbsoluteFieldAt(formSize: (Double, Double), x: Double, y: Double): Option[AbsoluteField] =
+    _absFields.getSelectedFieldAt(formSize, x, y)
 
-  def getCropFieldAt(x: Double, y: Double, isSelected: Boolean): Option[CropField] =
-    _leftCropField.filter(isSelected == isLeftCropFieldSelected && _.contains(x, y)).orElse(
-      _rightCropField.filter(isSelected == isRightCropFieldSelected && _.contains(x, y))
+  def getCropFieldAt(formSize: (Double, Double), x: Double, y: Double, isSelected: Boolean): Option[CropField] =
+    _leftCropField.filter(isSelected == isLeftCropFieldSelected && _.contains(formSize, x, y)).orElse(
+      _rightCropField.filter(isSelected == isRightCropFieldSelected && _.contains(formSize, x, y))
     ).orElse(
-      _topCropField.filter(isSelected == isTopCropFieldSelected && _.contains(x, y))
+      _topCropField.filter(isSelected == isTopCropFieldSelected && _.contains(formSize, x, y))
     ).orElse(
-      _bottomCropField.filter(isSelected == isBottomCropFieldSelected && _.contains(x, y))
+      _bottomCropField.filter(isSelected == isBottomCropFieldSelected && _.contains(formSize, x, y))
     )
 
-  def getSelectedCropFieldAt(x: Double, y: Double): Option[CropField] = getCropFieldAt(x, y, true)
+  def getSelectedCropFieldAt(formSize: (Double, Double), x: Double, y: Double): Option[CropField] = getCropFieldAt(formSize, x, y, true)
 
-  def getNormalFieldAt(x: Double, y: Double): Option[Field] =
-    getNormalAbsoluteFieldAt(x, y).orElse(getNormalCropFieldAt(x, y))
+  def getNormalFieldAt(formSize: (Double, Double), x: Double, y: Double): Option[Field] =
+    getNormalAbsoluteFieldAt(formSize, x, y).orElse(getNormalCropFieldAt(formSize, x, y))
 
-  def getNormalAbsoluteFieldAt(x: Double, y: Double): Option[AbsoluteField] =
-    _absFields.getNormalFieldAt(x, y)
+  def getNormalAbsoluteFieldAt(formSize: (Double, Double), x: Double, y: Double): Option[AbsoluteField] =
+    _absFields.getNormalFieldAt(formSize, x, y)
 
-  def getNormalCropFieldAt(x: Double, y: Double): Option[CropField] = getCropFieldAt(x, y, false)
+  def getNormalCropFieldAt(formSize: (Double, Double), x: Double, y: Double): Option[CropField] = getCropFieldAt(formSize, x, y, false)
 
-  def moveSelectedFields(from: Point2D, to: Point2D) {
-    moveSelectedAbsoluteFields(from, to)
-    moveSelectedCropFields(from, to)
+  def moveSelectedFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    moveSelectedAbsoluteFields(formSize, from, to)
+    moveSelectedCropFields(formSize, from, to)
     _isDirty = true
   }
 
-  def northResizeSelectedFields(from: Point2D, to: Point2D) {
-    northResizeSelectedAbsoluteFields(from, to)
-    northResizeSelectedCropFields(from, to)
+  def northResizeSelectedFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    northResizeSelectedAbsoluteFields(formSize, from, to)
+    northResizeSelectedCropFields(formSize, from, to)
     _isDirty = true
   }
 
-  def eastResizeSelectedFields(from: Point2D, to: Point2D) {
-    eastResizeSelectedAbsoluteFields(from, to)
-    eastResizeSelectedCropFields(from, to)
+  def eastResizeSelectedFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    eastResizeSelectedAbsoluteFields(formSize, from, to)
+    eastResizeSelectedCropFields(formSize, from, to)
     _isDirty = true
   }
 
-  def westResizeSelectedFields(from: Point2D, to: Point2D) {
-    westResizeSelectedAbsoluteFields(from, to)
-    westResizeSelectedCropFields(from, to)
+  def westResizeSelectedFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    westResizeSelectedAbsoluteFields(formSize, from, to)
+    westResizeSelectedCropFields(formSize, from, to)
     _isDirty = true
   }
 
-  def southResizeSelectedFields(from: Point2D, to: Point2D) {
-    southResizeSelectedAbsoluteFields(from, to)
-    southResizeSelectedCropFields(from, to)
+  def southResizeSelectedFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    southResizeSelectedAbsoluteFields(formSize, from, to)
+    southResizeSelectedCropFields(formSize, from, to)
     _isDirty = true
   }
 
-  def northWestResizeSelectedFields(from: Point2D, to: Point2D) {
-    northWestResizeSelectedAbsoluteFields(from, to)
-    northWestResizeSelectedCropFields(from, to)
+  def northWestResizeSelectedFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    northWestResizeSelectedAbsoluteFields(formSize, from, to)
+    northWestResizeSelectedCropFields(formSize, from, to)
     _isDirty = true
   }
 
-  def northEastResizeSelectedFields(from: Point2D, to: Point2D) {
-    northEastResizeSelectedAbsoluteFields(from, to)
-    northEastResizeSelectedCropFields(from, to)
+  def northEastResizeSelectedFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    northEastResizeSelectedAbsoluteFields(formSize, from, to)
+    northEastResizeSelectedCropFields(formSize, from, to)
     _isDirty = true
   }
 
-  def southWestResizeSelectedFields(from: Point2D, to: Point2D) {
-    southWestResizeSelectedAbsoluteFields(from, to)
-    southWestResizeSelectedCropFields(from, to)
+  def southWestResizeSelectedFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    southWestResizeSelectedAbsoluteFields(formSize, from, to)
+    southWestResizeSelectedCropFields(formSize, from, to)
     _isDirty = true
   }
 
-  def southEastResizeSelectedFields(from: Point2D, to: Point2D) {
-    southEastResizeSelectedAbsoluteFields(from, to)
-    southEastResizeSelectedCropFields(from, to)
+  def southEastResizeSelectedFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    southEastResizeSelectedAbsoluteFields(formSize, from, to)
+    southEastResizeSelectedCropFields(formSize, from, to)
     _isDirty = true
   }
 
-  def moveSelectedAbsoluteFields(from: Point2D, to: Point2D) {
-    _absFields.moveSelectedFields(from, to)
+  def moveSelectedAbsoluteFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    _absFields.moveSelectedFields(formSize, from, to)
     _isDirty = true
   }
 
@@ -533,8 +592,8 @@ class ProjectImpl(
     _isDirty = true
   }
 
-  def moveSelectedCropFields(from: Point2D, to: Point2D) {
-    val modifier: CropField => CropField = _.move(from, to)
+  def moveSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    val modifier: CropField => CropField = _.move(formSize, from, to)
     modifySelectedCropField(topCropField, isTopCropFieldSelected, modifier)
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
     modifySelectedCropField(rightCropField, isRightCropFieldSelected, modifier)
@@ -542,48 +601,48 @@ class ProjectImpl(
     _isDirty = true
   }
 
-  def northResizeSelectedAbsoluteFields(from: Point2D, to: Point2D) {
-    _absFields.northResizeSelectedFields(from, to)
+  def northResizeSelectedAbsoluteFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    _absFields.northResizeSelectedFields(formSize, from, to)
     _isDirty = true
   }
 
-  def eastResizeSelectedAbsoluteFields(from: Point2D, to: Point2D) {
-    _absFields.eastResizeSelectedFields(from, to)
+  def eastResizeSelectedAbsoluteFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    _absFields.eastResizeSelectedFields(formSize, from, to)
     _isDirty = true
   }
 
-  def westResizeSelectedAbsoluteFields(from: Point2D, to: Point2D) {
-    _absFields.westResizeSelectedFields(from, to)
+  def westResizeSelectedAbsoluteFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    _absFields.westResizeSelectedFields(formSize, from, to)
     _isDirty = true
   }
 
-  def southResizeSelectedAbsoluteFields(from: Point2D, to: Point2D) {
-    _absFields.southResizeSelectedFields(from, to)
+  def southResizeSelectedAbsoluteFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    _absFields.southResizeSelectedFields(formSize, from, to)
     _isDirty = true
   }
 
-  def northEastResizeSelectedAbsoluteFields(from: Point2D, to: Point2D) {
-    _absFields.northEastResizeSelectedFields(from, to)
+  def northEastResizeSelectedAbsoluteFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    _absFields.northEastResizeSelectedFields(formSize, from, to)
     _isDirty = true
   }
 
-  def northWestResizeSelectedAbsoluteFields(from: Point2D, to: Point2D) {
-    _absFields.northWestResizeSelectedFields(from, to)
+  def northWestResizeSelectedAbsoluteFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    _absFields.northWestResizeSelectedFields(formSize, from, to)
     _isDirty = true
   }
 
-  def southEastResizeSelectedAbsoluteFields(from: Point2D, to: Point2D) {
-    _absFields.southEastResizeSelectedFields(from, to)
+  def southEastResizeSelectedAbsoluteFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    _absFields.southEastResizeSelectedFields(formSize, from, to)
     _isDirty = true
   }
 
-  def southWestResizeSelectedAbsoluteFields(from: Point2D, to: Point2D) {
-    _absFields.southWestResizeSelectedFields(from, to)
+  def southWestResizeSelectedAbsoluteFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    _absFields.southWestResizeSelectedFields(formSize, from, to)
     _isDirty = true
   }
 
-  def northResizeSelectedCropFields(from: Point2D, to: Point2D) {
-    val modifier: CropField => CropField = _.northResize(from, to)
+  def northResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    val modifier: CropField => CropField = _.northResize(formSize, from, to)
     modifySelectedCropField(topCropField, isTopCropFieldSelected, modifier)
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
     modifySelectedCropField(rightCropField, isRightCropFieldSelected, modifier)
@@ -591,8 +650,8 @@ class ProjectImpl(
     _isDirty = true
   }
 
-  def eastResizeSelectedCropFields(from: Point2D, to: Point2D) {
-    val modifier: CropField => CropField = _.eastResize(from, to)
+  def eastResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    val modifier: CropField => CropField = _.eastResize(formSize, from, to)
     modifySelectedCropField(topCropField, isTopCropFieldSelected, modifier)
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
     modifySelectedCropField(rightCropField, isRightCropFieldSelected, modifier)
@@ -600,8 +659,8 @@ class ProjectImpl(
     _isDirty = true
   }
 
-  def westResizeSelectedCropFields(from: Point2D, to: Point2D) {
-    val modifier: CropField => CropField = _.westResize(from, to)
+  def westResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    val modifier: CropField => CropField = _.westResize(formSize, from, to)
     modifySelectedCropField(topCropField, isTopCropFieldSelected, modifier)
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
     modifySelectedCropField(rightCropField, isRightCropFieldSelected, modifier)
@@ -609,8 +668,8 @@ class ProjectImpl(
     _isDirty = true
   }
 
-  def southResizeSelectedCropFields(from: Point2D, to: Point2D) {
-    val modifier: CropField => CropField = _.southResize(from, to)
+  def southResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    val modifier: CropField => CropField = _.southResize(formSize, from, to)
     modifySelectedCropField(topCropField, isTopCropFieldSelected, modifier)
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
     modifySelectedCropField(rightCropField, isRightCropFieldSelected, modifier)
@@ -618,8 +677,8 @@ class ProjectImpl(
     _isDirty = true
   }
 
-  def northEastResizeSelectedCropFields(from: Point2D, to: Point2D) {
-    val modifier: CropField => CropField = _.northEastResize(from, to)
+  def northEastResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    val modifier: CropField => CropField = _.northEastResize(formSize, from, to)
     modifySelectedCropField(topCropField, isTopCropFieldSelected, modifier)
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
     modifySelectedCropField(rightCropField, isRightCropFieldSelected, modifier)
@@ -627,8 +686,8 @@ class ProjectImpl(
     _isDirty = true
   }
 
-  def northWestResizeSelectedCropFields(from: Point2D, to: Point2D) {
-    val modifier: CropField => CropField = _.northWestResize(from, to)
+  def northWestResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    val modifier: CropField => CropField = _.northWestResize(formSize, from, to)
     modifySelectedCropField(topCropField, isTopCropFieldSelected, modifier)
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
     modifySelectedCropField(rightCropField, isRightCropFieldSelected, modifier)
@@ -636,8 +695,8 @@ class ProjectImpl(
     _isDirty = true
   }
 
-  def southEastResizeSelectedCropFields(from: Point2D, to: Point2D) {
-    val modifier: CropField => CropField = _.southEastResize(from, to)
+  def southEastResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    val modifier: CropField => CropField = _.southEastResize(formSize, from, to)
     modifySelectedCropField(topCropField, isTopCropFieldSelected, modifier)
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
     modifySelectedCropField(rightCropField, isRightCropFieldSelected, modifier)
@@ -645,8 +704,8 @@ class ProjectImpl(
     _isDirty = true
   }
 
-  def southWestResizeSelectedCropFields(from: Point2D, to: Point2D) {
-    val modifier: CropField => CropField = _.southWestResize(from, to)
+  def southWestResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    val modifier: CropField => CropField = _.southWestResize(formSize, from, to)
     modifySelectedCropField(topCropField, isTopCropFieldSelected, modifier)
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
     modifySelectedCropField(rightCropField, isRightCropFieldSelected, modifier)
@@ -701,20 +760,20 @@ class ProjectImpl(
     }
   }
 
-  def possibleMouseOperation(x: Double, y: Double): MouseOperation = {
-    var ret = _absFields.possibleMouseOperation(x, y)
+  def possibleMouseOperation(formSize: (Double, Double), x: Double, y: Double): MouseOperation = {
+    var ret = _absFields.possibleMouseOperation(formSize, x, y)
     if (ret != CanDoNothing) return ret
 
-    ret = topCropField.map { _.possibleMouseOperation(x, y) }.getOrElse(CanDoNothing)
+    ret = topCropField.map { _.possibleMouseOperation(formSize, x, y) }.getOrElse(CanDoNothing)
     if (ret != CanDoNothing) return ret
 
-    ret = leftCropField.map { _.possibleMouseOperation(x, y) }.getOrElse(CanDoNothing)
+    ret = leftCropField.map { _.possibleMouseOperation(formSize, x, y) }.getOrElse(CanDoNothing)
     if (ret != CanDoNothing) return ret
 
-    ret = rightCropField.map { _.possibleMouseOperation(x, y) }.getOrElse(CanDoNothing)
+    ret = rightCropField.map { _.possibleMouseOperation(formSize, x, y) }.getOrElse(CanDoNothing)
     if (ret != CanDoNothing) return ret
 
-    ret = bottomCropField.map { _.possibleMouseOperation(x, y) }.getOrElse(CanDoNothing)
+    ret = bottomCropField.map { _.possibleMouseOperation(formSize, x, y) }.getOrElse(CanDoNothing)
     if (ret != CanDoNothing) return ret
 
     CanDoNothing
@@ -905,7 +964,7 @@ class ProjectImpl(
                   "inputFiles" -> JsArray(Seq(JsString(fileName))),
                   "skewCorrection" -> skewCorrection.asJson(skewCorrection.enabled),
                   "crop" -> edgeCrop(cropt._1, cropt._2).asJson(cropEnabled),
-                  "absoluteFields" -> _absFields.asJson(capt._1, capt._2)
+                  "absoluteFields" -> _absFields.asJson
                 )
               )
             }
@@ -1125,20 +1184,45 @@ class ProjectImpl(
     _topCropField.isDefined && _leftCropField.isDefined && _rightCropField.isDefined && _bottomCropField.isDefined
 
   private def asJson: JsValue = {
-    Json.obj(
-      "fileName" -> "foo",
-      "Hello" -> "World"
+    JsObject(
+      Seq(
+        "skewCorrection" -> skewCorrection.asJson(),
+        "isCropEnabled" -> JsBoolean(cropEnabled)
+      ) ++ leftCropField.map(
+        f => Seq("leftCropField" -> f.asJson)
+      ).getOrElse(
+        Seq()
+      ) ++ topCropField.map(
+        f => Seq("topCropField" -> f.asJson)
+      ).getOrElse(
+        Seq()
+      ) ++ rightCropField.map(
+        f => Seq("rightCropField" -> f.asJson)
+      ).getOrElse(
+        Seq()
+      ) ++ bottomCropField.map(
+        f => Seq("bottomCropField" -> f.asJson)
+      ).getOrElse(
+        Seq()
+      )
+    ) ++ Json.obj(
+      "absoluteFieds" -> absoluteFields.asJson
     )
   }
 
-  private def prepareFileForSaveConfig: Path = {
+  private def prepareFileForSaveConfig(configName: String): Path = {
     println("prepareFileForSaveConfig()")
 
     PathUtil.withTempFile(None, None) { projectFile =>
       Files.write(projectFile, asJson.toString.getBytes("utf-8"))
 
       PathUtil.withTempFile(None, None) { configFile =>
-        Files.write(configFile, "filename".getBytes("utf-8"))
+        Files.write(
+          configFile,
+          Json.obj(
+            "configName" -> configName
+          ).toString.getBytes("utf-8")
+        )
 
         val zipFile = Files.createTempFile(null, null)
         Zip.deflate(
@@ -1153,7 +1237,7 @@ class ProjectImpl(
     }.get
   }
 
-  def saveConfig(): Future[SaveConfigRestResult] = {
+  def saveConfig(configName: String): Future[SaveConfigRestResult] = {
     val urlPath = Settings.Loader.settings.auth.url.resolve("saveConfig")
     val auth = Settings.Loader.settings.auth
 
@@ -1161,7 +1245,7 @@ class ProjectImpl(
       "Content-Type" -> "application/zip",
       "Authorization" -> (auth.contractedUserId.value + "_" + auth.applicationToken.value)
     ).post(
-      Files.readAllBytes(prepareFileForSaveConfig)
+      Files.readAllBytes(prepareFileForSaveConfig(configName))
     ).map { resp =>
       println("status = " + resp.status)
       println("statusText = " + resp.statusText)

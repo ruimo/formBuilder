@@ -1,5 +1,6 @@
 package com.ruimo.forms
 
+import scala.math
 import scalafx.scene.control.{ButtonType => SfxButtonType}
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
@@ -63,7 +64,8 @@ case class EditorContext(
   fieldCreated: (Field) => Unit,
   drawSelectionRect: (Rectangle2D) => Unit,
   selectFields: (Rectangle2D, MouseEvent) => Unit,
-  setMouseCursor: Cursor => Unit
+  setMouseCursor: Cursor => Unit,
+  formSize: () => (Double, Double)
 )
 
 object ModeEditors {
@@ -106,7 +108,7 @@ object ModeEditors {
       def onMousePressed(e: MouseEvent): ModeEditor = this
       def onMouseDragged(e: MouseEvent): ModeEditor = {
         val p1 = new Point2D(e.getX, e.getY)
-        val adding = UnknownCropFieldImpl(toRect(p0, p1))
+        val adding = UnknownCropFieldImpl(editorContext.formSize(), toRect(p0, p1))
         editorContext.drawWidget(adding, true)
         Dragging(adding, project, editorContext, p0, p1)
       }
@@ -128,15 +130,15 @@ object ModeEditors {
       def onMousePressed(e: MouseEvent): ModeEditor = this
       def onMouseDragged(e: MouseEvent): ModeEditor = {
         val newP1 = new Point2D(e.getX, e.getY)
-        editorContext.redrawRect(adding.drawArea)
-        val newAdding = UnknownCropFieldImpl(toRect(p0, newP1))
+        editorContext.redrawRect(adding.drawArea(editorContext.formSize()))
+        val newAdding = UnknownCropFieldImpl(editorContext.formSize(), toRect(p0, newP1))
         editorContext.drawWidget(newAdding, true)
         Dragging(newAdding, project, editorContext, p0, newP1)
       }
       def onMouseReleased(e: MouseEvent): ModeEditor = {
         val newP1 = new Point2D(e.getX, e.getY)
-        editorContext.redrawRect(adding.drawArea)
-        val newAdding = UnknownCropFieldImpl(toRect(p0, newP1))
+        editorContext.redrawRect(adding.drawArea(editorContext.formSize()))
+        val newAdding = UnknownCropFieldImpl(editorContext.formSize(), toRect(p0, newP1))
         editorContext.drawWidget(newAdding, true)
         editorContext.fieldCreated(newAdding)
         Init(project, editorContext)
@@ -180,7 +182,7 @@ object ModeEditors {
       def onMousePressed(e: MouseEvent): ModeEditor = this
       def onMouseDragged(e: MouseEvent): ModeEditor = {
         val p1 = new Point2D(e.getX, e.getY)
-        val adding = AbsoluteFieldImpl(toRect(p0, p1), "adding")
+        val adding = AbsoluteFieldImpl(editorContext.formSize(), toRect(p0, p1), "adding")
         editorContext.drawWidget(adding, true)
         Dragging(adding, project, editorContext, p0, p1)
       }
@@ -202,15 +204,15 @@ object ModeEditors {
       def onMousePressed(e: MouseEvent): ModeEditor = this
       def onMouseDragged(e: MouseEvent): ModeEditor = {
         val newP1 = new Point2D(e.getX, e.getY)
-        editorContext.redrawRect(adding.drawArea)
-        val newAdding = AbsoluteFieldImpl(toRect(p0, newP1), "adding")
+        editorContext.redrawRect(adding.drawArea(editorContext.formSize()))
+        val newAdding = AbsoluteFieldImpl(editorContext.formSize(), toRect(p0, newP1), "adding")
         editorContext.drawWidget(newAdding, true)
         Dragging(newAdding, project, editorContext, p0, newP1)
       }
       def onMouseReleased(e: MouseEvent): ModeEditor = {
         val newP1 = new Point2D(e.getX, e.getY)
-        editorContext.redrawRect(adding.drawArea)
-        val newAdding = AbsoluteFieldImpl(toRect(p0, newP1), "adding")
+        editorContext.redrawRect(adding.drawArea(editorContext.formSize()))
+        val newAdding = AbsoluteFieldImpl(editorContext.formSize(), toRect(p0, newP1), "adding")
         editorContext.drawWidget(newAdding, true)
         editorContext.fieldCreated(newAdding)
         Init(project, editorContext)
@@ -231,7 +233,7 @@ object ModeEditors {
     ) extends ModeEditor {
       def onMousePressed(e: MouseEvent): ModeEditor = {
         def doNext(f: Field): ModeEditor = {
-          f.possibleMouseOperation(e.getX, e.getY) match {
+          f.possibleMouseOperation(editorContext.formSize(), e.getX, e.getY) match {
             case CanMove(_) => Moving(project, editorContext, new Point2D(e.getX, e.getY))
             case CanNorthResize(f) => NorthResize(project, editorContext, new Point2D(e.getX, e.getY))
             case CanEastResize(_) => EastResize(project, editorContext, new Point2D(e.getX, e.getY))
@@ -245,10 +247,10 @@ object ModeEditors {
           }
         }
 
-        project.getSelectedFieldAt(e.getX, e.getY) match {
+        project.getSelectedFieldAt(editorContext.formSize(), e.getX, e.getY) match {
           case Some(f) => doNext(f)
           case None =>
-            project.getNormalFieldAt(e.getX, e.getY) match {
+            project.getNormalFieldAt(editorContext.formSize(), e.getX, e.getY) match {
               case Some(f) =>
                 if (! e.isShiftDown)
                   project.deselectAllFields()
@@ -269,7 +271,7 @@ object ModeEditors {
         this
       }
       def onMouseMoved(e: MouseEvent): ModeEditor = {
-        project.possibleMouseOperation(e.getX, e.getY) match {
+        project.possibleMouseOperation(editorContext.formSize(), e.getX, e.getY) match {
           case CanDoNothing =>
             editorContext.setMouseCursor(Cursor.DEFAULT)
           case CanMove(f) =>
@@ -312,7 +314,7 @@ object ModeEditors {
         Dragging(sw, project, editorContext, p0, p1)
       }
       def onMouseReleased(e: MouseEvent): ModeEditor = {
-        project.selectSingleFieldAt(e.getX, e.getY)
+        project.selectSingleFieldAt(editorContext.formSize(), e.getX, e.getY)
         editorContext.setMouseCursor(Cursor.DEFAULT)
         Init(project, editorContext)
       }
@@ -335,7 +337,7 @@ object ModeEditors {
       def onMousePressed(e: MouseEvent): ModeEditor = this
       def onMouseDragged(e: MouseEvent): ModeEditor = {
         val p1 = new Point2D(e.getX, e.getY)
-        project.moveSelectedFields(p0, p1)
+        project.moveSelectedFields(editorContext.formSize(), p0, p1)
         Moving(project, editorContext, p1)
       }
       def onMouseReleased(e: MouseEvent): ModeEditor = {
@@ -358,7 +360,7 @@ object ModeEditors {
       def onMousePressed(e: MouseEvent): ModeEditor = this
       def onMouseDragged(e: MouseEvent): ModeEditor = {
         val p1 = new Point2D(e.getX, e.getY)
-        project.northResizeSelectedFields(p0, p1)
+        project.northResizeSelectedFields(editorContext.formSize(), p0, p1)
         NorthResize(project, editorContext, p1)
       }
       def onMouseReleased(e: MouseEvent): ModeEditor = {
@@ -381,7 +383,7 @@ object ModeEditors {
       def onMousePressed(e: MouseEvent): ModeEditor = this
       def onMouseDragged(e: MouseEvent): ModeEditor = {
         val p1 = new Point2D(e.getX, e.getY)
-        project.eastResizeSelectedFields(p0, p1)
+        project.eastResizeSelectedFields(editorContext.formSize(), p0, p1)
         EastResize(project, editorContext, p1)
       }
       def onMouseReleased(e: MouseEvent): ModeEditor = {
@@ -404,7 +406,7 @@ object ModeEditors {
       def onMousePressed(e: MouseEvent): ModeEditor = this
       def onMouseDragged(e: MouseEvent): ModeEditor = {
         val p1 = new Point2D(e.getX, e.getY)
-        project.westResizeSelectedFields(p0, p1)
+        project.westResizeSelectedFields(editorContext.formSize(), p0, p1)
         WestResize(project, editorContext, p1)
       }
       def onMouseReleased(e: MouseEvent): ModeEditor = {
@@ -427,7 +429,7 @@ object ModeEditors {
       def onMousePressed(e: MouseEvent): ModeEditor = this
       def onMouseDragged(e: MouseEvent): ModeEditor = {
         val p1 = new Point2D(e.getX, e.getY)
-        project.southResizeSelectedFields(p0, p1)
+        project.southResizeSelectedFields(editorContext.formSize(), p0, p1)
         SouthResize(project, editorContext, p1)
       }
       def onMouseReleased(e: MouseEvent): ModeEditor = {
@@ -450,7 +452,7 @@ object ModeEditors {
       def onMousePressed(e: MouseEvent): ModeEditor = this
       def onMouseDragged(e: MouseEvent): ModeEditor = {
         val p1 = new Point2D(e.getX, e.getY)
-        project.northWestResizeSelectedFields(p0, p1)
+        project.northWestResizeSelectedFields(editorContext.formSize(), p0, p1)
         NorthWestResize(project, editorContext, p1)
       }
       def onMouseReleased(e: MouseEvent): ModeEditor = {
@@ -473,7 +475,7 @@ object ModeEditors {
       def onMousePressed(e: MouseEvent): ModeEditor = this
       def onMouseDragged(e: MouseEvent): ModeEditor = {
         val p1 = new Point2D(e.getX, e.getY)
-        project.northEastResizeSelectedFields(p0, p1)
+        project.northEastResizeSelectedFields(editorContext.formSize(), p0, p1)
         NorthEastResize(project, editorContext, p1)
       }
       def onMouseReleased(e: MouseEvent): ModeEditor = {
@@ -496,7 +498,7 @@ object ModeEditors {
       def onMousePressed(e: MouseEvent): ModeEditor = this
       def onMouseDragged(e: MouseEvent): ModeEditor = {
         val p1 = new Point2D(e.getX, e.getY)
-        project.southWestResizeSelectedFields(p0, p1)
+        project.southWestResizeSelectedFields(editorContext.formSize(), p0, p1)
         SouthWestResize(project, editorContext, p1)
       }
       def onMouseReleased(e: MouseEvent): ModeEditor = {
@@ -519,7 +521,7 @@ object ModeEditors {
       def onMousePressed(e: MouseEvent): ModeEditor = this
       def onMouseDragged(e: MouseEvent): ModeEditor = {
         val p1 = new Point2D(e.getX, e.getY)
-        project.southEastResizeSelectedFields(p0, p1)
+        project.southEastResizeSelectedFields(editorContext.formSize(), p0, p1)
         SouthEastResize(project, editorContext, p1)
       }
       def onMouseReleased(e: MouseEvent): ModeEditor = {
@@ -545,14 +547,14 @@ object ModeEditors {
         val newP1 = new Point2D(e.getX, e.getY)
         val newSw = SelectionWidget(toRect(p0, newP1))
 
-        editorContext.redrawRect(sw.drawArea)
+        editorContext.redrawRect(sw.drawArea(editorContext.formSize()))
         editorContext.drawWidget(newSw, false)
         Dragging(newSw, project, editorContext, p0, newP1)
       }
       def onMouseReleased(e: MouseEvent): ModeEditor = {
         editorContext.setMouseCursor(Cursor.DEFAULT)
         val newP1 = new Point2D(e.getX, e.getY)
-        editorContext.redrawRect(sw.drawArea)
+        editorContext.redrawRect(sw.drawArea(editorContext.formSize()))
         editorContext.selectFields(toRect(p0, newP1), e)
         Init(project, editorContext)
       }
@@ -614,7 +616,9 @@ class Editor(
   }
 }
 
-case class SelectedImage(file: Path, image: Image)
+case class SelectedImage(file: Path, image: Image) {
+  val imageSize: (Double, Double) = (image.getWidth, image.getHeight)
+}
 
 class MainController extends Initializable {
   val settingsLoader: SettingsLoader = Settings.Loader
@@ -623,6 +627,7 @@ class MainController extends Initializable {
   private var project: Project = _
   private var selectedImage: Option[SelectedImage] = None
   private var editor: Editor = _
+  @volatile private var projectConfigName: Option[String] = None
 
   def setStage(stage: Stage) {
     this.stage = stage
@@ -671,10 +676,14 @@ class MainController extends Initializable {
     val ctrl = loader.getController().asInstanceOf[SaveController]
     val alert = new SfxAlert(AlertType.Confirmation)
     alert.dialogPane = new SfxDialogPane(root)
+    projectConfigName.foreach { cname =>
+      ctrl.configName = cname
+    }
     alert.showAndWait() match {
       case Some(SfxButtonType.Apply) =>
+        projectConfigName = Some(ctrl.configName)
         doBigJob {
-          Right(project.saveConfig())
+          Right(project.saveConfig(ctrl.configName))
         } { (result: SaveConfigRestResult) =>
 
         } { t =>
@@ -756,10 +765,14 @@ class MainController extends Initializable {
             }
           }
 
+          val x = math.floor(rect.minX)
+          val w = math.ceil(rect.width + 1)
+          val y = math.floor(rect.minY)
+          val h = math.ceil(rect.height + 1)
           gc.drawImage(
             ok.image,
-            rect.minX, rect.minY, rect.width, rect.height,
-            rect.minX, rect.minY, rect.width, rect.height
+            x, y, w, h,
+            x, y, w, h
           )
         case authFail: RestAuthFailure =>
           authError()
@@ -771,41 +784,43 @@ class MainController extends Initializable {
     }
     if (! project.cropEnabled) {
       project.leftCropField.foreach { cf =>
-        if (cf.intersects(rect)) {
-          cf.draw(gc, project.isLeftCropFieldSelected)
+        if (cf.intersects(imageSize, rect)) {
+          cf.draw(imageSize, gc, project.isLeftCropFieldSelected)
         }
       }
       project.topCropField.foreach { cf =>
-        if (cf.intersects(rect)) {
-          cf.draw(gc, project.isLeftCropFieldSelected)
+        if (cf.intersects(imageSize, rect)) {
+          cf.draw(imageSize, gc, project.isLeftCropFieldSelected)
         }
       }
       project.rightCropField.foreach { cf =>
-        if (cf.intersects(rect)) {
-          cf.draw(gc, project.isRightCropFieldSelected)
+        if (cf.intersects(imageSize, rect)) {
+          cf.draw(imageSize, gc, project.isRightCropFieldSelected)
         }
       }
       project.bottomCropField.foreach { cf =>
-        if (cf.intersects(rect)) {
-          cf.draw(gc, project.isBottomCropFieldSelected)
+        if (cf.intersects(imageSize, rect)) {
+          cf.draw(imageSize, gc, project.isBottomCropFieldSelected)
         }
       }
     }
     project.absoluteFields.normalFields.foreach { af =>
-      if (af.intersects(rect)) {
-        af.draw(gc, false)
+      if (af.intersects(imageSize, rect)) {
+        af.draw(imageSize, gc, false)
       }
     }
     project.absoluteFields.selectedFields.foreach { af =>
-      if (af.intersects(rect)) {
-        af.draw(gc, true)
+      if (af.intersects(imageSize, rect)) {
+        af.draw(imageSize, gc, true)
       }
     }
   }
 
   def drawWidget(widget: Widget[_], isSelected: Boolean): Unit = {
-    widget.draw(sfxImageCanvas.graphicsContext2D, isSelected)
+    widget.draw(imageSize, sfxImageCanvas.graphicsContext2D, isSelected)
   }
+
+  def imageSize: (Double, Double) = selectedImage.get.imageSize
 
   def drawSelectionRect(rect: Rectangle2D): Unit = {
     println("drawSelectionRect(" + rect + ")")
@@ -837,7 +852,7 @@ class MainController extends Initializable {
         dlg.headerText = "フィールドの名前を入力してください。"
         dlg.showAndWait() match {
           case None =>
-            redrawRect(field.drawArea)
+            redrawRect(field.drawArea(imageSize))
           case Some(name) =>
             project.addAbsoluteField(af.withName(name), true)
         }
@@ -851,14 +866,14 @@ class MainController extends Initializable {
         dlg.headerText = "余白位置を選択してください"
         dlg.showAndWait() match {
           case None =>
-            redrawRect(field.drawArea)
+            redrawRect(field.drawArea(imageSize))
           case Some(loc) => (loc match {
             case Left => project.addLeftCropField(cf.toLeft, true)
             case Right => project.addRightCropField(cf.toRight, true)
             case Top => project.addTopCropField(cf.toTop, true)
             case Bottom => project.addBottomCropField(cf.toBottom, true)
           }).foreach { oldCropField =>
-            redrawRect(oldCropField.drawArea)
+            redrawRect(oldCropField.drawArea(imageSize))
           }
         }
     }
@@ -866,8 +881,8 @@ class MainController extends Initializable {
 
   def selectFields(rect: Rectangle2D, e: MouseEvent): Unit = {
     println("selectFields(" + rect + ", " + e + ")")
-    project.selectAbsoluteFields(rect, e)
-    project.selectCropFields(rect, e)
+    project.selectAbsoluteFields(imageSize, rect, e)
+    project.selectCropFields(imageSize, rect, e)
   }
 
   @FXML
@@ -879,7 +894,7 @@ class MainController extends Initializable {
   @FXML
   def saveMenuClicked(event: ActionEvent) {
     println("saveMenuClicked()")
-
+    saveProject()
   }
 
   @FXML
@@ -1280,7 +1295,7 @@ class MainController extends Initializable {
     println("canvasMouseClicked")
     if (e.getClickCount == 2) {
       println("double clicked")
-      project.getSelectedAbsoluteFieldAt(e.getX, e.getY) foreach { f =>
+      project.getSelectedAbsoluteFieldAt(imageSize, e.getX, e.getY) foreach { f =>
         val dlg = new SfxTextInputDialog(f.name)
         dlg.title = "フィールドの名前変更"
         dlg.headerText = "フィールドの名前を入力してください。"
@@ -1395,41 +1410,41 @@ class MainController extends Initializable {
       new ProjectContext(
         onNormalAbsoluteFieldAdded = (f: AbsoluteField) => {
           println("*** normal field added " + f)
-          f.draw(sfxImageCanvas.graphicsContext2D, false)
+          f.draw(imageSize, sfxImageCanvas.graphicsContext2D, false)
         },
         onSelectedAbsoluteFieldAdded = (f: AbsoluteField) => {
           println("*** selected field added " + f)
-          f.draw(sfxImageCanvas.graphicsContext2D, true)
+          f.draw(imageSize, sfxImageCanvas.graphicsContext2D, true)
         },
         onNormalAbsoluteFieldRemoved = (f: AbsoluteField) => {
           println("*** normal field removed " + f)
-          redrawRect(f.drawArea)
+          redrawRect(f.drawArea(imageSize))
         },
         onSelectedAbsoluteFieldRemoved = (f: AbsoluteField) => {
           println("*** selected field removed " + f)
-          redrawRect(f.drawArea)
+          redrawRect(f.drawArea(imageSize))
         },
         onNormalCropFieldAdded = (f: CropField) => {
           project.invalidateCachedImage(cropped = true)
-          f.draw(sfxImageCanvas.graphicsContext2D, false)
+          f.draw(imageSize, sfxImageCanvas.graphicsContext2D, false)
         },
         onSelectedCropFieldAdded = (f: CropField) => {
           project.invalidateCachedImage(cropped = true)
-          f.draw(sfxImageCanvas.graphicsContext2D, true)
+          f.draw(imageSize, sfxImageCanvas.graphicsContext2D, true)
         },
         onNormalCropFieldRemoved = (f: CropField) => {
           project.invalidateCachedImage(cropped = true)
-          redrawRect(f.drawArea)
+          redrawRect(f.drawArea(imageSize))
         },
         onSelectedCropFieldRemoved = (f: CropField) => {
           project.invalidateCachedImage(cropped = true)
-          redrawRect(f.drawArea)
+          redrawRect(f.drawArea(imageSize))
         },
         redrawCropField = (f: CropField) => {
-          redrawRect(f.drawArea)
+          redrawRect(f.drawArea(imageSize))
         },
         selectCropField = (f: CropField, selected: Boolean) => {
-          redrawRect(f.drawArea)
+          redrawRect(f.drawArea(imageSize))
         }
       ),
       new ProjectListener {
@@ -1448,7 +1463,7 @@ class MainController extends Initializable {
     editor = new Editor(
       project,
       EditorContext(
-        drawWidget, redrawRect, fieldCreated, drawSelectionRect, selectFields, setMouseCursor
+        drawWidget, redrawRect, fieldCreated, drawSelectionRect, selectFields, setMouseCursor, () => imageSize
       )
     )
     editor.initialize()

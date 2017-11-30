@@ -37,9 +37,9 @@ class AbsoluteFieldTable(
     _selectedAbsoluteFields = imm.Seq()
   }
 
-  def selectFields(rect: Rectangle2D, e: MouseEvent) {
+  def selectFields(formSize: (Double, Double), rect: Rectangle2D, e: MouseEvent) {
     _normalAbsoluteFields = _normalAbsoluteFields.filter { f =>
-      if (f.intersects(rect)) {
+      if (f.intersects(formSize, rect)) {
         _selectedAbsoluteFields = _selectedAbsoluteFields :+ f
         projectContext.onSelectedAbsoluteFieldAdded(f)
         projectContext.onNormalAbsoluteFieldRemoved(f)
@@ -48,9 +48,9 @@ class AbsoluteFieldTable(
     }
   }
 
-  def selectSingleAbsoluteFieldAt(x: Double, y: Double): Option[Field] = {
+  def selectSingleAbsoluteFieldAt(formSize: (Double, Double), x: Double, y: Double): Option[Field] = {
     val found = _normalAbsoluteFields.zipWithIndex.find { case (f, idx) =>
-      f.contains(x, y)
+      f.contains(formSize, x, y)
     }
 
     found.foreach { case (f, idx) =>
@@ -82,50 +82,50 @@ class AbsoluteFieldTable(
     }
   }
 
-  def getSelectedFieldAt(x: Double, y: Double): Option[AbsoluteField] =
+  def getSelectedFieldAt(formSize: (Double, Double), x: Double, y: Double): Option[AbsoluteField] =
     _selectedAbsoluteFields.find { f =>
-      f.contains(x, y)
+      f.contains(formSize, x, y)
     }
 
-  def getNormalFieldAt(x: Double, y: Double): Option[AbsoluteField] =
+  def getNormalFieldAt(formSize: (Double, Double), x: Double, y: Double): Option[AbsoluteField] =
     _normalAbsoluteFields.find { f =>
-      f.contains(x, y)
+      f.contains(formSize, x, y)
     }
 
-  def moveSelectedFields(from: Point2D, to: Point2D) {
-    modifySelectedFields(_.move(from, to))
+  def moveSelectedFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    modifySelectedFields(_.move(formSize, from, to))
   }
 
-  def northResizeSelectedFields(from: Point2D, to: Point2D): Unit = {
-    modifySelectedFields(_.northResize(from, to))
+  def northResizeSelectedFields(formSize: (Double, Double), from: Point2D, to: Point2D): Unit = {
+    modifySelectedFields(_.northResize(formSize, from, to))
   }
 
-  def eastResizeSelectedFields(from: Point2D, to: Point2D): Unit = {
-    modifySelectedFields(_.eastResize(from, to))
+  def eastResizeSelectedFields(formSize: (Double, Double), from: Point2D, to: Point2D): Unit = {
+    modifySelectedFields(_.eastResize(formSize, from, to))
   }
 
-  def westResizeSelectedFields(from: Point2D, to: Point2D): Unit = {
-    modifySelectedFields(_.westResize(from, to))
+  def westResizeSelectedFields(formSize: (Double, Double), from: Point2D, to: Point2D): Unit = {
+    modifySelectedFields(_.westResize(formSize, from, to))
   }
 
-  def southResizeSelectedFields(from: Point2D, to: Point2D) {
-    modifySelectedFields(_.southResize(from, to))
+  def southResizeSelectedFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    modifySelectedFields(_.southResize(formSize, from, to))
   }
 
-  def northWestResizeSelectedFields(from: Point2D, to: Point2D) {
-    modifySelectedFields(_.northWestResize(from, to))
+  def northWestResizeSelectedFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    modifySelectedFields(_.northWestResize(formSize, from, to))
   }
 
-  def northEastResizeSelectedFields(from: Point2D, to: Point2D) {
-    modifySelectedFields(_.northEastResize(from, to))
+  def northEastResizeSelectedFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    modifySelectedFields(_.northEastResize(formSize, from, to))
   }
 
-  def southWestResizeSelectedFields(from: Point2D, to: Point2D) {
-    modifySelectedFields(_.southWestResize(from, to))
+  def southWestResizeSelectedFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    modifySelectedFields(_.southWestResize(formSize, from, to))
   }
 
-  def southEastResizeSelectedFields(from: Point2D, to: Point2D) {
-    modifySelectedFields(_.southEastResize(from, to))
+  def southEastResizeSelectedFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    modifySelectedFields(_.southEastResize(formSize, from, to))
   }
 
   def modifySelectedFields(modifier: AbsoluteField => AbsoluteField) {
@@ -168,32 +168,25 @@ class AbsoluteFieldTable(
     }
   }
 
-  def possibleMouseOperation(x: Double, y: Double): MouseOperation = {
+  def possibleMouseOperation(formSize: (Double, Double), x: Double, y: Double): MouseOperation = {
     _selectedAbsoluteFields.find { f =>
-      f.drawArea.contains(x, y)
+      f.drawArea(formSize).contains(x, y)
     }.orElse {
       _normalAbsoluteFields.find { f =>
-        f.drawArea.contains(x, y)
+        f.drawArea(formSize).contains(x, y)
       }
     } match {
       case None => CanDoNothing
-      case Some(f) => f.possibleMouseOperation(x, y)
+      case Some(f) => f.possibleMouseOperation(formSize, x, y)
     }
   }
 
-  def asJson(width: Double, height: Double): JsValue = JsArray(
+  def asJson: JsValue = JsArray(
     (normalFields ++ selectedFields).map { f =>
       JsObject(
         Seq(
           "name" -> JsString(f.name),
-          "rect" -> JsArray(
-            imm.Seq(
-              JsNumber(100 * f.rect.minX / width),
-              JsNumber(100 * f.rect.minY / height),
-              JsNumber(100 * f.rect.width / width),
-              JsNumber(100 * f.rect.height / height)
-            )
-          )
+          "field" -> f.asJson
         )
       )
     }

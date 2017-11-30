@@ -5,11 +5,11 @@ import scalafx.geometry.Rectangle2D
 import javafx.scene.paint.Color
 
 trait Widget[+T] { self: T =>
-  def intersects(newRect: Rectangle2D): Boolean = drawArea.intersects(newRect)
-  def draw(ctx: SfxGraphicsContext, isSelected: Boolean)
-  def drawArea: Rectangle2D
-  def contains(x: Double, y: Double): Boolean = drawArea.contains(x, y)
-  def possibleMouseOperation(x: Double, y: Double): MouseOperation
+  def intersects(formSize: (Double, Double), newRect: Rectangle2D): Boolean = drawArea(formSize).intersects(newRect)
+  def draw(formSize: (Double, Double), ctx: SfxGraphicsContext, isSelected: Boolean)
+  def drawArea(formSize: (Double, Double)): Rectangle2D
+  def contains(formSize: (Double, Double), x: Double, y: Double): Boolean = drawArea(formSize).contains(x, y)
+  def possibleMouseOperation(formSize: (Double, Double), x: Double, y: Double): MouseOperation
 }
 
 object SelectionWidget {
@@ -21,12 +21,12 @@ case class SelectionWidget(
 ) extends Widget[SelectionWidget] {
   import SelectionWidget._
 
-  val drawArea = new Rectangle2D(
+  def drawArea(formSize: (Double, Double)) = new Rectangle2D(
     rect.minX - LineWidth / 2, rect.minY - LineWidth / 2,
     rect.width + LineWidth, rect.height + LineWidth
   )
 
-  def draw(gc: SfxGraphicsContext, isSelected: Boolean) {
+  def draw(formSize: (Double, Double), gc: SfxGraphicsContext, isSelected: Boolean) {
     gc.setLineWidth(2.0)
     gc.setLineDashes()
     gc.setStroke(Color.BLACK)
@@ -34,5 +34,5 @@ case class SelectionWidget(
     gc.strokeRect(rect.minX, rect.minY, rect.width, rect.height)
   }
 
-  def possibleMouseOperation(x: Double, y: Double): MouseOperation = CanDoNothing
+  def possibleMouseOperation(formSize: (Double, Double), x: Double, y: Double): MouseOperation = CanDoNothing
 }

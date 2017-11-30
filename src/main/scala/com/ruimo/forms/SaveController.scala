@@ -10,8 +10,14 @@ import scalafx.scene.control.{ComboBox => SfxComboBox}
 
 class SaveController extends Initializable {
   @FXML
-  private[this] var cormConfigNameText: TextField = _
+  private[this] var saveConfigNameText: TextField = _
 
   override def initialize(url: URL, resourceBundle: ResourceBundle) {
   }
+
+  def configName_=(newName: String) {
+    saveConfigNameText.setText(newName)
+  }
+
+  def configName: String = saveConfigNameText.getText
 }
