@@ -294,15 +294,19 @@ trait CropField extends Field with RectField {
   def toBottom: BottomCropField
   def asJson: JsObject
 }
+
 trait LeftCropField extends CropField {
   type R <: LeftCropField
 }
+
 trait TopCropField extends CropField {
   type R <: TopCropField
 }
+
 trait RightCropField extends CropField {
   type R <: RightCropField
 }
+
 trait BottomCropField extends CropField {
   type R <: BottomCropField
 }
