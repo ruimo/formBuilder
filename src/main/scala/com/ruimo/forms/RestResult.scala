@@ -1,6 +1,9 @@
 package com.ruimo.forms
 
+import java.time.Instant
+
 import play.api.libs.json.JsValue
+
 import scala.collection.{immutable => imm}
 import scalafx.scene.image.Image
 
@@ -13,17 +16,20 @@ sealed trait CaptureRestFailure extends CaptureRestResult
 sealed trait SaveConfigRestResult
 sealed trait SaveConfigRestFailure extends SaveConfigRestResult
 
+sealed trait ListConfigRestResult
+sealed trait ListConfigRestFailure extends ListConfigRestResult
+
 case class RestAuthFailure(
   statusCode: Int,
   statusText: String,
   body: String
-) extends RetrievePreparedImageRestFailure with CaptureRestFailure with SaveConfigRestFailure
+) extends RetrievePreparedImageRestFailure with CaptureRestFailure with SaveConfigRestFailure with ListConfigRestFailure
 
 case class RestUnknownFailure(
   statusCode: Int,
   statusText: String,
   body: String
-) extends RetrievePreparedImageRestFailure with CaptureRestFailure with SaveConfigRestFailure
+) extends RetrievePreparedImageRestFailure with CaptureRestFailure with SaveConfigRestFailure with ListConfigRestFailure
 
 class RetrievePreparedImageResultOk(
   val serverResp: Option[PrepareResult],
@@ -71,3 +77,18 @@ object SaveConfigResultOk {
     )
   )
 }
+
+case class FormConfig(
+  configName: String,
+  revision: Revision,
+  comment: String,
+  createdAt: Instant
+)
+
+case class ListConfigResult(
+  configTable: imm.Seq[FormConfig]
+)
+
+case class ListConfigResultOk(
+  serverResp: ListConfigResult
+) extends ListConfigRestResult

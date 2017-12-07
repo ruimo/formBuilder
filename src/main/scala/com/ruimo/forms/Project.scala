@@ -394,6 +394,7 @@ trait Project {
   def invalidateCachedImage(skewCorrected: Boolean = false, cropped: Boolean = false): Unit
   def runCapture(si: SelectedImage): Future[Either[CaptureRestFailure, CaptureResultOk]]
   def cropFieldsAreReady: Boolean
+  def listConfig(): Future[ListConfigRestResult]
   def saveConfig(configName: String): Future[SaveConfigRestResult]
 }
 

@@ -660,17 +660,17 @@ class MainController extends Initializable {
           }
           dlg.showAndWait() match {
             case Some(SfxButtonType.Yes) =>
-              if (! saveProject()) {
-                e.consume()
-              }
-            case _ => e.consume()
+              saveProject(callbackOnCancel = () => e.consume())
+            case Some(SfxButtonType.No) =>
+            case _ =>
+              e.consume()
           }
         }
       }
     }
   }
 
-  private[this] def saveProject(): Boolean = {
+  private[this] def saveProject(callbackOnCancel: () => Unit = () => {}) {
     val loader = new FXMLLoader(getClass().getResource("save.fxml"))
     val root: DialogPane = loader.load()
     val ctrl = loader.getController().asInstanceOf[SaveController]
@@ -679,20 +679,40 @@ class MainController extends Initializable {
     projectConfigName.foreach { cname =>
       ctrl.configName = cname
     }
-    alert.showAndWait() match {
-      case Some(SfxButtonType.Apply) =>
-        projectConfigName = Some(ctrl.configName)
-        doBigJob {
-          Right(project.saveConfig(ctrl.configName))
-        } { (result: SaveConfigRestResult) =>
 
-        } { t =>
-          showGeneralError()
+    doBigJob {
+      Right(project.listConfig())
+    } {
+      case ListConfigResultOk(resp) =>
+        ctrl.formConfigs_=(resp.configTable)
+        alert.showAndWait() match {
+          case Some(SfxButtonType.Apply) =>
+            projectConfigName = Some(ctrl.configName)
+            doBigJob {
+              Right(project.saveConfig(ctrl.configName))
+            } {
+              case SaveConfigResultOk(resp) =>
+                val dlg = new SfxAlert(AlertType.Information) {
+                  title = "保管成功"
+                  contentText = "保管しました。リビジョン: " + resp.revision.value
+                }
+                dlg.showAndWait()
+              case authFail: RestAuthFailure =>
+                authError()
+                callbackOnCancel()
+              case serverFail: RestUnknownFailure =>
+                showGeneralError()
+                callbackOnCancel()
+            }()
+          case _ =>
         }
-        true
-      case _ =>
-        false
-    }
+      case authFail: RestAuthFailure =>
+        authError()
+        callbackOnCancel()
+      case serverFail: RestUnknownFailure =>
+        showGeneralError()
+        callbackOnCancel()
+    }()
   }
 
   @FXML
@@ -720,7 +740,7 @@ class MainController extends Initializable {
   lazy val sfxImageListView = new SfxListView(imageListView.asInstanceOf[ListView[File]])
   lazy val sfxImageCanvas = new SfxCanvas(imageCanvas)
 
-  def doBigJob[T](in: Either[T, Future[T]])(f: T => Unit)(onError: Throwable => Unit) {
+  def doBigJob[T](in: Either[T, Future[T]])(f: T => Unit)(onError: Throwable => Unit = t => showGeneralError()) {
     in match {
       case Left(value) => f(value)
       case Right(future) =>
@@ -778,9 +798,7 @@ class MainController extends Initializable {
           authError()
         case serverFail: RestUnknownFailure =>
           showGeneralError()
-      } { t =>
-        showGeneralError()
-      }
+      }()
     }
     if (! project.cropEnabled) {
       project.leftCropField.foreach { cf =>
@@ -948,9 +966,7 @@ class MainController extends Initializable {
                   }
                 }
               )
-            } { t =>
-              showGeneralError()
-            }
+            }()
           case Some(btn) =>
             println("Button: " + btn)
           case None =>
@@ -1371,9 +1387,7 @@ class MainController extends Initializable {
               )
               alert.showAndWait()
           }
-      } { t =>
-        showGeneralError()
-      }
+      }()
     }
   }
 

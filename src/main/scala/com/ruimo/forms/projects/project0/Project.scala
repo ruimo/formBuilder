@@ -9,6 +9,7 @@ import java.net.{HttpURLConnection, URL}
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.{Files, Path, Paths, StandardOpenOption}
+import java.time.Instant
 import java.util.concurrent.TimeUnit
 import java.util.zip.ZipInputStream
 import javafx.scene.input.MouseEvent
@@ -932,18 +933,19 @@ class ProjectImpl(
 
     val configFile = Files.createTempFile(null, null)
     val fileName = "image001" + extention(image.file).getOrElse("")
-    val cropTarget: Future[Either[RetrievePreparedImageRestFailure, (Double, Double)]] = if (skewCorrection.enabled) {
-      val fimg: Future[RetrievePreparedImageRestResult] = cachedImage(image, true, false).fold(Future.successful, identity)
-      fimg.map {
-        case img: RetrievePreparedImageResultOk =>
-          Right(img.image.getWidth(), img.image.getHeight())
-        case fail: RetrievePreparedImageRestFailure =>
-          Left(fail)
+    val cropTarget: Future[Either[RetrievePreparedImageRestFailure, (Double, Double)]] =
+      if (skewCorrection.enabled) {
+        val fimg: Future[RetrievePreparedImageRestResult] = cachedImage(image, true, false).fold(Future.successful, identity)
+        fimg.map {
+          case img: RetrievePreparedImageResultOk =>
+            Right(img.image.getWidth(), img.image.getHeight())
+          case fail: RetrievePreparedImageRestFailure =>
+            Left(fail)
+        }
       }
-    }
-    else {
-      Future.successful(Right(image.image.getWidth() -> image.image.getHeight()))
-    }
+      else {
+        Future.successful(Right(image.image.getWidth() -> image.image.getHeight()))
+      }
     val captureTarget: Future[Either[RetrievePreparedImageRestFailure, (Double, Double)]] = {
       val fimg: Future[RetrievePreparedImageRestResult] = cachedImage(image).fold(Future.successful, identity)
       fimg.map {
@@ -1251,16 +1253,71 @@ class ProjectImpl(
       println("statusText = " + resp.statusText)
       resp.status match {
         case 200 =>
-          PathUtil.withTempFile(None, None) { f =>
-            using(FileChannel.open(f, StandardOpenOption.CREATE, StandardOpenOption.WRITE)) { ch =>
-              ch.write(resp.bodyAsBytes.toByteBuffer)
-            }.get
-            SaveConfigResultOk(
-              SaveConfigResult(
-                Revision(0)
-              )
+          val result: JsValue = Json.parse(resp.bodyAsBytes.toArray)
+          SaveConfigResultOk(
+            SaveConfigResult(
+              Revision((result \ "revision").as[String].toLong)
             )
-          }.get
+          )
+        case 403 =>
+          RestAuthFailure(resp.status, resp.statusText, resp.body)
+        case _ =>
+          RestUnknownFailure(resp.status, resp.statusText, resp.body)
+      }
+    }
+  }
+
+  private def prepareFileForListConfig(): Path = {
+    println("prepareFileForListConfig()")
+
+    PathUtil.withTempFile(None, None) { configFile =>
+      Files.write(
+        configFile,
+        Json.obj(
+          "page" -> 0,
+          "pageSize" -> 1000,
+          "orderBy" -> "fc0.created_at"
+        ).toString.getBytes("utf-8")
+      )
+
+      val zipFile = Files.createTempFile(null, null)
+      Zip.deflate(
+        zipFile,
+        Seq(
+          "config.json" -> configFile
+        )
+      )
+      zipFile
+    }.get
+  }
+
+  def listConfig(): Future[ListConfigRestResult] = {
+    val urlPath = Settings.Loader.settings.auth.url.resolve("listConfig")
+    val auth = Settings.Loader.settings.auth
+
+    Ws().url(urlPath).addHttpHeaders(
+      "Content-Type" -> "application/zip",
+      "Authorization" -> (auth.contractedUserId.value + "_" + auth.applicationToken.value)
+    ).post(
+      Files.readAllBytes(prepareFileForListConfig())
+    ).map { resp =>
+      println("status = " + resp.status)
+      println("statusText = " + resp.statusText)
+      resp.status match {
+        case 200 =>
+          val result: JsValue = Json.parse(resp.bodyAsBytes.toArray)
+          ListConfigResultOk(
+            ListConfigResult(
+              (result \ "records").as[Seq[JsObject]].map { e =>
+                FormConfig(
+                  (e \ "configName").as[String],
+                  Revision((e \ "revision").as[String].toLong),
+                  (e \ "comment").as[String],
+                  Instant.ofEpochMilli((e \ "createdAt").as[String].toLong)
+                )
+              }.toList
+            )
+          )
         case 403 =>
           RestAuthFailure(resp.status, resp.statusText, resp.body)
         case _ =>
