@@ -64,21 +64,20 @@ case class EditorContext(
   fieldCreated: (Field) => Unit,
   drawSelectionRect: (Rectangle2D) => Unit,
   selectFields: (Rectangle2D, MouseEvent) => Unit,
-  setMouseCursor: Cursor => Unit,
-  formSize: () => (Double, Double)
+  setMouseCursor: Cursor => Unit
 )
 
 object ModeEditors {
   sealed trait ModeEditor {
-    def onMousePressed(e: MouseEvent): ModeEditor
-    def onMouseDragged(e: MouseEvent): ModeEditor
-    def onMouseReleased(e: MouseEvent): ModeEditor
-    def onMouseEntered(e: MouseEvent): ModeEditor
-    def onMouseExited(e: MouseEvent): ModeEditor
-    def onMouseMoved(e: MouseEvent): ModeEditor
-    def switchToAddMode(e: ActionEvent): ModeEditor
-    def switchToAddCropMode(e: ActionEvent): ModeEditor
-    def switchToSelectMode(e: ActionEvent): ModeEditor
+    def onMousePressed(e: MouseEvent, imgSz: (Double, Double)): ModeEditor
+    def onMouseDragged(e: MouseEvent, imgSz: (Double, Double)): ModeEditor
+    def onMouseReleased(e: MouseEvent, imgSz: (Double, Double)): ModeEditor
+    def onMouseEntered(e: MouseEvent, imgSz: (Double, Double)): ModeEditor
+    def onMouseExited(e: MouseEvent, imgSz: (Double, Double)): ModeEditor
+    def onMouseMoved(e: MouseEvent, imgSz: (Double, Double)): ModeEditor
+    def switchToAddMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor
+    def switchToAddCropMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor
+    def switchToSelectMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor
   }
 
   object AddCropMode {
@@ -86,18 +85,18 @@ object ModeEditors {
       project: Project,
       editorContext: EditorContext
     ) extends ModeEditor {
-      def onMousePressed(e: MouseEvent): ModeEditor = {
+      def onMousePressed(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         project.deselectAllFields()
         Start(project, editorContext, new Point2D(e.getX, e.getY))
       }
-      def onMouseDragged(e: MouseEvent): ModeEditor = this
-      def onMouseReleased(e: MouseEvent): ModeEditor = this
-      def onMouseEntered(e: MouseEvent): ModeEditor = this
-      def onMouseExited(e: MouseEvent): ModeEditor = this
-      def onMouseMoved(e: MouseEvent): ModeEditor = this
-      def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
-      def switchToAddCropMode(e: ActionEvent): ModeEditor = this
-      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+      def onMouseDragged(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseReleased(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseEntered(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseExited(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseMoved(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def switchToAddMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = this
+      def switchToSelectMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = SelectMode.Init(project, editorContext)
     }
 
     case class Start(
@@ -105,20 +104,20 @@ object ModeEditors {
       editorContext: EditorContext,
       p0: Point2D
     ) extends ModeEditor {
-      def onMousePressed(e: MouseEvent): ModeEditor = this
-      def onMouseDragged(e: MouseEvent): ModeEditor = {
+      def onMousePressed(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseDragged(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         val p1 = new Point2D(e.getX, e.getY)
-        val adding = UnknownCropFieldImpl(editorContext.formSize(), toRect(p0, p1))
+        val adding = UnknownCropFieldImpl(imgSz, toRect(p0, p1))
         editorContext.drawWidget(adding, true)
         Dragging(adding, project, editorContext, p0, p1)
       }
-      def onMouseReleased(e: MouseEvent): ModeEditor = Init(project, editorContext)
-      def onMouseEntered(e: MouseEvent): ModeEditor = this
-      def onMouseExited(e: MouseEvent): ModeEditor = this
-      def onMouseMoved(e: MouseEvent): ModeEditor = this
-      def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
-      def switchToAddCropMode(e: ActionEvent): ModeEditor = Init(project, editorContext)
-      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+      def onMouseReleased(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = Init(project, editorContext)
+      def onMouseEntered(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseExited(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseMoved(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def switchToAddMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = SelectMode.Init(project, editorContext)
     }
 
     case class Dragging(
@@ -127,28 +126,28 @@ object ModeEditors {
       editorContext: EditorContext,
       p0: Point2D, p1: Point2D
     ) extends ModeEditor {
-      def onMousePressed(e: MouseEvent): ModeEditor = this
-      def onMouseDragged(e: MouseEvent): ModeEditor = {
+      def onMousePressed(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseDragged(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         val newP1 = new Point2D(e.getX, e.getY)
-        editorContext.redrawRect(adding.drawArea(editorContext.formSize()))
-        val newAdding = UnknownCropFieldImpl(editorContext.formSize(), toRect(p0, newP1))
+        editorContext.redrawRect(adding.drawArea(imgSz))
+        val newAdding = UnknownCropFieldImpl(imgSz, toRect(p0, newP1))
         editorContext.drawWidget(newAdding, true)
         Dragging(newAdding, project, editorContext, p0, newP1)
       }
-      def onMouseReleased(e: MouseEvent): ModeEditor = {
+      def onMouseReleased(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         val newP1 = new Point2D(e.getX, e.getY)
-        editorContext.redrawRect(adding.drawArea(editorContext.formSize()))
-        val newAdding = UnknownCropFieldImpl(editorContext.formSize(), toRect(p0, newP1))
+        editorContext.redrawRect(adding.drawArea(imgSz))
+        val newAdding = UnknownCropFieldImpl(imgSz, toRect(p0, newP1))
         editorContext.drawWidget(newAdding, true)
         editorContext.fieldCreated(newAdding)
         Init(project, editorContext)
       }
-      def onMouseEntered(e: MouseEvent): ModeEditor = this
-      def onMouseExited(e: MouseEvent): ModeEditor = this
-      def onMouseMoved(e: MouseEvent): ModeEditor = this
-      def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
-      def switchToAddCropMode(e: ActionEvent): ModeEditor = Init(project, editorContext)
-      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+      def onMouseEntered(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseExited(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseMoved(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def switchToAddMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = SelectMode.Init(project, editorContext)
     }
   }
 
@@ -160,18 +159,18 @@ object ModeEditors {
       assume(project != null)
       assume(editorContext != null)
 
-      def onMousePressed(e: MouseEvent): ModeEditor = {
+      def onMousePressed(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         project.deselectAllFields()
         Start(project, editorContext, new Point2D(e.getX, e.getY))
       }
-      def onMouseDragged(e: MouseEvent): ModeEditor = this
-      def onMouseReleased(e: MouseEvent): ModeEditor = this
-      def onMouseEntered(e: MouseEvent): ModeEditor = this
-      def onMouseExited(e: MouseEvent): ModeEditor = this
-      def onMouseMoved(e: MouseEvent): ModeEditor = this
-      def switchToAddMode(e: ActionEvent): ModeEditor = this
-      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
-      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+      def onMouseDragged(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseReleased(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseEntered(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseExited(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseMoved(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def switchToAddMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = this
+      def switchToAddCropMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = SelectMode.Init(project, editorContext)
     }
 
     case class Start(
@@ -179,20 +178,20 @@ object ModeEditors {
       editorContext: EditorContext,
       p0: Point2D
     ) extends ModeEditor {
-      def onMousePressed(e: MouseEvent): ModeEditor = this
-      def onMouseDragged(e: MouseEvent): ModeEditor = {
+      def onMousePressed(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseDragged(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         val p1 = new Point2D(e.getX, e.getY)
-        val adding = AbsoluteFieldImpl(editorContext.formSize(), toRect(p0, p1), "adding")
+        val adding = AbsoluteFieldImpl(imgSz, toRect(p0, p1), "adding")
         editorContext.drawWidget(adding, true)
         Dragging(adding, project, editorContext, p0, p1)
       }
-      def onMouseReleased(e: MouseEvent): ModeEditor = Init(project, editorContext)
-      def onMouseEntered(e: MouseEvent): ModeEditor = this
-      def onMouseExited(e: MouseEvent): ModeEditor = this
-      def onMouseMoved(e: MouseEvent): ModeEditor = this
-      def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
-      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
-      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+      def onMouseReleased(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = Init(project, editorContext)
+      def onMouseEntered(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseExited(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseMoved(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def switchToAddMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = SelectMode.Init(project, editorContext)
     }
 
     case class Dragging(
@@ -201,28 +200,28 @@ object ModeEditors {
       editorContext: EditorContext,
       p0: Point2D, p1: Point2D
     ) extends ModeEditor {
-      def onMousePressed(e: MouseEvent): ModeEditor = this
-      def onMouseDragged(e: MouseEvent): ModeEditor = {
+      def onMousePressed(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseDragged(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         val newP1 = new Point2D(e.getX, e.getY)
-        editorContext.redrawRect(adding.drawArea(editorContext.formSize()))
-        val newAdding = AbsoluteFieldImpl(editorContext.formSize(), toRect(p0, newP1), "adding")
+        editorContext.redrawRect(adding.drawArea(imgSz))
+        val newAdding = AbsoluteFieldImpl(imgSz, toRect(p0, newP1), "adding")
         editorContext.drawWidget(newAdding, true)
         Dragging(newAdding, project, editorContext, p0, newP1)
       }
-      def onMouseReleased(e: MouseEvent): ModeEditor = {
+      def onMouseReleased(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         val newP1 = new Point2D(e.getX, e.getY)
-        editorContext.redrawRect(adding.drawArea(editorContext.formSize()))
-        val newAdding = AbsoluteFieldImpl(editorContext.formSize(), toRect(p0, newP1), "adding")
+        editorContext.redrawRect(adding.drawArea(imgSz))
+        val newAdding = AbsoluteFieldImpl(imgSz, toRect(p0, newP1), "adding")
         editorContext.drawWidget(newAdding, true)
         editorContext.fieldCreated(newAdding)
         Init(project, editorContext)
       }
-      def onMouseEntered(e: MouseEvent): ModeEditor = this
-      def onMouseExited(e: MouseEvent): ModeEditor = this
-      def onMouseMoved(e: MouseEvent): ModeEditor = this
-      def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
-      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
-      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+      def onMouseEntered(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseExited(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseMoved(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def switchToAddMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = SelectMode.Init(project, editorContext)
     }
   }
 
@@ -231,9 +230,9 @@ object ModeEditors {
       project: Project,
       editorContext: EditorContext
     ) extends ModeEditor {
-      def onMousePressed(e: MouseEvent): ModeEditor = {
+      def onMousePressed(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         def doNext(f: Field): ModeEditor = {
-          f.possibleMouseOperation(editorContext.formSize(), e.getX, e.getY) match {
+          f.possibleMouseOperation(imgSz, e.getX, e.getY) match {
             case CanMove(_) => Moving(project, editorContext, new Point2D(e.getX, e.getY))
             case CanNorthResize(f) => NorthResize(project, editorContext, new Point2D(e.getX, e.getY))
             case CanEastResize(_) => EastResize(project, editorContext, new Point2D(e.getX, e.getY))
@@ -247,10 +246,10 @@ object ModeEditors {
           }
         }
 
-        project.getSelectedFieldAt(editorContext.formSize(), e.getX, e.getY) match {
+        project.getSelectedFieldAt(imgSz, e.getX, e.getY) match {
           case Some(f) => doNext(f)
           case None =>
-            project.getNormalFieldAt(editorContext.formSize(), e.getX, e.getY) match {
+            project.getNormalFieldAt(imgSz, e.getX, e.getY) match {
               case Some(f) =>
                 if (! e.isShiftDown)
                   project.deselectAllFields()
@@ -263,15 +262,15 @@ object ModeEditors {
             }
         }
       }
-      def onMouseDragged(e: MouseEvent): ModeEditor = this
-      def onMouseReleased(e: MouseEvent): ModeEditor = this
-      def onMouseEntered(e: MouseEvent): ModeEditor = onMouseMoved(e)
-      def onMouseExited(e: MouseEvent): ModeEditor = {
+      def onMouseDragged(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseReleased(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseEntered(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = onMouseMoved(e, imgSz)
+      def onMouseExited(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         editorContext.setMouseCursor(Cursor.DEFAULT)
         this
       }
-      def onMouseMoved(e: MouseEvent): ModeEditor = {
-        project.possibleMouseOperation(editorContext.formSize(), e.getX, e.getY) match {
+      def onMouseMoved(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
+        project.possibleMouseOperation(imgSz, e.getX, e.getY) match {
           case CanDoNothing =>
             editorContext.setMouseCursor(Cursor.DEFAULT)
           case CanMove(f) =>
@@ -296,9 +295,9 @@ object ModeEditors {
 
         this
       }
-      def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
-      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
-      def switchToSelectMode(e: ActionEvent): ModeEditor = this
+      def switchToAddMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = this
     }
 
     case class Start(
@@ -306,27 +305,27 @@ object ModeEditors {
       editorContext: EditorContext,
       p0: Point2D
     ) extends ModeEditor {
-      def onMousePressed(e: MouseEvent): ModeEditor = this
-      def onMouseDragged(e: MouseEvent): ModeEditor = {
+      def onMousePressed(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseDragged(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         val p1 = new Point2D(e.getX, e.getY)
         val sw = SelectionWidget(toRect(p0, p1))
         editorContext.drawWidget(sw, false)
         Dragging(sw, project, editorContext, p0, p1)
       }
-      def onMouseReleased(e: MouseEvent): ModeEditor = {
-        project.selectSingleFieldAt(editorContext.formSize(), e.getX, e.getY)
+      def onMouseReleased(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
+        project.selectSingleFieldAt(imgSz, e.getX, e.getY)
         editorContext.setMouseCursor(Cursor.DEFAULT)
         Init(project, editorContext)
       }
-      def onMouseEntered(e: MouseEvent): ModeEditor = this
-      def onMouseExited(e: MouseEvent): ModeEditor = {
+      def onMouseEntered(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseExited(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         editorContext.setMouseCursor(Cursor.DEFAULT)
         this
       }
-      def onMouseMoved(e: MouseEvent): ModeEditor = this
-      def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
-      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
-      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+      def onMouseMoved(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def switchToAddMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = SelectMode.Init(project, editorContext)
     }
 
     case class Moving(
@@ -334,22 +333,22 @@ object ModeEditors {
       editorContext: EditorContext,
       p0: Point2D
     ) extends ModeEditor {
-      def onMousePressed(e: MouseEvent): ModeEditor = this
-      def onMouseDragged(e: MouseEvent): ModeEditor = {
+      def onMousePressed(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseDragged(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         val p1 = new Point2D(e.getX, e.getY)
-        project.moveSelectedFields(editorContext.formSize(), p0, p1)
+        project.moveSelectedFields(imgSz, p0, p1)
         Moving(project, editorContext, p1)
       }
-      def onMouseReleased(e: MouseEvent): ModeEditor = {
+      def onMouseReleased(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         editorContext.setMouseCursor(Cursor.DEFAULT)
         Init(project, editorContext)
       }
-      def onMouseEntered(e: MouseEvent): ModeEditor = this
-      def onMouseExited(e: MouseEvent): ModeEditor = this
-      def onMouseMoved(e: MouseEvent): ModeEditor = this
-      def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
-      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
-      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+      def onMouseEntered(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseExited(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseMoved(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def switchToAddMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = SelectMode.Init(project, editorContext)
     }
 
     case class NorthResize(
@@ -357,22 +356,22 @@ object ModeEditors {
       editorContext: EditorContext,
       p0: Point2D
     ) extends ModeEditor {
-      def onMousePressed(e: MouseEvent): ModeEditor = this
-      def onMouseDragged(e: MouseEvent): ModeEditor = {
+      def onMousePressed(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseDragged(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         val p1 = new Point2D(e.getX, e.getY)
-        project.northResizeSelectedFields(editorContext.formSize(), p0, p1)
+        project.northResizeSelectedFields(imgSz, p0, p1)
         NorthResize(project, editorContext, p1)
       }
-      def onMouseReleased(e: MouseEvent): ModeEditor = {
+      def onMouseReleased(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         editorContext.setMouseCursor(Cursor.DEFAULT)
         Init(project, editorContext)
       }
-      def onMouseEntered(e: MouseEvent): ModeEditor = this
-      def onMouseExited(e: MouseEvent): ModeEditor = this
-      def onMouseMoved(e: MouseEvent): ModeEditor = this
-      def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
-      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
-      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+      def onMouseEntered(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseExited(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseMoved(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def switchToAddMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = SelectMode.Init(project, editorContext)
     }
 
     case class EastResize(
@@ -380,22 +379,22 @@ object ModeEditors {
       editorContext: EditorContext,
       p0: Point2D
     ) extends ModeEditor {
-      def onMousePressed(e: MouseEvent): ModeEditor = this
-      def onMouseDragged(e: MouseEvent): ModeEditor = {
+      def onMousePressed(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseDragged(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         val p1 = new Point2D(e.getX, e.getY)
-        project.eastResizeSelectedFields(editorContext.formSize(), p0, p1)
+        project.eastResizeSelectedFields(imgSz, p0, p1)
         EastResize(project, editorContext, p1)
       }
-      def onMouseReleased(e: MouseEvent): ModeEditor = {
+      def onMouseReleased(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         editorContext.setMouseCursor(Cursor.DEFAULT)
         Init(project, editorContext)
       }
-      def onMouseEntered(e: MouseEvent): ModeEditor = this
-      def onMouseExited(e: MouseEvent): ModeEditor = this
-      def onMouseMoved(e: MouseEvent): ModeEditor = this
-      def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
-      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
-      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+      def onMouseEntered(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseExited(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseMoved(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def switchToAddMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = SelectMode.Init(project, editorContext)
     }
 
     case class WestResize(
@@ -403,22 +402,22 @@ object ModeEditors {
       editorContext: EditorContext,
       p0: Point2D
     ) extends ModeEditor {
-      def onMousePressed(e: MouseEvent): ModeEditor = this
-      def onMouseDragged(e: MouseEvent): ModeEditor = {
+      def onMousePressed(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseDragged(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         val p1 = new Point2D(e.getX, e.getY)
-        project.westResizeSelectedFields(editorContext.formSize(), p0, p1)
+        project.westResizeSelectedFields(imgSz, p0, p1)
         WestResize(project, editorContext, p1)
       }
-      def onMouseReleased(e: MouseEvent): ModeEditor = {
+      def onMouseReleased(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         editorContext.setMouseCursor(Cursor.DEFAULT)
         Init(project, editorContext)
       }
-      def onMouseEntered(e: MouseEvent): ModeEditor = this
-      def onMouseExited(e: MouseEvent): ModeEditor = this
-      def onMouseMoved(e: MouseEvent): ModeEditor = this
-      def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
-      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
-      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+      def onMouseEntered(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseExited(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseMoved(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def switchToAddMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = SelectMode.Init(project, editorContext)
     }
 
     case class SouthResize(
@@ -426,22 +425,22 @@ object ModeEditors {
       editorContext: EditorContext,
       p0: Point2D
     ) extends ModeEditor {
-      def onMousePressed(e: MouseEvent): ModeEditor = this
-      def onMouseDragged(e: MouseEvent): ModeEditor = {
+      def onMousePressed(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseDragged(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         val p1 = new Point2D(e.getX, e.getY)
-        project.southResizeSelectedFields(editorContext.formSize(), p0, p1)
+        project.southResizeSelectedFields(imgSz, p0, p1)
         SouthResize(project, editorContext, p1)
       }
-      def onMouseReleased(e: MouseEvent): ModeEditor = {
+      def onMouseReleased(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         editorContext.setMouseCursor(Cursor.DEFAULT)
         Init(project, editorContext)
       }
-      def onMouseEntered(e: MouseEvent): ModeEditor = this
-      def onMouseExited(e: MouseEvent): ModeEditor = this
-      def onMouseMoved(e: MouseEvent): ModeEditor = this
-      def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
-      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
-      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+      def onMouseEntered(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseExited(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseMoved(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def switchToAddMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = SelectMode.Init(project, editorContext)
     }
 
     case class NorthWestResize(
@@ -449,22 +448,22 @@ object ModeEditors {
       editorContext: EditorContext,
       p0: Point2D
     ) extends ModeEditor {
-      def onMousePressed(e: MouseEvent): ModeEditor = this
-      def onMouseDragged(e: MouseEvent): ModeEditor = {
+      def onMousePressed(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseDragged(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         val p1 = new Point2D(e.getX, e.getY)
-        project.northWestResizeSelectedFields(editorContext.formSize(), p0, p1)
+        project.northWestResizeSelectedFields(imgSz, p0, p1)
         NorthWestResize(project, editorContext, p1)
       }
-      def onMouseReleased(e: MouseEvent): ModeEditor = {
+      def onMouseReleased(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         editorContext.setMouseCursor(Cursor.DEFAULT)
         Init(project, editorContext)
       }
-      def onMouseEntered(e: MouseEvent): ModeEditor = this
-      def onMouseExited(e: MouseEvent): ModeEditor = this
-      def onMouseMoved(e: MouseEvent): ModeEditor = this
-      def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
-      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
-      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+      def onMouseEntered(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseExited(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseMoved(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def switchToAddMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = SelectMode.Init(project, editorContext)
     }
 
     case class NorthEastResize(
@@ -472,22 +471,22 @@ object ModeEditors {
       editorContext: EditorContext,
       p0: Point2D
     ) extends ModeEditor {
-      def onMousePressed(e: MouseEvent): ModeEditor = this
-      def onMouseDragged(e: MouseEvent): ModeEditor = {
+      def onMousePressed(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseDragged(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         val p1 = new Point2D(e.getX, e.getY)
-        project.northEastResizeSelectedFields(editorContext.formSize(), p0, p1)
+        project.northEastResizeSelectedFields(imgSz, p0, p1)
         NorthEastResize(project, editorContext, p1)
       }
-      def onMouseReleased(e: MouseEvent): ModeEditor = {
+      def onMouseReleased(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         editorContext.setMouseCursor(Cursor.DEFAULT)
         Init(project, editorContext)
       }
-      def onMouseEntered(e: MouseEvent): ModeEditor = this
-      def onMouseExited(e: MouseEvent): ModeEditor = this
-      def onMouseMoved(e: MouseEvent): ModeEditor = this
-      def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
-      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
-      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+      def onMouseEntered(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseExited(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseMoved(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def switchToAddMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = SelectMode.Init(project, editorContext)
     }
 
     case class SouthWestResize(
@@ -495,22 +494,22 @@ object ModeEditors {
       editorContext: EditorContext,
       p0: Point2D
     ) extends ModeEditor {
-      def onMousePressed(e: MouseEvent): ModeEditor = this
-      def onMouseDragged(e: MouseEvent): ModeEditor = {
+      def onMousePressed(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseDragged(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         val p1 = new Point2D(e.getX, e.getY)
-        project.southWestResizeSelectedFields(editorContext.formSize(), p0, p1)
+        project.southWestResizeSelectedFields(imgSz, p0, p1)
         SouthWestResize(project, editorContext, p1)
       }
-      def onMouseReleased(e: MouseEvent): ModeEditor = {
+      def onMouseReleased(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         editorContext.setMouseCursor(Cursor.DEFAULT)
         Init(project, editorContext)
       }
-      def onMouseEntered(e: MouseEvent): ModeEditor = this
-      def onMouseExited(e: MouseEvent): ModeEditor = this
-      def onMouseMoved(e: MouseEvent): ModeEditor = this
-      def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
-      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
-      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+      def onMouseEntered(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseExited(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseMoved(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def switchToAddMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = SelectMode.Init(project, editorContext)
     }
 
     case class SouthEastResize(
@@ -518,22 +517,22 @@ object ModeEditors {
       editorContext: EditorContext,
       p0: Point2D
     ) extends ModeEditor {
-      def onMousePressed(e: MouseEvent): ModeEditor = this
-      def onMouseDragged(e: MouseEvent): ModeEditor = {
+      def onMousePressed(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseDragged(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         val p1 = new Point2D(e.getX, e.getY)
-        project.southEastResizeSelectedFields(editorContext.formSize(), p0, p1)
+        project.southEastResizeSelectedFields(imgSz, p0, p1)
         SouthEastResize(project, editorContext, p1)
       }
-      def onMouseReleased(e: MouseEvent): ModeEditor = {
+      def onMouseReleased(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         editorContext.setMouseCursor(Cursor.DEFAULT)
         Init(project, editorContext)
       }
-      def onMouseEntered(e: MouseEvent): ModeEditor = this
-      def onMouseExited(e: MouseEvent): ModeEditor = this
-      def onMouseMoved(e: MouseEvent): ModeEditor = this
-      def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
-      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
-      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+      def onMouseEntered(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseExited(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseMoved(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def switchToAddMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = SelectMode.Init(project, editorContext)
     }
 
     case class Dragging(
@@ -542,28 +541,28 @@ object ModeEditors {
       editorContext: EditorContext,
       p0: Point2D, p1: Point2D
     ) extends ModeEditor {
-      def onMousePressed(e: MouseEvent): ModeEditor = this
-      def onMouseDragged(e: MouseEvent): ModeEditor = {
+      def onMousePressed(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseDragged(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         val newP1 = new Point2D(e.getX, e.getY)
         val newSw = SelectionWidget(toRect(p0, newP1))
 
-        editorContext.redrawRect(sw.drawArea(editorContext.formSize()))
+        editorContext.redrawRect(sw.drawArea(imgSz))
         editorContext.drawWidget(newSw, false)
         Dragging(newSw, project, editorContext, p0, newP1)
       }
-      def onMouseReleased(e: MouseEvent): ModeEditor = {
+      def onMouseReleased(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = {
         editorContext.setMouseCursor(Cursor.DEFAULT)
         val newP1 = new Point2D(e.getX, e.getY)
-        editorContext.redrawRect(sw.drawArea(editorContext.formSize()))
+        editorContext.redrawRect(sw.drawArea(imgSz))
         editorContext.selectFields(toRect(p0, newP1), e)
         Init(project, editorContext)
       }
-      def onMouseEntered(e: MouseEvent): ModeEditor = this
-      def onMouseExited(e: MouseEvent): ModeEditor = this
-      def onMouseMoved(e: MouseEvent): ModeEditor = this
-      def switchToAddMode(e: ActionEvent): ModeEditor = AddMode.Init(project, editorContext)
-      def switchToAddCropMode(e: ActionEvent): ModeEditor = AddCropMode.Init(project, editorContext)
-      def switchToSelectMode(e: ActionEvent): ModeEditor = SelectMode.Init(project, editorContext)
+      def onMouseEntered(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseExited(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def onMouseMoved(e: MouseEvent, imgSz: (Double, Double)): ModeEditor = this
+      def switchToAddMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddMode.Init(project, editorContext)
+      def switchToAddCropMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = AddCropMode.Init(project, editorContext)
+      def switchToSelectMode(e: ActionEvent, imgSz: (Double, Double)): ModeEditor = SelectMode.Init(project, editorContext)
     }
   }
 }
@@ -579,40 +578,40 @@ class Editor(
   def initialize() {
   }
 
-  def onMousePressed(e: MouseEvent) {
-    editor = editor.onMousePressed(e)
+  def onMousePressed(e: MouseEvent, imgSz: (Double, Double)) {
+    editor = editor.onMousePressed(e, imgSz)
   }
 
-  def onMouseDragged(e: MouseEvent): Unit = {
-    editor = editor.onMouseDragged(e)
+  def onMouseDragged(e: MouseEvent, imgSz: (Double, Double)): Unit = {
+    editor = editor.onMouseDragged(e, imgSz)
   }
 
-  def onMouseReleased(e: MouseEvent): Unit = {
-    editor = editor.onMouseReleased(e)
+  def onMouseReleased(e: MouseEvent, imgSz: (Double, Double)): Unit = {
+    editor = editor.onMouseReleased(e, imgSz)
   }
 
-  def onMouseExited(e: MouseEvent): Unit = {
-    editor = editor.onMouseExited(e)
+  def onMouseExited(e: MouseEvent, imgSz: (Double, Double)): Unit = {
+    editor = editor.onMouseExited(e, imgSz)
   }
 
-  def onMouseEntered(e: MouseEvent): Unit = {
-    editor = editor.onMouseEntered(e)
+  def onMouseEntered(e: MouseEvent, imgSz: (Double, Double)): Unit = {
+    editor = editor.onMouseEntered(e, imgSz)
   }
 
-  def onMouseMoved(e: MouseEvent): Unit = {
-    editor = editor.onMouseMoved(e)
+  def onMouseMoved(e: MouseEvent, imgSz: (Double, Double)): Unit = {
+    editor = editor.onMouseMoved(e, imgSz)
   }
 
-  def switchToAddMode(e: ActionEvent): Unit = {
-    editor = editor.switchToAddMode(e)
+  def switchToAddMode(e: ActionEvent, imgSz: (Double, Double)): Unit = {
+    editor = editor.switchToAddMode(e, imgSz)
   }
 
-  def switchToSelectMode(e: ActionEvent): Unit = {
-    editor = editor.switchToSelectMode(e)
+  def switchToSelectMode(e: ActionEvent, imgSz: (Double, Double)): Unit = {
+    editor = editor.switchToSelectMode(e, imgSz)
   }
 
-  def switchToAddCropMode(e: ActionEvent): Unit = {
-    editor = editor.switchToAddCropMode(e)
+  def switchToAddCropMode(e: ActionEvent, imgSz: (Double, Double)): Unit = {
+    editor = editor.switchToAddCropMode(e, imgSz)
   }
 }
 
@@ -794,51 +793,95 @@ class MainController extends Initializable {
             x, y, w, h,
             x, y, w, h
           )
+
+          val imgSz = (ok.image.width.get, ok.image.height.get)
+          if (! project.cropEnabled) {
+            project.leftCropField.foreach { cf =>
+              if (cf.intersects(imgSz, rect)) {
+                cf.draw(imgSz, gc, project.isLeftCropFieldSelected)
+              }
+            }
+            project.topCropField.foreach { cf =>
+              if (cf.intersects(imgSz, rect)) {
+                cf.draw(imgSz, gc, project.isLeftCropFieldSelected)
+              }
+            }
+            project.rightCropField.foreach { cf =>
+              if (cf.intersects(imgSz, rect)) {
+                cf.draw(imgSz, gc, project.isRightCropFieldSelected)
+              }
+            }
+            project.bottomCropField.foreach { cf =>
+              if (cf.intersects(imgSz, rect)) {
+                cf.draw(imgSz, gc, project.isBottomCropFieldSelected)
+              }
+            }
+          }
+          project.absoluteFields.normalFields.foreach { af =>
+            if (af.intersects(imgSz, rect)) {
+              af.draw(imgSz, gc, false)
+            }
+          }
+          project.absoluteFields.selectedFields.foreach { af =>
+            if (af.intersects(imgSz, rect)) {
+              af.draw(imgSz, gc, true)
+            }
+          }
         case authFail: RestAuthFailure =>
+          sfxSkewCorrectionCheck.selected = false
+          project.skewCorrection = project.skewCorrection.copy(enabled = false)
+          sfxCropCheck.selected = false
+          project.cropEnabled = false
           authError()
         case serverFail: RestUnknownFailure =>
+          sfxSkewCorrectionCheck.selected = false
+          project.skewCorrection = project.skewCorrection.copy(enabled = false)
+          sfxCropCheck.selected = false
+          project.cropEnabled = false
           showGeneralError()
       }()
     }
-    if (! project.cropEnabled) {
-      project.leftCropField.foreach { cf =>
-        if (cf.intersects(imageSize, rect)) {
-          cf.draw(imageSize, gc, project.isLeftCropFieldSelected)
-        }
-      }
-      project.topCropField.foreach { cf =>
-        if (cf.intersects(imageSize, rect)) {
-          cf.draw(imageSize, gc, project.isLeftCropFieldSelected)
-        }
-      }
-      project.rightCropField.foreach { cf =>
-        if (cf.intersects(imageSize, rect)) {
-          cf.draw(imageSize, gc, project.isRightCropFieldSelected)
-        }
-      }
-      project.bottomCropField.foreach { cf =>
-        if (cf.intersects(imageSize, rect)) {
-          cf.draw(imageSize, gc, project.isBottomCropFieldSelected)
-        }
-      }
-    }
-    project.absoluteFields.normalFields.foreach { af =>
-      if (af.intersects(imageSize, rect)) {
-        af.draw(imageSize, gc, false)
-      }
-    }
-    project.absoluteFields.selectedFields.foreach { af =>
-      if (af.intersects(imageSize, rect)) {
-        af.draw(imageSize, gc, true)
-      }
+  }
+
+  def doWithImageSize(f: ((Double, Double)) => Unit) {
+    selectedImage.foreach { si =>
+      doBigJob(project.cachedImage(si)) {
+        case ok: RetrievePreparedImageResultOk =>
+          ok.serverResp.foreach { prepareResult =>
+            prepareResult.cropResult.foreach { cr =>
+              cr match {
+                case s: CropResultSuccess =>
+                case CropResultCannotFindEdge =>
+                  project.cropEnabled = false
+                  showCropError()
+              }
+            }
+          }
+          val imgSz = (ok.image.width.get, ok.image.height.get)
+          f(imgSz)
+        case authFail: RestAuthFailure =>
+          sfxSkewCorrectionCheck.selected = false
+          project.skewCorrection = project.skewCorrection.copy(enabled = false)
+          sfxCropCheck.selected = false
+          project.cropEnabled = false
+          authError()
+        case serverFail: RestUnknownFailure =>
+          sfxSkewCorrectionCheck.selected = false
+          project.skewCorrection = project.skewCorrection.copy(enabled = false)
+          sfxCropCheck.selected = false
+          project.cropEnabled = false
+          showGeneralError()
+      }()
     }
   }
 
   def drawWidget(widget: Widget[_], isSelected: Boolean): Unit = {
-    widget.draw(imageSize, sfxImageCanvas.graphicsContext2D, isSelected)
+    doWithImageSize { sz =>
+      widget.draw(sz, sfxImageCanvas.graphicsContext2D, isSelected)
+    }
   }
 
-  def imageSize: (Double, Double) = selectedImage.get.imageSize
+  def orgImageSize: (Double, Double) = selectedImage.get.imageSize
 
   def drawSelectionRect(rect: Rectangle2D): Unit = {
     println("drawSelectionRect(" + rect + ")")
@@ -863,44 +906,48 @@ class MainController extends Initializable {
   def fieldCreated(field: Field): Unit = {
     println("fieldCreated(" + field + ")")
 
-    field match {
-      case af: AbsoluteField =>
-        val dlg = new SfxTextInputDialog("")
-        dlg.title = "フィールドの名前入力"
-        dlg.headerText = "フィールドの名前を入力してください。"
-        dlg.showAndWait() match {
-          case None =>
-            redrawRect(field.drawArea(imageSize))
-          case Some(name) =>
-            project.addAbsoluteField(af.withName(name), true)
-        }
-      case cf: CropField =>
-        val Left = "左余白検出"
-        val Right = "右余白検出"
-        val Top = "上余白検出"
-        val Bottom = "下余白検出"
-        val dlg = new SfxChoiceDialog(Top, Seq(Top, Left, Right, Bottom))
-        dlg.title = "余白位置の選択"
-        dlg.headerText = "余白位置を選択してください"
-        dlg.showAndWait() match {
-          case None =>
-            redrawRect(field.drawArea(imageSize))
-          case Some(loc) => (loc match {
-            case Left => project.addLeftCropField(cf.toLeft, true)
-            case Right => project.addRightCropField(cf.toRight, true)
-            case Top => project.addTopCropField(cf.toTop, true)
-            case Bottom => project.addBottomCropField(cf.toBottom, true)
-          }).foreach { oldCropField =>
-            redrawRect(oldCropField.drawArea(imageSize))
+    doWithImageSize { imgSz =>
+      field match {
+        case af: AbsoluteField =>
+          val dlg = new SfxTextInputDialog("")
+          dlg.title = "フィールドの名前入力"
+          dlg.headerText = "フィールドの名前を入力してください。"
+          dlg.showAndWait() match {
+            case None =>
+              redrawRect(field.drawArea(imgSz))
+            case Some(name) =>
+              project.addAbsoluteField(af.withName(name), true)
           }
-        }
+        case cf: CropField =>
+          val Left = "左余白検出"
+          val Right = "右余白検出"
+          val Top = "上余白検出"
+          val Bottom = "下余白検出"
+          val dlg = new SfxChoiceDialog(Top, Seq(Top, Left, Right, Bottom))
+          dlg.title = "余白位置の選択"
+          dlg.headerText = "余白位置を選択してください"
+          dlg.showAndWait() match {
+            case None =>
+              redrawRect(field.drawArea(imgSz))
+            case Some(loc) => (loc match {
+              case Left => project.addLeftCropField(cf.toLeft, true)
+              case Right => project.addRightCropField(cf.toRight, true)
+              case Top => project.addTopCropField(cf.toTop, true)
+              case Bottom => project.addBottomCropField(cf.toBottom, true)
+            }).foreach { oldCropField =>
+              redrawRect(oldCropField.drawArea(imgSz))
+            }
+          }
+      }
     }
   }
 
   def selectFields(rect: Rectangle2D, e: MouseEvent): Unit = {
     println("selectFields(" + rect + ", " + e + ")")
-    project.selectAbsoluteFields(imageSize, rect, e)
-    project.selectCropFields(imageSize, rect, e)
+    doWithImageSize { imgSz =>
+      project.selectAbsoluteFields(imgSz, rect, e)
+      project.selectCropFields(imgSz, rect, e)
+    }
   }
 
   @FXML
@@ -1077,8 +1124,16 @@ class MainController extends Initializable {
           }
           project.redraw()
         case authFail: RestAuthFailure =>
+          sfxSkewCorrectionCheck.selected = false
+          project.skewCorrection = project.skewCorrection.copy(enabled = false)
+          sfxCropCheck.selected = false
+          project.cropEnabled = false
           authError()
         case serverFail: RestUnknownFailure =>
+          sfxSkewCorrectionCheck.selected = false
+          project.skewCorrection = project.skewCorrection.copy(enabled = false)
+          sfxCropCheck.selected = false
+          project.cropEnabled = false
           showGeneralError()
       } { t =>
         onError match {
@@ -1291,19 +1346,25 @@ class MainController extends Initializable {
   @FXML
   def addModeClicked(e: ActionEvent) {
     println("addModeClicked")
-    editor.switchToAddMode(e)
+    doWithImageSize { imgSz =>
+      editor.switchToAddMode(e, imgSz)
+    }
   }
 
   @FXML
   def selectModeClicked(e: ActionEvent) {
     println("selectModeClicked")
-    editor.switchToSelectMode(e)
+    doWithImageSize { imgSz =>
+      editor.switchToSelectMode(e, imgSz)
+    }
   }
 
   @FXML
   def addCropModeClicked(e: ActionEvent) {
     println("addCropModeClicked")
-    editor.switchToAddCropMode(e)
+    doWithImageSize { imgSz =>
+      editor.switchToAddCropMode(e, imgSz)
+    }
   }
 
   @FXML
@@ -1311,12 +1372,14 @@ class MainController extends Initializable {
     println("canvasMouseClicked")
     if (e.getClickCount == 2) {
       println("double clicked")
-      project.getSelectedAbsoluteFieldAt(imageSize, e.getX, e.getY) foreach { f =>
-        val dlg = new SfxTextInputDialog(f.name)
-        dlg.title = "フィールドの名前変更"
-        dlg.headerText = "フィールドの名前を入力してください。"
-        dlg.showAndWait() foreach { newName =>
-          project.renameSelectedAbsoluteField(f, newName)
+      doWithImageSize { imgSz =>
+        project.getSelectedAbsoluteFieldAt(imgSz, e.getX, e.getY) foreach { f =>
+          val dlg = new SfxTextInputDialog(f.name)
+          dlg.title = "フィールドの名前変更"
+          dlg.headerText = "フィールドの名前を入力してください。"
+          dlg.showAndWait() foreach { newName =>
+            project.renameSelectedAbsoluteField(f, newName)
+          }
         }
       }
     }
@@ -1325,34 +1388,46 @@ class MainController extends Initializable {
   @FXML
   def canvasMousePressed(e: MouseEvent) {
     println("canvasMousePressed")
-    editor.onMousePressed(e)
+    doWithImageSize { imgSz =>
+      editor.onMousePressed(e, imgSz)
+    }
   }
 
   @FXML
   def canvasMouseDragged(e: MouseEvent) {
     println("canvasMouseDragged")
-    editor.onMouseDragged(e)
+    doWithImageSize { imgSz =>
+      editor.onMouseDragged(e, imgSz)
+    }
   }
 
   @FXML
   def canvasMouseReleased(e: MouseEvent) {
     println("canvasMouseReleased")
-    editor.onMouseReleased(e)
+    doWithImageSize { imgSz =>
+      editor.onMouseReleased(e, imgSz)
+    }
   }
 
   @FXML
   def canvasMouseEntered(e: MouseEvent) {
-    editor.onMouseEntered(e)
+    doWithImageSize { imgSz =>
+      editor.onMouseEntered(e, imgSz)
+    }
   }
 
   @FXML
   def canvasMouseExited(e: MouseEvent) {
-    editor.onMouseExited(e)
+    doWithImageSize { imgSz =>
+      editor.onMouseExited(e, imgSz)
+    }
   }
 
   @FXML
   def canvasMouseMoved(e: MouseEvent) {
-    editor.onMouseMoved(e)
+    doWithImageSize { imgSz =>
+      editor.onMouseMoved(e, imgSz)
+    }
   }
 
   @FXML
@@ -1424,41 +1499,61 @@ class MainController extends Initializable {
       new ProjectContext(
         onNormalAbsoluteFieldAdded = (f: AbsoluteField) => {
           println("*** normal field added " + f)
-          f.draw(imageSize, sfxImageCanvas.graphicsContext2D, false)
+          doWithImageSize { imgSz =>
+            f.draw(imgSz, sfxImageCanvas.graphicsContext2D, false)
+          }
         },
         onSelectedAbsoluteFieldAdded = (f: AbsoluteField) => {
           println("*** selected field added " + f)
-          f.draw(imageSize, sfxImageCanvas.graphicsContext2D, true)
+          doWithImageSize { imgSz =>
+            f.draw(imgSz, sfxImageCanvas.graphicsContext2D, true)
+          }
         },
         onNormalAbsoluteFieldRemoved = (f: AbsoluteField) => {
           println("*** normal field removed " + f)
-          redrawRect(f.drawArea(imageSize))
+          doWithImageSize { imgSz =>
+            redrawRect(f.drawArea(imgSz))
+          }
         },
         onSelectedAbsoluteFieldRemoved = (f: AbsoluteField) => {
           println("*** selected field removed " + f)
-          redrawRect(f.drawArea(imageSize))
+          doWithImageSize { imgSz =>
+            redrawRect(f.drawArea(imgSz))
+          }
         },
         onNormalCropFieldAdded = (f: CropField) => {
           project.invalidateCachedImage(cropped = true)
-          f.draw(imageSize, sfxImageCanvas.graphicsContext2D, false)
+          doWithImageSize { imgSz =>
+            f.draw(imgSz, sfxImageCanvas.graphicsContext2D, false)
+          }
         },
         onSelectedCropFieldAdded = (f: CropField) => {
           project.invalidateCachedImage(cropped = true)
-          f.draw(imageSize, sfxImageCanvas.graphicsContext2D, true)
+          doWithImageSize { imgSz =>
+            f.draw(imgSz, sfxImageCanvas.graphicsContext2D, true)
+          }
         },
         onNormalCropFieldRemoved = (f: CropField) => {
           project.invalidateCachedImage(cropped = true)
-          redrawRect(f.drawArea(imageSize))
+          doWithImageSize { imgSz =>
+            redrawRect(f.drawArea(imgSz))
+          }
         },
         onSelectedCropFieldRemoved = (f: CropField) => {
           project.invalidateCachedImage(cropped = true)
-          redrawRect(f.drawArea(imageSize))
+          doWithImageSize { imgSz =>
+            redrawRect(f.drawArea(imgSz))
+          }
         },
         redrawCropField = (f: CropField) => {
-          redrawRect(f.drawArea(imageSize))
+          doWithImageSize { imgSz =>
+            redrawRect(f.drawArea(imgSz))
+          }
         },
         selectCropField = (f: CropField, selected: Boolean) => {
-          redrawRect(f.drawArea(imageSize))
+          doWithImageSize { imgSz =>
+            redrawRect(f.drawArea(imgSz))
+          }
         }
       ),
       new ProjectListener {
@@ -1477,7 +1572,7 @@ class MainController extends Initializable {
     editor = new Editor(
       project,
       EditorContext(
-        drawWidget, redrawRect, fieldCreated, drawSelectionRect, selectFields, setMouseCursor, () => imageSize
+        drawWidget, redrawRect, fieldCreated, drawSelectionRect, selectFields, setMouseCursor
       )
     )
     editor.initialize()

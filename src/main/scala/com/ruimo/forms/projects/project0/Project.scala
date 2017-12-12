@@ -85,7 +85,7 @@ case class AbsoluteFieldImpl(originalSize: (Double, Double), rect: Rectangle2D, 
       CanNorthEastResize(this)
     }
     else if (rminx - cornerSize <= x && x <= rminx + cornerSize
-      && rect.maxY - cornerSize <= y && y <= rmaxy + cornerSize) {
+      && rmaxy - cornerSize <= y && y <= rmaxy + cornerSize) {
       CanSouthWestResize(this)
     }
     else if (rmaxx - cornerSize <= x && x <= rmaxx + cornerSize
@@ -101,7 +101,7 @@ case class AbsoluteFieldImpl(originalSize: (Double, Double), rect: Rectangle2D, 
     else if (rminy - cornerSize <= y && y <= rminy + cornerSize) {
       CanNorthResize(this)
     }
-    else if (rmaxy - cornerSize <= y && y <= rect.maxY + cornerSize) {
+    else if (rmaxy - cornerSize <= y && y <= rmaxy + cornerSize) {
       CanSouthResize(this)
     }
     else if (rect.contains(x, y)) {
@@ -147,6 +147,7 @@ abstract class CropFieldImpl(originalSize: (Double, Double), rect: Rectangle2D) 
   override def possibleMouseOperation(formSize: (Double, Double), x: Double, y: Double): MouseOperation = {
     val cornerSize = LineWidth * 2
     val rminx = scaleX(formSize, rect.minX)
+    val rmaxx = scaleX(formSize, rect.maxX)
     val rminy = scaleY(formSize, rect.minY)
     val rmaxy = scaleY(formSize, rect.maxY)
 
@@ -154,7 +155,7 @@ abstract class CropFieldImpl(originalSize: (Double, Double), rect: Rectangle2D) 
       && rminy - cornerSize <= y && y <= rminy + cornerSize) {
       CanNorthWestResize(this)
     }
-    else if (rect.maxX - cornerSize <= x && x <= rect.maxX + cornerSize
+    else if (rmaxx - cornerSize <= x && x <= rmaxx + cornerSize
       && rminy - cornerSize <= y && y <= rminy + cornerSize) {
       CanNorthEastResize(this)
     }
@@ -162,14 +163,14 @@ abstract class CropFieldImpl(originalSize: (Double, Double), rect: Rectangle2D) 
       && rmaxy - cornerSize <= y && y <= rmaxy + cornerSize) {
       CanSouthWestResize(this)
     }
-    else if (rect.maxX - cornerSize <= x && x <= rect.maxX + cornerSize
+    else if (rmaxx - cornerSize <= x && x <= rmaxx + cornerSize
       && rmaxy - cornerSize <= y && y <= rmaxy + cornerSize) {
       CanSouthEastResize(this)
     }
     else if (rminx - cornerSize <= x && x <= rminx + cornerSize) {
       CanWestResize(this)
     }
-    else if (rect.maxX - cornerSize <= x && x <= rect.maxX + cornerSize) {
+    else if (rmaxx - cornerSize <= x && x <= rmaxx + cornerSize) {
       CanEastResize(this)
     }
     else if (rminy - cornerSize <= y && y <= rminy + cornerSize) {
@@ -238,16 +239,18 @@ case class LeftCropFieldImpl(
 
     super.draw(formSize, gc, isSelected)
     val h = scaleY(formSize, rect.height)
+    val w = scaleX(formSize, rect.width)
     val rminx = scaleX(formSize, rect.minX)
-    val rminy = scaleX(formSize, rect.minY)
-    val rmaxy = scaleX(formSize, rect.maxY)
-    if (h > LineWidth && rect.width > LineWidth) {
+    val rmaxx = scaleX(formSize, rect.maxX)
+    val rminy = scaleY(formSize, rect.minY)
+    val rmaxy = scaleY(formSize, rect.maxY)
+    if (h > LineWidth && w > LineWidth) {
       gc.strokeLine(
         rminx + LineWidth / 2, rminy + LineWidth / 2,
-        rect.maxX - LineWidth / 2, rminy + h / 2 - LineWidth / 2
+        rmaxx - LineWidth / 2, rminy + h / 2 - LineWidth / 2
       )
       gc.strokeLine(
-        rect.maxX - LineWidth / 2, rminy + h / 2 - LineWidth / 2,
+        rmaxx - LineWidth / 2, rminy + h / 2 - LineWidth / 2,
         rminx + LineWidth / 2, rmaxy - LineWidth / 2
       )
     }
@@ -265,11 +268,12 @@ case class RightCropFieldImpl(
 
     super.draw(formSize, gc, isSelected)
     val h = scaleY(formSize, rect.height)
+    val w = scaleX(formSize, rect.width)
     val rminx = scaleX(formSize, rect.minX)
     val rmaxx = scaleX(formSize, rect.maxX)
-    val rminy = scaleX(formSize, rect.minY)
-    val rmaxy = scaleX(formSize, rect.maxY)
-    if (h > LineWidth && rect.width > LineWidth) {
+    val rminy = scaleY(formSize, rect.minY)
+    val rmaxy = scaleY(formSize, rect.maxY)
+    if (h > LineWidth && w > LineWidth) {
       gc.strokeLine(
         rmaxx - LineWidth / 2, rminy + LineWidth / 2,
         rminx + LineWidth / 2, rminy + h / 2 - LineWidth / 2
@@ -293,8 +297,9 @@ case class BottomCropFieldImpl(
 
     super.draw(formSize, gc, isSelected)
     val h = scaleY(formSize, rect.height)
-    val w = scaleY(formSize, rect.width)
+    val w = scaleX(formSize, rect.width)
     val rminx = scaleX(formSize, rect.minX)
+    val rmaxx = scaleX(formSize, rect.maxX)
     val rminy = scaleY(formSize, rect.minY)
     val rmaxy = scaleY(formSize, rect.maxY)
     if (h > LineWidth && w > LineWidth) {
@@ -304,7 +309,7 @@ case class BottomCropFieldImpl(
       )
       gc.strokeLine(
         rminx - LineWidth / 2 + w / 2, rminy + LineWidth / 2,
-        rect.maxX - LineWidth / 2, rmaxy - LineWidth / 2
+        rmaxx - LineWidth / 2, rmaxy - LineWidth / 2
       )
     }
   }
