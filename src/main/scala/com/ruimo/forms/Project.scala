@@ -396,6 +396,7 @@ trait Project {
   def cropFieldsAreReady: Boolean
   def listConfig(): Future[ListConfigRestResult]
   def saveConfig(configName: String): Future[SaveConfigRestResult]
+  def removeConfig(configName: String): Future[RemoveConfigRestResult]
 }
 
 

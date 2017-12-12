@@ -1330,4 +1330,32 @@ class ProjectImpl(
       }
     }
   }
+
+  def removeConfig(configName: String): Future[RemoveConfigRestResult] = {
+    val urlPath = Settings.Loader.settings.auth.url.resolve("removeConfig")
+    val auth = Settings.Loader.settings.auth
+
+    Ws().url(urlPath).addHttpHeaders(
+      "Content-Type" -> "application/zip",
+      "Authorization" -> (auth.contractedUserId.value + "_" + auth.applicationToken.value)
+    ).post(
+      Json.obj(
+        "configName" -> configName
+      ).toString.getBytes("utf-8")
+    ).map { resp =>
+      println("status = " + resp.status)
+      println("statusText = " + resp.statusText)
+      resp.status match {
+        case 200 =>
+          val result: JsValue = Json.parse(resp.bodyAsBytes.toArray)
+          RemoveConfigResultOk(
+            (result \ "deleteCount").as[Int]
+          )
+        case 403 =>
+          RestAuthFailure(resp.status, resp.statusText, resp.body)
+        case _ =>
+          RestUnknownFailure(resp.status, resp.statusText, resp.body)
+      }
+    }
+  }
 }

@@ -673,7 +673,9 @@ class MainController extends Initializable {
     val loader = new FXMLLoader(getClass().getResource("save.fxml"))
     val root: DialogPane = loader.load()
     val ctrl = loader.getController().asInstanceOf[SaveController]
-    val alert = new SfxAlert(AlertType.Confirmation)
+    val alert = new SfxAlert(AlertType.Confirmation) {
+      title = "保管"
+    }
     alert.dialogPane = new SfxDialogPane(root)
     projectConfigName.foreach { cname =>
       ctrl.configName = cname
