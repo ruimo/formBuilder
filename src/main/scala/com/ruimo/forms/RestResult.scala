@@ -19,17 +19,20 @@ sealed trait SaveConfigRestFailure extends SaveConfigRestResult
 sealed trait ListConfigRestResult
 sealed trait ListConfigRestFailure extends ListConfigRestResult
 
+sealed trait RemoveConfigRestResult
+sealed trait RemoveConfigRestFailure extends RemoveConfigRestResult
+
 case class RestAuthFailure(
   statusCode: Int,
   statusText: String,
   body: String
-) extends RetrievePreparedImageRestFailure with CaptureRestFailure with SaveConfigRestFailure with ListConfigRestFailure
+) extends RetrievePreparedImageRestFailure with CaptureRestFailure with SaveConfigRestFailure with ListConfigRestFailure with RemoveConfigRestFailure
 
 case class RestUnknownFailure(
   statusCode: Int,
   statusText: String,
   body: String
-) extends RetrievePreparedImageRestFailure with CaptureRestFailure with SaveConfigRestFailure with ListConfigRestFailure
+) extends RetrievePreparedImageRestFailure with CaptureRestFailure with SaveConfigRestFailure with ListConfigRestFailure with RemoveConfigRestFailure
 
 class RetrievePreparedImageResultOk(
   val serverResp: Option[PrepareResult],
@@ -77,6 +80,10 @@ object SaveConfigResultOk {
     )
   )
 }
+
+case class RemoveConfigResultOk(
+  removeCount: Int
+) extends RemoveConfigRestResult
 
 case class FormConfig(
   configName: String,
