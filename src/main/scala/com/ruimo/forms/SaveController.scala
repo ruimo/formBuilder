@@ -1,5 +1,8 @@
 package com.ruimo.forms
 
+import scalafx.scene.control.{Alert => SfxAlert}
+import scalafx.scene.control.Alert.AlertType
+import scalafx.scene.control.{ButtonType => SfxButtonType}
 import scalafx.Includes._
 import javafx.scene.input.{KeyCode, KeyEvent, MouseButton, MouseEvent}
 import javafx.fxml.{FXML, Initializable}
@@ -19,7 +22,7 @@ import scalafx.scene.control.{TableView => SfxTableView}
 import scalafx.scene.control.{ContextMenu => SfxContextMenu}
 import scalafx.scene.control.{MenuItem => SfxMenuItem}
 
-class SaveController extends Initializable {
+class SaveController extends Initializable with HandleBigJob {
   @FXML
   private[this] var saveConfigNameText: TextField = _
 
@@ -27,6 +30,8 @@ class SaveController extends Initializable {
   private[this] var configList: TableView[FormConfig] = _
 
   private[this] lazy val configTable: SfxTableView[FormConfig] = new SfxTableView(configList)
+
+  private[this] var _project: Project = _
 
   override def initialize(url: URL, resourceBundle: ResourceBundle) {
     val nameCol = configList.getColumns().get(0).asInstanceOf[TableColumn[FormConfig, String]]
@@ -63,6 +68,12 @@ class SaveController extends Initializable {
 
   def configName: String = saveConfigNameText.getText
 
+  def project_=(newProject: Project) {
+    _project = newProject
+  }
+
+  def project: Project = _project
+
   def formConfigs_=(list: Seq[FormConfig]) {
     configList.setItems(ObservableBuffer(list))
   }
@@ -83,16 +94,41 @@ class SaveController extends Initializable {
 
   def showContextMenu(conf: FormConfig, t: SfxTableView[FormConfig], e: MouseEvent) {
     val cm = new SfxContextMenu(
-      new SfxMenuItem("名前変更(_R)") {
-        mnemonicParsing = true
-        onAction = (event: ActionEvent) => {
-          println("名前変更 clicked")
-        }
-      },
       new SfxMenuItem("削除(_D)") {
         mnemonicParsing = true
-        onAction = (event: ActionEvent) => {
+        onAction = (e: ActionEvent) => {
           println("削除 clicked")
+          val dlg = new SfxAlert(AlertType.Confirmation) {
+            title = "削除確認"
+            contentText = conf.configName + "を削除してよろしいですか？"
+            buttonTypes = Seq(
+              SfxButtonType.Cancel, SfxButtonType.Yes
+            )
+          }
+          dlg.showAndWait() match {
+            case Some(SfxButtonType.Yes) =>
+              doBigJob {
+                Right(project.removeConfig(conf.configName))
+              } {
+                case RemoveConfigResultOk(resp) =>
+                  doBigJob {
+                    Right(project.listConfig())
+                  } {
+                    case ListConfigResultOk(resp) =>
+                      formConfigs_=(resp.configTable)
+                    case authFail: RestAuthFailure =>
+                      authError()
+                    case serverFail: RestUnknownFailure =>
+                      showGeneralError()
+                  }
+                case authFail: RestAuthFailure =>
+                  authError()
+                case serverFail: RestUnknownFailure =>
+                  showGeneralError()
+              }
+            case _ =>
+              e.consume()
+          }
         }
       }
     )
