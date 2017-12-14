@@ -68,7 +68,7 @@ class SaveController extends Initializable {
   }
 
   @FXML
-  def onSaveFormClicked(e: MouseEvent) {
+  def onFormTableClicked(e: MouseEvent) {
     val conf: FormConfig = configTable.selectionModel().getSelectedItem
     println("onSaveFormClicked " + conf)
     e.getButton match {
