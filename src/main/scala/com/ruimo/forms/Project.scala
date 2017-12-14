@@ -1,6 +1,11 @@
 package com.ruimo.forms
 
+import play.api.libs.json._ // JSON library
+import play.api.libs.json.Reads._ // Custom validation helpers
+
+import play.api.libs.functional.syntax._
 import com.ruimo.scoins.Percent
+
 import scala.concurrent.Future
 import java.nio.file.Path
 import javafx.scene.Cursor
@@ -9,7 +14,7 @@ import javafx.scene.input.MouseEvent
 import scalafx.scene.image.Image
 import scalafx.geometry.{Point2D, Rectangle2D}
 import com.ruimo.graphics.twodim.Area
-import play.api.libs.json.{JsBoolean, JsObject, JsString, JsValue}
+import play.api.libs.json._
 
 import scalafx.scene.canvas.{GraphicsContext => SfxGraphicsContext}
 import scala.collection.{immutable => imm}
@@ -22,15 +27,24 @@ case class CaptureResponse(
   result: imm.Seq[CaptureResult]
 )
 
-sealed trait SkewCorrectionDirection {
-  def asJson: JsValue
+sealed trait SkewCorrectionDirection
+object SkewCorrectionDirection {
+  implicit object skewCorrectionDirectionFormat extends Format[SkewCorrectionDirection] {
+    override def reads(jv: JsValue): JsResult[SkewCorrectionDirection] = jv.as[String] match {
+      case "horizontal" => JsSuccess(SkewCorrectionDirectionHorizontal)
+      case "vertical" => JsSuccess(SkewCorrectionDirectionVertical)
+      case s: String => JsError("'" + s + "' is invalid for skew correction direction.")
+    }
+
+    override def writes(d: SkewCorrectionDirection): JsValue = d match {
+      case SkewCorrectionDirectionHorizontal => JsString("horizontal")
+      case SkewCorrectionDirectionVertical => JsString("vertical")
+    }
+  }
 }
-case object SkewCorrectionDirectionHorizontal extends SkewCorrectionDirection {
-  val asJson = JsString("horizontal")
-}
-case object SkewCorrectionDirectionVertical extends SkewCorrectionDirection {
-  val asJson = JsString("vertical")
-}
+
+case object SkewCorrectionDirectionHorizontal extends SkewCorrectionDirection
+case object SkewCorrectionDirectionVertical extends SkewCorrectionDirection
 
 sealed trait Field extends Widget[Field] {
   type R <: Field
@@ -51,20 +65,46 @@ sealed trait Field extends Widget[Field] {
 case class SkewCorrection(
   enabled: Boolean,
   condition: SkewCorrectionCondition
-) {
-  def asJson(en: Boolean = enabled): JsObject = JsObject(
-    Seq(
-      "enabled" -> JsBoolean(en)
-    ) ++ condition.asJson.fields
-  )
-}
+)
 
 trait SkewCorrectionCondition {
   def direction: SkewCorrectionDirection
   def lineCount: Int
   def maxAngleToDetect: Double
+}
 
-  def asJson: JsObject
+object SkewCorrectionCondition {
+  import projects.project0.SkewCorrectionConditionImpl.skewCorrectionConditionImplWrites
+
+  implicit object skewCorrectionConditionFormat extends Format[SkewCorrectionCondition] {
+    override def reads(jv: JsValue): JsResult[SkewCorrectionCondition] = {
+      JsSuccess(jv.as[SkewCorrectionCondition])
+    }
+
+    override def writes(obj: SkewCorrectionCondition): JsValue = obj match {
+      case o: SkewCorrectionConditionImpl => skewCorrectionConditionImplWrites.writes(o)
+    }
+  }
+}
+
+object SkewCorrection {
+  import SkewCorrectionCondition.skewCorrectionConditionFormat
+
+  implicit object skewCorrectionFormat extends Format[SkewCorrection] {
+    override def reads(jv: JsValue): JsResult[SkewCorrection] = {
+      JsSuccess(
+        SkewCorrection(
+          (jv \ "enabled").as[Boolean],
+          (jv \ "condition").as[SkewCorrectionCondition]
+        )
+      )
+    }
+
+    override def writes(obj: SkewCorrection): JsValue = Json.obj(
+      "enabled" -> JsBoolean(obj.enabled),
+      "condition" -> Json.toJson(obj.condition)
+    )
+  }
 }
 
 case class EdgeCrop(

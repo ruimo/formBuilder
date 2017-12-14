@@ -1,11 +1,13 @@
 package com.ruimo.forms.projects.project0
 
+import play.api.libs.json._
+import play.api.libs.functional.syntax._
+import play.api.libs.json._
 import play.api.libs.ws.DefaultBodyReadables._
 import play.api.libs.ws.DefaultBodyWritables._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import java.io.{FileInputStream, InputStream}
-import java.net.{HttpURLConnection, URL}
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.{Files, Path, Paths, StandardOpenOption}
@@ -15,6 +17,8 @@ import java.util.zip.ZipInputStream
 import javafx.scene.input.MouseEvent
 import javafx.scene.paint.Color
 
+import play.api.libs.ws.JsonBodyReadables._
+import play.api.libs.ws.JsonBodyWritables._
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.StreamConverters
@@ -320,12 +324,22 @@ case class SkewCorrectionConditionImpl(
   direction: SkewCorrectionDirection = SkewCorrectionDirectionHorizontal,
   lineCount: Int = 1,
   maxAngleToDetect: Double = 2.0
-) extends SkewCorrectionCondition {
-  lazy val asJson: JsObject = Json.obj(
-    "direction" -> direction.asJson,
-    "lineCount" -> JsNumber(lineCount),
-    "maxAngleToDetect" -> JsNumber(maxAngleToDetect)
-  )
+) extends SkewCorrectionCondition
+
+object SkewCorrectionConditionImpl {
+  val skewCorrectionConditionImplWrites = new Writes[SkewCorrectionConditionImpl] {
+    def writes(obj: SkewCorrectionConditionImpl) = Json.obj(
+      "direction" -> Json.toJson(obj.direction),
+      "lineCount" -> JsNumber(obj.lineCount),
+      "maxAngleToDetect" -> JsNumber(obj.maxAngleToDetect)
+    )
+  }
+
+  val skewCorrectionConditionImplReads: Reads[SkewCorrectionConditionImpl] = (
+    (JsPath \ "direction").read[SkewCorrectionDirection] and
+    (JsPath \ "lineCount").read[Int] and
+    (JsPath \ "maxAngleToDetect").read[Double]
+  )(SkewCorrectionConditionImpl.apply _)
 }
 
 case class EdgeCropConditionImpl(
@@ -969,7 +983,7 @@ class ProjectImpl(
               Right(
                 Json.obj(
                   "inputFiles" -> JsArray(Seq(JsString(fileName))),
-                  "skewCorrection" -> skewCorrection.asJson(skewCorrection.enabled),
+                  "skewCorrection" -> Json.toJson(skewCorrection),
                   "crop" -> edgeCrop(cropt._1, cropt._2).asJson(cropEnabled),
                   "absoluteFields" -> _absFields.asJson
                 )
@@ -1026,7 +1040,7 @@ class ProjectImpl(
       cpt.map { cropt =>
         val json = Json.obj(
           "inputFiles" -> JsArray(Seq(JsString(fileName))),
-          "skewCorrection" -> skewCorrection.asJson(isSkewCorrectionEnabled),
+          "skewCorrection" -> Json.toJson(skewCorrection.copy(enabled = isSkewCorrectionEnabled)),
           "crop" -> edgeCrop(cropt._1, cropt._2).asJson(isCropEnabled)
         )
         println("Json to send: " + json)
@@ -1193,7 +1207,7 @@ class ProjectImpl(
   private def asJson: JsValue = {
     JsObject(
       Seq(
-        "skewCorrection" -> skewCorrection.asJson(),
+        "skewCorrection" -> Json.toJson(skewCorrection),
         "isCropEnabled" -> JsBoolean(cropEnabled)
       ) ++ leftCropField.map(
         f => Seq("leftCropField" -> f.asJson)
@@ -1336,12 +1350,11 @@ class ProjectImpl(
     val auth = Settings.Loader.settings.auth
 
     Ws().url(urlPath).addHttpHeaders(
-      "Content-Type" -> "application/zip",
       "Authorization" -> (auth.contractedUserId.value + "_" + auth.applicationToken.value)
     ).post(
       Json.obj(
         "configName" -> configName
-      ).toString.getBytes("utf-8")
+      )
     ).map { resp =>
       println("status = " + resp.status)
       println("statusText = " + resp.statusText)

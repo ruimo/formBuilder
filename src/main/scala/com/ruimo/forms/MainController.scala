@@ -619,7 +619,7 @@ case class SelectedImage(file: Path, image: Image) {
   val imageSize: (Double, Double) = (image.getWidth, image.getHeight)
 }
 
-class MainController extends Initializable {
+class MainController extends Initializable with HandleBigJob {
   val settingsLoader: SettingsLoader = Settings.Loader
   private var imageTable: ImageTable = new ImageTable
   private var stage: Stage = _
@@ -672,7 +672,7 @@ class MainController extends Initializable {
   private[this] def saveProject(callbackOnCancel: () => Unit = () => {}) {
     val loader = new FXMLLoader(getClass().getResource("save.fxml"))
     val root: DialogPane = loader.load()
-    val ctrl = loader.getController().asInstanceOf[SaveController]
+    val ctrl: SaveController = loader.getController().asInstanceOf[SaveController]
     val alert = new SfxAlert(AlertType.Confirmation) {
       title = "保管"
     }
@@ -680,6 +680,7 @@ class MainController extends Initializable {
     projectConfigName.foreach { cname =>
       ctrl.configName = cname
     }
+    ctrl.project = project
 
     doBigJob {
       Right(project.listConfig())
@@ -687,24 +688,26 @@ class MainController extends Initializable {
       case ListConfigResultOk(resp) =>
         ctrl.formConfigs_=(resp.configTable)
         alert.showAndWait() match {
-          case Some(SfxButtonType.Apply) =>
-            projectConfigName = Some(ctrl.configName)
-            doBigJob {
-              Right(project.saveConfig(ctrl.configName))
-            } {
-              case SaveConfigResultOk(resp) =>
-                val dlg = new SfxAlert(AlertType.Information) {
-                  title = "保管成功"
-                  contentText = "保管しました。リビジョン: " + resp.revision.value
-                }
-                dlg.showAndWait()
-              case authFail: RestAuthFailure =>
-                authError()
-                callbackOnCancel()
-              case serverFail: RestUnknownFailure =>
-                showGeneralError()
-                callbackOnCancel()
-            }()
+          case Some(button) =>
+            if (button.buttonData.delegate == ButtonBar.ButtonData.APPLY) {
+              projectConfigName = Some(ctrl.configName)
+              doBigJob {
+                Right(project.saveConfig(ctrl.configName))
+              } {
+                case SaveConfigResultOk(resp) =>
+                  val dlg = new SfxAlert(AlertType.Information) {
+                    title = "保管成功"
+                    contentText = "保管しました。リビジョン: " + resp.revision.value
+                  }
+                  dlg.showAndWait()
+                case authFail: RestAuthFailure =>
+                  authError()
+                  callbackOnCancel()
+                case serverFail: RestUnknownFailure =>
+                  showGeneralError()
+                  callbackOnCancel()
+              }
+            }
           case _ =>
         }
       case authFail: RestAuthFailure =>
@@ -713,7 +716,7 @@ class MainController extends Initializable {
       case serverFail: RestUnknownFailure =>
         showGeneralError()
         callbackOnCancel()
-    }()
+    }
   }
 
   @FXML
@@ -740,34 +743,6 @@ class MainController extends Initializable {
 
   lazy val sfxImageListView = new SfxListView(imageListView.asInstanceOf[ListView[File]])
   lazy val sfxImageCanvas = new SfxCanvas(imageCanvas)
-
-  def doBigJob[T](in: Either[T, Future[T]])(f: T => Unit)(onError: Throwable => Unit = t => showGeneralError()) {
-    in match {
-      case Left(value) => f(value)
-      case Right(future) =>
-        val dlg = new Alert(AlertType.None)
-        dlg.setTitle("サーバ通信中")
-        dlg.setContentText("サーバと通信しています")
-        dlg.show()
-
-        future.map { ret =>
-          Platform.runLater(() -> {
-            f(ret)
-            // Avoid JavaFX bug to close dialog.
-            dlg.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL);
-            dlg.close()
-          })
-        }.failed.foreach { t =>
-          t.printStackTrace
-          Platform.runLater(() -> {
-            // Avoid JavaFX bug to close dialog.
-            dlg.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL);
-            dlg.close()
-            onError(t)
-          })
-        }
-    }
-  }
 
   def redrawRect(rect: Rectangle2D): Unit = {
     println("redrawRect(" + rect + ")")
@@ -841,7 +816,7 @@ class MainController extends Initializable {
           sfxCropCheck.selected = false
           project.cropEnabled = false
           showGeneralError()
-      }()
+      }
     }
   }
 
@@ -1015,7 +990,7 @@ class MainController extends Initializable {
                   }
                 }
               )
-            }()
+            }
           case Some(btn) =>
             println("Button: " + btn)
           case None =>
@@ -1105,7 +1080,17 @@ class MainController extends Initializable {
   def redraw(onError: Option[Throwable => Unit] = None) {
     println("redraw()")
     selectedImage.foreach { selectedImage =>
-      doBigJob(project.cachedImage(selectedImage)) {
+      doBigJob(
+        project.cachedImage(selectedImage),
+        { t =>
+          onError match {
+            case Some(h) =>
+              h(t)
+              showGeneralError()
+            case None => showGeneralError()
+          }
+        }
+      ) {
         case ok: RetrievePreparedImageResultOk =>
           val img = ok.image
 
@@ -1137,13 +1122,6 @@ class MainController extends Initializable {
           sfxCropCheck.selected = false
           project.cropEnabled = false
           showGeneralError()
-      } { t =>
-        onError match {
-          case Some(h) =>
-            h(t)
-            showGeneralError()
-          case None => showGeneralError()
-        }
       }
     }
   }
@@ -1295,7 +1273,13 @@ class MainController extends Initializable {
     selectedImage.foreach { si =>
       try {
         if (sfxSkewCorrectionCheck.selected()) {
-          doBigJob(project.cachedImage(si, isSkewCorrectionEnabled = true)) {
+          doBigJob(
+            project.cachedImage(si, isSkewCorrectionEnabled = true),
+            { t =>
+              sfxSkewCorrectionCheck.selected = false
+              showGeneralError()
+            }
+          ) {
             case result: RetrievePreparedImageResultOk =>
               result.serverResp.foreach { pr =>
                 pr.skewCorrectionResult.foreach { sr =>
@@ -1308,9 +1292,6 @@ class MainController extends Initializable {
             case unknownError: RestUnknownFailure =>
               sfxSkewCorrectionCheck.selected = false
               showGeneralError()
-          } { t =>
-            sfxSkewCorrectionCheck.selected = false
-            showGeneralError()
           }
         }
         else {
@@ -1464,7 +1445,7 @@ class MainController extends Initializable {
               )
               alert.showAndWait()
           }
-      }()
+      }
     }
   }
 
@@ -1578,19 +1559,5 @@ class MainController extends Initializable {
       )
     )
     editor.initialize()
-  }
-
-  def showGeneralError() {
-    val err = new Alert(AlertType.Error)
-    err.setTitle("サーバ・エラー")
-    err.setContentText("サーバ処理に失敗しました。")
-    err.show()
-  }
-
-  def authError() {
-    val err = new Alert(AlertType.Error)
-    err.setTitle("認証エラー")
-    err.setContentText("サーバでの認証に失敗しました。設定を確認してください。")
-    err.show()
   }
 }
