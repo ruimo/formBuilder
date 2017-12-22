@@ -6,16 +6,16 @@ lazy val root = (project in file(".")).
    enablePlugins(JavaAppPackaging).
    settings(
     inThisBuild(List(
-      organization := "com.example",
+      organization := "site.functionalcapture",
       scalaVersion := "2.12.3",
-      version      := "0.1.0-SNAPSHOT"
+      version      := "1.0.0-SNAPSHOT"
     )),
-    name := "Hello",
-    unmanagedJars in Compile += {
-        val ps = new sys.SystemProperties
-        val jh = ps("java.home")
-        Attributed.blank(file(jh) / "lib/ext/jfxrt.jar")
-    },
+    name := "FormBuilder",
+//    unmanagedJars in Compile += {
+//        val ps = new sys.SystemProperties
+//        val jh = ps("java.home")
+//        Attributed.blank(file(jh) / "lib/ext/jfxrt.jar")
+//    },
     fork in run := true,
     scalacOptions := Seq("-unchecked", "-deprecation", "-feature"),
     libraryDependencies ++= Seq(

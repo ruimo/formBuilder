@@ -9,9 +9,9 @@
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.RowConstraints?>
 
-<DialogPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" xmlns="http://javafx.com/javafx/8.0.60" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.ruimo.forms.SaveController">
+<DialogPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" xmlns="http://javafx.com/javafx/8.0.60" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.ruimo.forms.LoadController">
    <buttonTypes>
-     <ButtonType text="オープン" ButtonBar.buttonData="APPLY"/>
+     <ButtonType text="オープン" buttonData="APPLY"/>
       <ButtonType fx:constant="CANCEL" />
    </buttonTypes>
    <content>
@@ -26,7 +26,7 @@
          <children>
             <ScrollPane fitToWidth="true" GridPane.columnSpan="2">
                <content>
-                  <TableView fx:id="configList" onMouseClicked="#onSaveFormClicked" prefHeight="200.0" prefWidth="200.0">
+                  <TableView fx:id="configList" onMouseClicked="#onFormTableClicked" prefHeight="200.0" prefWidth="200.0">
                      <columns>
                         <TableColumn prefWidth="75.0" text="名前" />
                         <TableColumn prefWidth="75.0" text="作成日" />

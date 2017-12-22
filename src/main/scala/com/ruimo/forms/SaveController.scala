@@ -22,45 +22,12 @@ import scalafx.scene.control.{TableView => SfxTableView}
 import scalafx.scene.control.{ContextMenu => SfxContextMenu}
 import scalafx.scene.control.{MenuItem => SfxMenuItem}
 
-class SaveController extends Initializable with HandleBigJob {
+class SaveController extends SaveLoadController {
   @FXML
   private[this] var saveConfigNameText: TextField = _
 
   @FXML
-  private[this] var configList: TableView[FormConfig] = _
-
-  private[this] lazy val configTable: SfxTableView[FormConfig] = new SfxTableView(configList)
-
-  private[this] var _project: Project = _
-
-  override def initialize(url: URL, resourceBundle: ResourceBundle) {
-    val nameCol = configList.getColumns().get(0).asInstanceOf[TableColumn[FormConfig, String]]
-    val dateCol = configList.getColumns().get(1).asInstanceOf[TableColumn[FormConfig, String]]
-    val revCol = configList.getColumns().get(2).asInstanceOf[TableColumn[FormConfig, String]]
-    val commentCol = configList.getColumns().get(3).asInstanceOf[TableColumn[FormConfig, String]]
-
-    nameCol.setCellValueFactory(new Callback[CellDataFeatures[FormConfig, String], ObservableValue[String]]() {
-      def call(c: CellDataFeatures[FormConfig, String]): ObservableValue[String] = {
-        new ReadOnlyStringWrapper(c.getValue().configName)
-      }
-    })
-    dateCol.setCellValueFactory(new Callback[CellDataFeatures[FormConfig, String], ObservableValue[String]]() {
-      def call(c: CellDataFeatures[FormConfig, String]): ObservableValue[String] = {
-        new ReadOnlyStringWrapper(c.getValue().createdAt.toString())
-      }
-    })
-    revCol.setCellValueFactory(new Callback[CellDataFeatures[FormConfig, String], ObservableValue[String]]() {
-      def call(c: CellDataFeatures[FormConfig, String]): ObservableValue[String] = {
-        new ReadOnlyStringWrapper(c.getValue().revision.value.toString)
-      }
-    })
-    commentCol.setCellValueFactory(new Callback[CellDataFeatures[FormConfig, String], ObservableValue[String]]() {
-      def call(c: CellDataFeatures[FormConfig, String]): ObservableValue[String] = {
-        new ReadOnlyStringWrapper(c.getValue().comment)
-      }
-    })
-//    configList.setItems(ObservableBuffer(FormConfigRow("Hello", Instant.now(), 123L, "comment")))
-  }
+  protected var configList: TableView[FormConfig] = _
 
   def configName_=(newName: String) {
     saveConfigNameText.setText(newName)
@@ -68,20 +35,10 @@ class SaveController extends Initializable with HandleBigJob {
 
   def configName: String = saveConfigNameText.getText
 
-  def project_=(newProject: Project) {
-    _project = newProject
-  }
-
-  def project: Project = _project
-
-  def formConfigs_=(list: Seq[FormConfig]) {
-    configList.setItems(ObservableBuffer(list))
-  }
-
   @FXML
   def onFormTableClicked(e: MouseEvent) {
     val conf: FormConfig = configTable.selectionModel().getSelectedItem
-    println("onSaveFormClicked " + conf)
+    println("onFormTableClicked " + conf)
     e.getButton match {
       case MouseButton.PRIMARY =>
         configName = conf.configName
@@ -90,48 +47,5 @@ class SaveController extends Initializable with HandleBigJob {
         showContextMenu(conf, configTable, e)
       case _ =>
     }
-  }
-
-  def showContextMenu(conf: FormConfig, t: SfxTableView[FormConfig], e: MouseEvent) {
-    val cm = new SfxContextMenu(
-      new SfxMenuItem("削除(_D)") {
-        mnemonicParsing = true
-        onAction = (e: ActionEvent) => {
-          println("削除 clicked")
-          val dlg = new SfxAlert(AlertType.Confirmation) {
-            title = "削除確認"
-            contentText = conf.configName + "を削除してよろしいですか？"
-            buttonTypes = Seq(
-              SfxButtonType.Cancel, SfxButtonType.Yes
-            )
-          }
-          dlg.showAndWait() match {
-            case Some(SfxButtonType.Yes) =>
-              doBigJob {
-                Right(project.removeConfig(conf.configName))
-              } {
-                case RemoveConfigResultOk(resp) =>
-                  doBigJob {
-                    Right(project.listConfig())
-                  } {
-                    case ListConfigResultOk(resp) =>
-                      formConfigs_=(resp.configTable)
-                    case authFail: RestAuthFailure =>
-                      authError()
-                    case serverFail: RestUnknownFailure =>
-                      showGeneralError()
-                  }
-                case authFail: RestAuthFailure =>
-                  authError()
-                case serverFail: RestUnknownFailure =>
-                  showGeneralError()
-              }
-            case _ =>
-              e.consume()
-          }
-        }
-      }
-    )
-    cm.show(t, e.getScreenX, e.getScreenY)
   }
 }

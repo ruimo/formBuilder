@@ -669,6 +669,31 @@ class MainController extends Initializable with HandleBigJob {
     }
   }
 
+  private[this] def openProject() {
+    val loader = new FXMLLoader(getClass().getResource("load.fxml"))
+    val root: DialogPane = loader.load()
+    val ctrl: LoadController = loader.getController().asInstanceOf[LoadController]
+    val alert = new SfxAlert(AlertType.Confirmation) {
+      title = "開く"
+    }
+    alert.dialogPane = new SfxDialogPane(root)
+    ctrl.project = project
+    doBigJob {
+      Right(project.listConfig())
+    } {
+      case ListConfigResultOk(resp) =>
+        ctrl.formConfigs_=(resp.configTable)
+        alert.showAndWait() match {
+          case Some(button) =>
+          case _ =>
+        }
+      case authFail: RestAuthFailure =>
+        authError()
+      case serverFail: RestUnknownFailure =>
+        showGeneralError()
+    }
+  }
+
   private[this] def saveProject(callbackOnCancel: () => Unit = () => {}) {
     val loader = new FXMLLoader(getClass().getResource("save.fxml"))
     val root: DialogPane = loader.load()
@@ -848,7 +873,7 @@ class MainController extends Initializable with HandleBigJob {
           sfxCropCheck.selected = false
           project.cropEnabled = false
           showGeneralError()
-      }()
+      }
     }
   }
 
@@ -937,6 +962,12 @@ class MainController extends Initializable with HandleBigJob {
   def saveMenuClicked(event: ActionEvent) {
     println("saveMenuClicked()")
     saveProject()
+  }
+
+  @FXML
+  def openMenuClicked(event: ActionEvent) {
+    println("openMenuClicked()")
+    openProject()
   }
 
   @FXML
