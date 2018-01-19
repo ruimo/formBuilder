@@ -672,12 +672,13 @@ class MainController extends Initializable with HandleBigJob {
   private[this] def openProject() {
     val loader = new FXMLLoader(getClass().getResource("load.fxml"))
     val root: DialogPane = loader.load()
-    val ctrl: LoadController = loader.getController().asInstanceOf[LoadController]
+    val ctrl: OpenController = loader.getController().asInstanceOf[OpenController]
     val alert = new SfxAlert(AlertType.Confirmation) {
       title = "開く"
     }
     alert.dialogPane = new SfxDialogPane(root)
     ctrl.project = project
+    ctrl.dialog = alert
     doBigJob {
       Right(project.listConfig())
     } {
@@ -685,6 +686,20 @@ class MainController extends Initializable with HandleBigJob {
         ctrl.formConfigs_=(resp.configTable)
         alert.showAndWait() match {
           case Some(button) =>
+            if (button.buttonData.delegate == ButtonBar.ButtonData.APPLY) {
+              ctrl.getSelectedConfig match {
+                case None => {
+                  val dlg = new SfxAlert(AlertType.Error) {
+                    title = "選択エラー"
+                    contentText = "開きたい構成を選択してください"
+                  }
+                  dlg.showAndWait()
+                  openProject()
+                }
+                case Some(fc) =>
+println("Open config: " + fc)
+              }
+            }
           case _ =>
         }
       case authFail: RestAuthFailure =>

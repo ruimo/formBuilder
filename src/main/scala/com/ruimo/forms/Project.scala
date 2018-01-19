@@ -23,6 +23,10 @@ case class SaveConfigResponse(
   result: SaveConfigResult
 )
 
+case class OpenConfigResponse(
+  result: OpenConfigResult
+)
+
 case class CaptureResponse(
   result: imm.Seq[CaptureResult]
 )
@@ -437,6 +441,7 @@ trait Project {
   def listConfig(): Future[ListConfigRestResult]
   def saveConfig(configName: String): Future[SaveConfigRestResult]
   def removeConfig(configName: String): Future[RemoveConfigRestResult]
+  def openConfig(configName: String): Future[OpenConfigRestResult]
 }
 
 

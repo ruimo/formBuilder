@@ -16,6 +16,9 @@ sealed trait CaptureRestFailure extends CaptureRestResult
 sealed trait SaveConfigRestResult
 sealed trait SaveConfigRestFailure extends SaveConfigRestResult
 
+sealed trait OpenConfigRestResult
+sealed trait OpenConfigRestFailure extends OpenConfigRestResult
+
 sealed trait ListConfigRestResult
 sealed trait ListConfigRestFailure extends ListConfigRestResult
 
@@ -26,13 +29,17 @@ case class RestAuthFailure(
   statusCode: Int,
   statusText: String,
   body: String
-) extends RetrievePreparedImageRestFailure with CaptureRestFailure with SaveConfigRestFailure with ListConfigRestFailure with RemoveConfigRestFailure
+) extends RetrievePreparedImageRestFailure
+    with CaptureRestFailure with SaveConfigRestFailure with ListConfigRestFailure with RemoveConfigRestFailure
+    with OpenConfigRestFailure
 
 case class RestUnknownFailure(
   statusCode: Int,
   statusText: String,
   body: String
-) extends RetrievePreparedImageRestFailure with CaptureRestFailure with SaveConfigRestFailure with ListConfigRestFailure with RemoveConfigRestFailure
+) extends RetrievePreparedImageRestFailure
+    with CaptureRestFailure with SaveConfigRestFailure with ListConfigRestFailure with RemoveConfigRestFailure
+    with OpenConfigRestFailure
 
 class RetrievePreparedImageResultOk(
   val serverResp: Option[PrepareResult],
@@ -77,6 +84,28 @@ object SaveConfigResultOk {
   def parse(json: JsValue): SaveConfigResponse = SaveConfigResponse(
     SaveConfigResult(
       Revision((json \ "revision").as[String].toLong)
+    )
+  )
+}
+
+case class OpenConfigResult(
+  revision: Revision,
+  config: String,
+  comment: String,
+  createAd: Instant
+)
+
+case class OpenConfigResultOk(
+  serverResp: OpenConfigResult
+) extends OpenConfigRestResult
+
+object OpenConfigResultOk {
+  def parse(json: JsValue): OpenConfigResultOk = OpenConfigResultOk(
+    OpenConfigResult(
+      Revision((json \ "revision").as[String].toLong),
+      (json \ "config").as[String],
+      (json \ "comment").as[String],
+      Instant.ofEpochMilli((json \ "createdAt").as[Long])
     )
   )
 }

@@ -22,7 +22,7 @@ import scalafx.scene.control.{TableView => SfxTableView}
 import scalafx.scene.control.{ContextMenu => SfxContextMenu}
 import scalafx.scene.control.{MenuItem => SfxMenuItem}
 
-class SaveController extends SaveLoadController {
+class SaveController extends SaveOpenController {
   @FXML
   private[this] var saveConfigNameText: TextField = _
 

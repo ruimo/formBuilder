@@ -21,7 +21,7 @@ import javafx.beans.property.ReadOnlyStringWrapper
 import scalafx.scene.control.{TableView => SfxTableView}
 import javafx.scene.input.{KeyCode, KeyEvent, MouseButton, MouseEvent}
 
-trait SaveLoadController extends Initializable with HandleBigJob {
+trait SaveOpenController extends Initializable with HandleBigJob {
   protected lazy val configTable: SfxTableView[FormConfig] = new SfxTableView(configList)
 
   protected def configList: TableView[FormConfig]
