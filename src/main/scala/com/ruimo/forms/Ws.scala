@@ -8,8 +8,13 @@ import DefaultBodyReadables._
 import scala.concurrent.ExecutionContext.Implicits._
 
 object Ws {
+  private implicit val system = ActorSystem()
+
+  def shutdown() {
+    system.terminate()
+  }
+
   lazy val instance: StandaloneWSClient = {
-    implicit val system = ActorSystem()
     system.registerOnTermination {
       System.exit(0)
     }

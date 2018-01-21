@@ -45,6 +45,9 @@ import scalafx.scene.control.Alert.AlertType
 import play.api.libs.ws.JsonBodyReadables._
 import play.api.libs.ws.JsonBodyWritables._
 
+import play.api.libs.ws.DefaultBodyReadables._
+import play.api.libs.ws.DefaultBodyWritables._
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
@@ -660,7 +663,9 @@ class MainController extends Initializable with HandleBigJob {
           dlg.showAndWait() match {
             case Some(SfxButtonType.Yes) =>
               saveProject(callbackOnCancel = () => e.consume())
+              terminateApplication()
             case Some(SfxButtonType.No) =>
+              terminateApplication()
             case _ =>
               e.consume()
           }
@@ -669,8 +674,17 @@ class MainController extends Initializable with HandleBigJob {
     }
   }
 
+  private[this] def terminateApplication() {
+    val dlg = new Alert(AlertType.None)
+    dlg.setTitle("アプリケーション終了処理中")
+    dlg.setContentText("少々お待ちください。終了処理中です。")
+    dlg.show()
+
+    Main.terminate()
+  }
+
   private[this] def openProject() {
-    val loader = new FXMLLoader(getClass().getResource("load.fxml"))
+    val loader = new FXMLLoader(getClass().getResource("open.fxml"))
     val root: DialogPane = loader.load()
     val ctrl: OpenController = loader.getController().asInstanceOf[OpenController]
     val alert = new SfxAlert(AlertType.Confirmation) {
@@ -697,7 +711,17 @@ class MainController extends Initializable with HandleBigJob {
                   openProject()
                 }
                 case Some(fc) =>
-println("Open config: " + fc)
+                  println("Open config: " + fc)
+                  doBigJob {
+                    Right(project.openConfig(fc.configName))
+                  } {
+                    case OpenConfigResultOk(resp) =>
+println("Open config response: " + resp)
+                    case authFail: RestAuthFailure =>
+                      authError()
+                    case serverFail: RestUnknownFailure =>
+                      showGeneralError()
+                  }
               }
             }
           case _ =>
@@ -970,7 +994,12 @@ println("Open config: " + fc)
   @FXML
   def exitMenuClicked(event: ActionEvent) {
     println("exitMenuClicked()")
-    Main.terminate()
+    stage.getOnCloseRequest().handle(
+      new WindowEvent(
+        stage,
+        WindowEvent.WINDOW_CLOSE_REQUEST
+      )
+    )
   }
 
   @FXML

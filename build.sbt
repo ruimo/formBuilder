@@ -21,9 +21,9 @@ lazy val root = (project in file(".")).
     libraryDependencies ++= Seq(
       "org.scalafx" % "scalafx_2.12" % "8.0.102-R11",
       "com.ruimo" %% "scoins" % "1.12",
-      "com.typesafe.play" %% "play-ahc-ws-standalone" % "1.0.2",
-      "com.typesafe.play" %% "play-ws-standalone-json" % "1.0.2",
-      "com.typesafe.play" % "play-json_2.12" % "2.6.3",
+      "com.typesafe.play" %% "play-ahc-ws-standalone" % "1.1.3",
+      "com.typesafe.play" %% "play-ws-standalone-json" % "1.1.3",
+      "com.typesafe.play" % "play-json_2.12" % "2.6.8",
       "com.ruimo" %% "graphics" % "1.2",
       "com.typesafe" % "config" % "1.3.1",
       "org.specs2" %% "specs2-core" % "4.0.0" % "test"

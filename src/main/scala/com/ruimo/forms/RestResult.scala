@@ -100,14 +100,17 @@ case class OpenConfigResultOk(
 ) extends OpenConfigRestResult
 
 object OpenConfigResultOk {
-  def parse(json: JsValue): OpenConfigResultOk = OpenConfigResultOk(
-    OpenConfigResult(
-      Revision((json \ "revision").as[String].toLong),
-      (json \ "config").as[String],
-      (json \ "comment").as[String],
-      Instant.ofEpochMilli((json \ "createdAt").as[Long])
+  def parse(json: JsValue): OpenConfigResultOk = {
+    val rec = (json \ "record").as[JsValue]
+    OpenConfigResultOk(
+      OpenConfigResult(
+        Revision((rec \ "revision").as[String].toLong),
+        (rec \ "config").as[String],
+        (rec \ "comment").as[String],
+        Instant.ofEpochMilli((rec \ "createdAt").as[String].toLong)
+      )
     )
-  )
+  }
 }
 
 case class RemoveConfigResultOk(

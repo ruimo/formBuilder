@@ -41,6 +41,6 @@ object Main extends JFXApp {
 
   def terminate() {
     println("Terminate application...")
-    Platform.exit()
+    Ws.shutdown()
   }
 }
