@@ -1,5 +1,6 @@
 package com.ruimo.forms.projects.project0
 
+import scalafx.application.Platform
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
@@ -43,6 +44,32 @@ import scala.util.{Failure, Success, Try}
 
 object AbsoluteFieldImpl {
   val LineWidth = 2.0
+
+  implicit object absoluteFieldFormat extends Format[AbsoluteField] {
+    override def reads(jv: JsValue): JsResult[AbsoluteField] = {
+      val field = (jv \ "field").as[JsValue]
+      val os = (field \ "originalSize").as[Seq[Double]]
+      JsSuccess(
+        AbsoluteFieldImpl(
+          (os(0), os(1)),
+          new Rectangle2D(
+            (field \ "x").as[Double], (field \ "y").as[Double],
+            (field \ "w").as[Double], (field \ "h").as[Double]
+          ),
+          (jv \ "name").as[String]
+        )
+      )
+    }
+
+    override def writes(f: AbsoluteField): JsValue = Json.obj(
+      "originalSize" -> JsArray(Seq(JsNumber(f.originalSize._1), JsNumber(f.originalSize._2))),
+      "x" -> f.rect.getMinX(),
+      "y" -> f.rect.getMinY(),
+      "w" -> f.rect.getWidth(),
+      "h" -> f.rect.getHeight(),
+      "name" -> f.name
+    )
+  }
 }
 
 case class AbsoluteFieldImpl(originalSize: (Double, Double), rect: Rectangle2D, name: String) extends AbsoluteField {
@@ -113,14 +140,6 @@ case class AbsoluteFieldImpl(originalSize: (Double, Double), rect: Rectangle2D, 
     }
     else CanDoNothing
   }
-
-  def asJson: JsObject = Json.obj(
-    "originalSize" -> JsArray(Seq(JsNumber(originalSize._1), JsNumber(originalSize._2))),
-    "x" -> rect.getMinX(),
-    "y" -> rect.getMinY(),
-    "w" -> rect.getWidth(),
-    "h" -> rect.getHeight()
-  )
 }
 
 object CropFieldImpl {
@@ -327,7 +346,7 @@ case class SkewCorrectionConditionImpl(
 ) extends SkewCorrectionCondition
 
 object SkewCorrectionConditionImpl {
-  val skewCorrectionConditionImplWrites = new Writes[SkewCorrectionConditionImpl] {
+  implicit val skewCorrectionConditionImplWrites = new Writes[SkewCorrectionConditionImpl] {
     def writes(obj: SkewCorrectionConditionImpl) = Json.obj(
       "direction" -> Json.toJson(obj.direction),
       "lineCount" -> JsNumber(obj.lineCount),
@@ -335,7 +354,7 @@ object SkewCorrectionConditionImpl {
     )
   }
 
-  val skewCorrectionConditionImplReads: Reads[SkewCorrectionConditionImpl] = (
+  implicit val skewCorrectionConditionImplReads: Reads[SkewCorrectionConditionImpl] = (
     (JsPath \ "direction").read[SkewCorrectionDirection] and
     (JsPath \ "lineCount").read[Int] and
     (JsPath \ "maxAngleToDetect").read[Double]
@@ -424,8 +443,8 @@ class ProjectImpl(
     }
   }
   
-  def addAbsoluteField(f: AbsoluteField, isSelected: Boolean) {
-    _absFields.addAbsoluteField(f, isSelected)
+  def addAbsoluteField(f: AbsoluteField, isSelected: Boolean, redraw: Boolean = true) {
+    _absFields.addAbsoluteField(f, isSelected, redraw)
     _isDirty = true
   }
 
@@ -800,42 +819,50 @@ class ProjectImpl(
   }
 
   // returns old field
-  def addLeftCropField(f: LeftCropField, selected: Boolean): Option[LeftCropField] = {
+  def addLeftCropField(f: LeftCropField, selected: Boolean, redraw: Boolean = true): Option[LeftCropField] = {
     val existing = this._leftCropField
     this._leftCropField = Some(f)
     this._isLeftCropFieldSelected = selected
-    existing.foreach { f => onCropFieldRemoved(f, isLeftCropFieldSelected) }
-    onCropFieldAdded(f, selected)
+    if (redraw) {
+      existing.foreach { f => onCropFieldRemoved(f, isLeftCropFieldSelected) }
+      onCropFieldAdded(f, selected)
+    }
     existing
   }
 
   // returns old field
-  def addRightCropField(f: RightCropField, selected: Boolean): Option[RightCropField] = {
+  def addRightCropField(f: RightCropField, selected: Boolean, redraw: Boolean = true): Option[RightCropField] = {
     val existing = this._rightCropField
     this._rightCropField = Some(f)
     this._isRightCropFieldSelected = selected
-    existing.foreach { f => onCropFieldRemoved(f, isRightCropFieldSelected) }
-    onCropFieldAdded(f, selected)
+    if (redraw) {
+      existing.foreach { f => onCropFieldRemoved(f, isRightCropFieldSelected) }
+      onCropFieldAdded(f, selected)
+    }
     existing
   }
 
   // returns old field
-  def addTopCropField(f: TopCropField, selected: Boolean): Option[TopCropField] = {
+  def addTopCropField(f: TopCropField, selected: Boolean, redraw: Boolean = true): Option[TopCropField] = {
     val existing = this._topCropField
     this._topCropField = Some(f)
     this._isTopCropFieldSelected = selected
-    existing.foreach { f => onCropFieldRemoved(f, isTopCropFieldSelected) }
-    onCropFieldAdded(f, selected)
+    if (redraw) {
+      existing.foreach { f => onCropFieldRemoved(f, isTopCropFieldSelected) }
+      onCropFieldAdded(f, selected)
+    }
     existing
   }
 
   // returns old field
-  def addBottomCropField(f: BottomCropField, selected: Boolean): Option[BottomCropField] = {
+  def addBottomCropField(f: BottomCropField, selected: Boolean, redraw: Boolean): Option[BottomCropField] = {
     val existing = this._bottomCropField
     this._bottomCropField = Some(f)
     this._isBottomCropFieldSelected = selected
-    existing.foreach { f => onCropFieldRemoved(f, isBottomCropFieldSelected) }
-    onCropFieldAdded(f, selected)
+    if (redraw) {
+      existing.foreach { f => onCropFieldRemoved(f, isBottomCropFieldSelected) }
+      onCropFieldAdded(f, selected)
+    }
     existing
   }
 
@@ -1194,6 +1221,10 @@ class ProjectImpl(
     }
   }
 
+  def flushCachedImage() {
+    _cachedImage = Map()
+  }
+
   override def invalidateCachedImage(skewCorrected: Boolean = false, cropped: Boolean = false) {
     _cachedImage = _cachedImage.filter { case (key, value) =>
       val shouldDrop = skewCorrected == key._2 && cropped == key._3
@@ -1227,7 +1258,7 @@ class ProjectImpl(
         Seq()
       )
     ) ++ Json.obj(
-      "absoluteFieds" -> absoluteFields.asJson
+      "absoluteFields" -> absoluteFields.asJson
     )
   }
 
@@ -1372,6 +1403,40 @@ class ProjectImpl(
     }
   }
 
+  private def reflect(result: JsValue) {
+    import AbsoluteFieldImpl.absoluteFieldFormat
+
+    def cropField[T](config: JsValue, ctor: ((Double, Double), Rectangle2D) => T): T = {
+      val originalSize: Seq[Double] = (config \ "originalSize").as[Seq[Double]]
+      val x: Double = (config \ "x").as[Double]
+      val y: Double = (config \ "y").as[Double]
+      val w: Double = (config \ "w").as[Double]
+      val h: Double = (config \ "h").as[Double]
+      ctor(
+        (originalSize(0), originalSize(1)),
+        new Rectangle2D(x, y, w, h)
+      )
+    }
+
+    val record = (result \ "record").as[JsValue]
+    val config: JsValue = Json.parse((record \ "config").as[String])
+
+    (config \ "leftCropField").asOpt[JsValue].map(cropField(_, LeftCropFieldImpl.apply)).foreach { addLeftCropField(_, false, false) }
+    (config \ "topCropField").asOpt[JsValue].map(cropField(_, TopCropFieldImpl.apply)).foreach { addTopCropField(_, false, false) }
+    (config \ "rightCropField").asOpt[JsValue].map(cropField(_, RightCropFieldImpl.apply)).foreach { addRightCropField(_, false, false) }
+    (config \ "bottomCropField").asOpt[JsValue].map(cropField(_, BottomCropFieldImpl.apply)).foreach { addBottomCropField(_, false, false) }
+
+    (config \ "absoluteFields").as[Seq[AbsoluteField]].foreach {
+      addAbsoluteField(_, false, false)
+    }
+
+    cropEnabled = (config \ "isCropEnabled").as[Boolean]
+    skewCorrection = (config \ "skewCorrection").as[SkewCorrection]
+
+    _isDirty = false
+    flushCachedImage()
+  }
+
   def openConfig(configName: String): Future[OpenConfigRestResult] = {
     val urlPath = Settings.Loader.settings.auth.url.resolve("loadConfig")
     val auth = Settings.Loader.settings.auth
@@ -1388,6 +1453,9 @@ class ProjectImpl(
       resp.status match {
         case 200 =>
           val result: JsValue = Json.parse(resp.bodyAsBytes.toArray)
+          Platform.runLater(() -> {
+            reflect(result)
+          })
           OpenConfigResultOk.parse(result)
         case 403 =>
           RestAuthFailure(resp.status, resp.statusText, resp.body)

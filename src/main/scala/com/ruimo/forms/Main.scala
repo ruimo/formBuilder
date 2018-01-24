@@ -42,5 +42,6 @@ object Main extends JFXApp {
   def terminate() {
     println("Terminate application...")
     Ws.shutdown()
+    println("WS shutdown requested...")
   }
 }

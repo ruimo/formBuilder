@@ -18,13 +18,15 @@ class AbsoluteFieldTable(
   def normalFields: imm.Seq[AbsoluteField] = _normalAbsoluteFields
   def selectedFields: imm.Seq[AbsoluteField] = _selectedAbsoluteFields
 
-  def addAbsoluteField(f: AbsoluteField, isSelected: Boolean) {
+  def addAbsoluteField(f: AbsoluteField, isSelected: Boolean, redraw: Boolean = true) {
     if (isSelected)
       _selectedAbsoluteFields= _selectedAbsoluteFields :+ f
     else
       _normalAbsoluteFields = _normalAbsoluteFields :+ f
 
-    (if (isSelected) projectContext.onSelectedAbsoluteFieldAdded else projectContext.onNormalAbsoluteFieldAdded).apply(f)
+    if (redraw) {
+      (if (isSelected) projectContext.onSelectedAbsoluteFieldAdded else projectContext.onNormalAbsoluteFieldAdded).apply(f)
+    }
   }
 
   def deselectAllFields() {
@@ -181,12 +183,14 @@ class AbsoluteFieldTable(
     }
   }
 
+  import AbsoluteFieldImpl.absoluteFieldFormat
+
   def asJson: JsValue = JsArray(
     (normalFields ++ selectedFields).map { f =>
       JsObject(
         Seq(
           "name" -> JsString(f.name),
-          "field" -> f.asJson
+          "field" -> Json.toJson(f)
         )
       )
     }

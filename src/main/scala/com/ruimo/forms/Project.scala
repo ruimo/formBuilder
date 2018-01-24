@@ -79,10 +79,13 @@ trait SkewCorrectionCondition {
 
 object SkewCorrectionCondition {
   import projects.project0.SkewCorrectionConditionImpl.skewCorrectionConditionImplWrites
+  import projects.project0.SkewCorrectionConditionImpl.skewCorrectionConditionImplReads
 
   implicit object skewCorrectionConditionFormat extends Format[SkewCorrectionCondition] {
     override def reads(jv: JsValue): JsResult[SkewCorrectionCondition] = {
-      JsSuccess(jv.as[SkewCorrectionCondition])
+      JsSuccess(
+        jv.as[SkewCorrectionConditionImpl]
+      )
     }
 
     override def writes(obj: SkewCorrectionCondition): JsValue = obj match {
@@ -323,11 +326,28 @@ trait RectField extends Field {
   }
 }
 
+sealed trait TesseractLang
+case object TesseractLangJa extends TesseractLang {
+  override def toString = "日本語"
+}
+case object TesseractLangEn extends TesseractLang {
+  override def toString = "英語"
+}
+
+trait OcrSettings {
+}
+
+case class TesseractAcceptChars(code: String) extends AnyVal
+
+case class TesseractOcrSettings(
+  lang: TesseractLang,
+  acceptChars: TesseractAcceptChars
+) extends OcrSettings
+
 trait AbsoluteField extends Field with RectField {
   type R <: AbsoluteField
   def name: String
   def withName(newName: String): R
-  def asJson: JsObject
 }
 
 trait CropField extends Field with RectField {
@@ -371,7 +391,7 @@ trait Project {
   def listener: ProjectListener
 
   def withListener(newListener: ProjectListener): Project
-  def addAbsoluteField(f: AbsoluteField, isSelected: Boolean): Unit
+  def addAbsoluteField(f: AbsoluteField, isSelected: Boolean, redraw: Boolean = true): Unit
   def absoluteFields: AbsoluteFieldTable
   def deselectAllFields(): Unit
   def selectAbsoluteFields(formSize: (Double, Double), rect: Rectangle2D, e: MouseEvent): Unit
@@ -409,10 +429,10 @@ trait Project {
   def cropEnabled_=(enabled: Boolean)
   def cropEnabled: Boolean
 
-  def addLeftCropField(f: LeftCropField, selected: Boolean): Option[LeftCropField]
-  def addRightCropField(f: RightCropField, selected: Boolean): Option[RightCropField]
-  def addTopCropField(f: TopCropField, selected: Boolean): Option[TopCropField]
-  def addBottomCropField(f: BottomCropField, selected: Boolean): Option[BottomCropField]
+  def addLeftCropField(f: LeftCropField, selected: Boolean, redraw: Boolean = true): Option[LeftCropField]
+  def addRightCropField(f: RightCropField, selected: Boolean, redraw: Boolean = true): Option[RightCropField]
+  def addTopCropField(f: TopCropField, selected: Boolean, redraw: Boolean = true): Option[TopCropField]
+  def addBottomCropField(f: BottomCropField, selected: Boolean, redraw: Boolean = true): Option[BottomCropField]
 
   def leftCropField: Option[LeftCropField]
   def topCropField: Option[TopCropField]

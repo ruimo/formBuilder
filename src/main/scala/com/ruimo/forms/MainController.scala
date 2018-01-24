@@ -639,7 +639,6 @@ class MainController extends Initializable with HandleBigJob {
       override def handle(t: KeyEvent) {
         t.getCode() match {
           case KeyCode.DELETE =>
-            println("DELETE hit")
             project.deleteAllSelectedFields()
           case _ =>
         }
@@ -669,6 +668,9 @@ class MainController extends Initializable with HandleBigJob {
             case _ =>
               e.consume()
           }
+        }
+        else {
+          terminateApplication()
         }
       }
     }
@@ -716,7 +718,7 @@ class MainController extends Initializable with HandleBigJob {
                     Right(project.openConfig(fc.configName))
                   } {
                     case OpenConfigResultOk(resp) =>
-println("Open config response: " + resp)
+                      redraw()
                     case authFail: RestAuthFailure =>
                       authError()
                     case serverFail: RestUnknownFailure =>
@@ -949,16 +951,27 @@ println("Open config response: " + resp)
 
     doWithImageSize { imgSz =>
       field match {
-        case af: AbsoluteField =>
-          val dlg = new SfxTextInputDialog("")
-          dlg.title = "フィールドの名前入力"
-          dlg.headerText = "フィールドの名前を入力してください。"
-          dlg.showAndWait() match {
-            case None =>
+        case af: AbsoluteField => {
+          val (dlg, ctrl) = absoluteFieldDialog
+          dlg.showAndWait().map(_.delegate) match {
+            case Some(ButtonType.APPLY) =>
+              project.addAbsoluteField(af.withName(ctrl.fieldName), true)
+              println("APPLY")
+            case Some(_) =>
+              println("canceled")
               redrawRect(field.drawArea(imgSz))
-            case Some(name) =>
-              project.addAbsoluteField(af.withName(name), true)
+            case None => println("bt = none")
           }
+        }
+          // val dlg = new SfxTextInputDialog("")
+          // dlg.title = "フィールドの名前入力"
+          // dlg.headerText = "フィールドの名前を入力してください。"
+          // dlg.showAndWait() match {
+          //   case None =>
+          //     redrawRect(field.drawArea(imgSz))
+          //   case Some(name) =>
+          //     project.addAbsoluteField(af.withName(name), true)
+          // }
         case cf: CropField =>
           val Left = "左余白検出"
           val Right = "右余白検出"
@@ -1425,6 +1438,16 @@ println("Open config response: " + resp)
     }
   }
 
+  lazy val absoluteFieldDialog: (SfxAlert, AbsoluteFieldController) = {
+    val loader = new FXMLLoader(getClass().getResource("tesseract.fxml"))
+    val root: DialogPane = loader.load()
+    val ctrl = loader.getController().asInstanceOf[AbsoluteFieldController]
+    val alert = new SfxAlert(AlertType.Confirmation)
+    alert.dialogPane = new SfxDialogPane(root)
+    alert.title = "フィールド設定"
+    (alert, ctrl)
+  }
+
   @FXML
   def canvasMouseClicked(e: MouseEvent) {
     println("canvasMouseClicked")
@@ -1432,12 +1455,23 @@ println("Open config response: " + resp)
       println("double clicked")
       doWithImageSize { imgSz =>
         project.getSelectedAbsoluteFieldAt(imgSz, e.getX, e.getY) foreach { f =>
-          val dlg = new SfxTextInputDialog(f.name)
-          dlg.title = "フィールドの名前変更"
-          dlg.headerText = "フィールドの名前を入力してください。"
-          dlg.showAndWait() foreach { newName =>
-            project.renameSelectedAbsoluteField(f, newName)
+          val (dlg, ctrl) = absoluteFieldDialog
+          ctrl.fieldName = f.name
+          dlg.showAndWait().map(_.delegate) match {
+            case Some(ButtonType.APPLY) =>
+              project.renameSelectedAbsoluteField(f, ctrl.fieldName)
+            case Some(_) =>
+              println("canceled")
+            case None =>
+              println("bt = none")
           }
+
+          // val dlg = new SfxTextInputDialog(f.name)
+          // dlg.title = "フィールドの名前変更"
+          // dlg.headerText = "フィールドの名前を入力してください。"
+          // dlg.showAndWait() foreach { newName =>
+          //   project.renameSelectedAbsoluteField(f, newName)
+          // }
         }
       }
     }
