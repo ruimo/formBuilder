@@ -846,7 +846,7 @@ class MainController extends Initializable with HandleBigJob {
             }
             project.topCropField.foreach { cf =>
               if (cf.intersects(imgSz, rect)) {
-                cf.draw(imgSz, gc, project.isLeftCropFieldSelected)
+                cf.draw(imgSz, gc, project.isTopCropFieldSelected)
               }
             }
             project.rightCropField.foreach { cf =>
