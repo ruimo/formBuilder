@@ -365,7 +365,11 @@ case class EdgeCropConditionImpl(
   topArea: Option[Area],
   bottomArea: Option[Area],
   leftArea: Option[Area],
-  rightArea: Option[Area]
+  rightArea: Option[Area],
+  topSensivity: EdgeCropSensivity,
+  bottomSensivity: EdgeCropSensivity,
+  rightSensivity: EdgeCropSensivity,
+  leftSensivity: EdgeCropSensivity
 ) extends EdgeCropCondition {
   lazy val asJson: JsObject = {
     def areaToJson(area: Area) = {
@@ -381,6 +385,11 @@ case class EdgeCropConditionImpl(
       bottomArea.map { a => "bottom" -> areaToJson(a) }.toSeq ++
       leftArea.map { a => "left" -> areaToJson(a) }.toSeq ++
       rightArea.map { a => "right" -> areaToJson(a) }.toSeq
+    ) ++ Json.obj(
+      "topSensivity" -> JsNumber(topSensivity.value),
+      "bottomSensivity" -> JsNumber(bottomSensivity.value),
+      "leftSensivity" -> JsNumber(leftSensivity.value),
+      "rightSensivity" -> JsNumber(rightSensivity.value)
     )
   }
 }
@@ -423,6 +432,14 @@ class ProjectImpl(
   private[this] var _isEdgeCropEnabled: Boolean = false
   @volatile
   private[this] var _cachedImage: imm.Map[(Path, Boolean, Boolean), RetrievePreparedImageResultOk] = Map()
+  @volatile
+  private[this] var _topSensivity: EdgeCropSensivity = EdgeCropSensivity(254)
+  @volatile
+  private[this] var _bottomSensivity: EdgeCropSensivity = EdgeCropSensivity(254)
+  @volatile
+  private[this] var _leftSensivity: EdgeCropSensivity = EdgeCropSensivity(254)
+  @volatile
+  private[this] var _rightSensivity: EdgeCropSensivity = EdgeCropSensivity(254)
 
   def isDirty = _isDirty
 
@@ -628,6 +645,8 @@ class ProjectImpl(
         projectContext.onSelectedCropFieldAdded(modified)
       }
     }
+    invalidateCachedImage(skewCorrected = true, cropped = true)
+    invalidateCachedImage(skewCorrected = false, cropped = true)
     _isDirty = true
   }
 
@@ -637,7 +656,6 @@ class ProjectImpl(
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
     modifySelectedCropField(rightCropField, isRightCropFieldSelected, modifier)
     modifySelectedCropField(bottomCropField, isBottomCropFieldSelected, modifier)
-    _isDirty = true
   }
 
   def northResizeSelectedAbsoluteFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
@@ -686,7 +704,6 @@ class ProjectImpl(
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
     modifySelectedCropField(rightCropField, isRightCropFieldSelected, modifier)
     modifySelectedCropField(bottomCropField, isBottomCropFieldSelected, modifier)
-    _isDirty = true
   }
 
   def eastResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
@@ -695,7 +712,6 @@ class ProjectImpl(
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
     modifySelectedCropField(rightCropField, isRightCropFieldSelected, modifier)
     modifySelectedCropField(bottomCropField, isBottomCropFieldSelected, modifier)
-    _isDirty = true
   }
 
   def westResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
@@ -704,7 +720,6 @@ class ProjectImpl(
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
     modifySelectedCropField(rightCropField, isRightCropFieldSelected, modifier)
     modifySelectedCropField(bottomCropField, isBottomCropFieldSelected, modifier)
-    _isDirty = true
   }
 
   def southResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
@@ -713,7 +728,6 @@ class ProjectImpl(
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
     modifySelectedCropField(rightCropField, isRightCropFieldSelected, modifier)
     modifySelectedCropField(bottomCropField, isBottomCropFieldSelected, modifier)
-    _isDirty = true
   }
 
   def northEastResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
@@ -722,7 +736,6 @@ class ProjectImpl(
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
     modifySelectedCropField(rightCropField, isRightCropFieldSelected, modifier)
     modifySelectedCropField(bottomCropField, isBottomCropFieldSelected, modifier)
-    _isDirty = true
   }
 
   def northWestResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
@@ -731,7 +744,6 @@ class ProjectImpl(
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
     modifySelectedCropField(rightCropField, isRightCropFieldSelected, modifier)
     modifySelectedCropField(bottomCropField, isBottomCropFieldSelected, modifier)
-    _isDirty = true
   }
 
   def southEastResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
@@ -740,7 +752,6 @@ class ProjectImpl(
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
     modifySelectedCropField(rightCropField, isRightCropFieldSelected, modifier)
     modifySelectedCropField(bottomCropField, isBottomCropFieldSelected, modifier)
-    _isDirty = true
   }
 
   def southWestResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
@@ -749,7 +760,6 @@ class ProjectImpl(
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
     modifySelectedCropField(rightCropField, isRightCropFieldSelected, modifier)
     modifySelectedCropField(bottomCropField, isBottomCropFieldSelected, modifier)
-    _isDirty = true
   }
 
   def renameSelectedAbsoluteField(f: AbsoluteField, newName: String) {
@@ -919,7 +929,10 @@ class ProjectImpl(
 
   def cropEnabled: Boolean = _isEdgeCropEnabled
 
-  def edgeCrop(formWidth: Double, formHeight: Double): EdgeCrop = {
+  def edgeCrop(
+    formWidth: Double, formHeight: Double,
+    topSensivity: EdgeCropSensivity, bottomSensivity: EdgeCropSensivity, leftSensivity: EdgeCropSensivity, rightSensivity: EdgeCropSensivity
+  ): EdgeCrop = {
     def cropFieldToArea(f: CropField): Area = {
       val rect = f.rect
       Area(
@@ -934,10 +947,47 @@ class ProjectImpl(
         _topCropField.map(cropFieldToArea),
         _bottomCropField.map(cropFieldToArea),
         _leftCropField.map(cropFieldToArea),
-        _rightCropField.map(cropFieldToArea)
+        _rightCropField.map(cropFieldToArea),
+        topSensivity, bottomSensivity, rightSensivity, leftSensivity,
       )
     )
   }
+
+  def topEdgeCropSensivity_=(topSensivity: EdgeCropSensivity) {
+    _topSensivity = topSensivity
+    _isDirty = true
+    invalidateCachedImage(skewCorrected = true, cropped = true)
+    invalidateCachedImage(skewCorrected = false, cropped = true)
+  }
+
+  def topEdgeCropSensivity: EdgeCropSensivity = _topSensivity
+
+  def bottomEdgeCropSensivity_=(bottomSensivity: EdgeCropSensivity) {
+    _bottomSensivity = bottomSensivity
+    _isDirty = true
+    invalidateCachedImage(skewCorrected = true, cropped = true)
+    invalidateCachedImage(skewCorrected = false, cropped = true)
+  }
+
+  def bottomEdgeCropSensivity: EdgeCropSensivity = _bottomSensivity
+
+  def leftEdgeCropSensivity_=(leftSensivity: EdgeCropSensivity) {
+    _leftSensivity = leftSensivity
+    _isDirty = true
+    invalidateCachedImage(skewCorrected = true, cropped = true)
+    invalidateCachedImage(skewCorrected = false, cropped = true)
+  }
+
+  def leftEdgeCropSensivity: EdgeCropSensivity = _leftSensivity
+
+  def rightEdgeCropSensivity_=(rightSensivity: EdgeCropSensivity) {
+    _rightSensivity = rightSensivity
+    _isDirty = true
+    invalidateCachedImage(skewCorrected = true, cropped = true)
+    invalidateCachedImage(skewCorrected = false, cropped = true)
+  }
+
+  def rightEdgeCropSensivity: EdgeCropSensivity = _rightSensivity
 
   override def cachedImage(
     selectedImage: SelectedImage,
@@ -1011,7 +1061,7 @@ class ProjectImpl(
                 Json.obj(
                   "inputFiles" -> JsArray(Seq(JsString(fileName))),
                   "skewCorrection" -> Json.toJson(skewCorrection),
-                  "crop" -> edgeCrop(cropt._1, cropt._2).asJson(cropEnabled),
+                  "crop" -> edgeCrop(cropt._1, cropt._2, _topSensivity, _bottomSensivity, _leftSensivity, _rightSensivity).asJson(cropEnabled),
                   "absoluteFields" -> _absFields.asJson
                 )
               )
@@ -1068,7 +1118,7 @@ class ProjectImpl(
         val json = Json.obj(
           "inputFiles" -> JsArray(Seq(JsString(fileName))),
           "skewCorrection" -> Json.toJson(skewCorrection.copy(enabled = isSkewCorrectionEnabled)),
-          "crop" -> edgeCrop(cropt._1, cropt._2).asJson(isCropEnabled)
+          "crop" -> edgeCrop(cropt._1, cropt._2, _topSensivity, _bottomSensivity, _leftSensivity, _rightSensivity).asJson(isCropEnabled)
         )
         println("Json to send: " + json)
         Files.write(configFile, json.toString.getBytes("utf-8"))

@@ -1259,6 +1259,68 @@ class MainController extends Initializable with HandleBigJob {
 //    myStage.show()
   }
 
+  @FXML
+  def cropDetailClicked(e: ActionEvent) {
+    println("cropDetailClicked")
+    val loader = new FXMLLoader(getClass().getResource("cropDetailDialog.fxml"))
+    val root: DialogPane = loader.load()
+    val ctrl = loader.getController().asInstanceOf[CropDetailController]
+    ctrl.topSensivity = project.topEdgeCropSensivity
+    ctrl.bottomSensivity = project.bottomEdgeCropSensivity
+    ctrl.leftSensivity = project.leftEdgeCropSensivity
+    ctrl.rightSensivity = project.rightEdgeCropSensivity
+    val alert = new SfxAlert(AlertType.Confirmation)
+    alert.dialogPane = new SfxDialogPane(root)
+    alert.title = "傾き補正"
+    alert.onCloseRequest = new EventHandler[DialogEvent] {
+      override def handle(t: DialogEvent) {
+        var errors: imm.Seq[String] = List()
+        def parse(fieldName: String, f: => EdgeCropSensivity): Option[EdgeCropSensivity] = {
+          try {
+            Some(f)
+          }
+          catch {
+            case t: Throwable =>
+              t.printStackTrace()
+              errors = errors :+ fieldName
+              None
+          }
+        }
+
+        parse("感度(上)", ctrl.topSensivity).foreach { project.topEdgeCropSensivity = _ }
+        parse("感度(下)", ctrl.bottomSensivity).foreach { project.bottomEdgeCropSensivity = _ }
+        parse("感度(左)", ctrl.leftSensivity).foreach { project.leftEdgeCropSensivity = _ }
+        parse("感度(右)", ctrl.rightSensivity).foreach { project.rightEdgeCropSensivity = _ }
+
+        if (! errors.isEmpty && t.getTarget.asInstanceOf[Alert].getResult.getButtonData != ButtonBar.ButtonData.CANCEL_CLOSE) {
+          t.consume()
+          val err = new Alert(AlertType.Error)
+          err.setTitle("感度の指定エラー")
+          err.setContentText("感度は、半角数字で、0-255の範囲で指定しください。" + errors.mkString(", "))
+          err.show()
+        }
+
+        println("event type = " + t.getEventType)
+        println("target = " + t.getTarget)
+        println("result = " + t.getTarget.asInstanceOf[Alert].getResult)
+      }
+    }
+    alert.showAndWait().map(_.delegate) match {
+      case Some(ButtonType.APPLY) =>
+        project.invalidateCachedImage(true, true)
+        project.invalidateCachedImage(false, true)
+        if (sfxCropCheck.selected()) {
+          sfxCropCheck.selected = false
+          cropEnabledCheckClicked(null)
+          sfxCropCheck.selected = true
+          cropEnabledCheckClicked(null)
+        }
+
+      case Some(_) => println("canceled")
+      case None => println("bt = none")
+    }
+  }
+
   private def showSkewAnimation(skewResult: SkewCorrectionResult, image: Image) {
     val orgCropEnabled = project.cropEnabled
     project.skewCorrection = project.skewCorrection.copy(enabled = false)

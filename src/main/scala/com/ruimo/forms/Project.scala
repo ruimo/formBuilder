@@ -123,17 +123,25 @@ case class EdgeCrop(
       Seq(
         "enabled" -> JsBoolean(en)
       ) ++ (
-        if (en) condition.asJson.fields else Seq()
+        if (en) condition.asJson.fields
+        else Seq()
       )
     )
   }
 }
+
+// 0 - 255
+case class EdgeCropSensivity(value: Int) extends AnyVal
 
 trait EdgeCropCondition {
   def topArea: Option[Area]
   def bottomArea: Option[Area]
   def leftArea: Option[Area]
   def rightArea: Option[Area]
+  def topSensivity: EdgeCropSensivity
+  def bottomSensivity: EdgeCropSensivity
+  def leftSensivity: EdgeCropSensivity
+  def rightSensivity: EdgeCropSensivity
 
   def asJson: JsObject
 }
@@ -425,9 +433,20 @@ trait Project {
   def skewCorrection: SkewCorrection
   def skewCorrection_=(newSkewCorrection: SkewCorrection)
 
-  def edgeCrop(formWidth: Double, formHeight: Double): EdgeCrop
+  def edgeCrop(
+    formWidth: Double, formHeight: Double,
+    topSensivity: EdgeCropSensivity, bottomSensivity: EdgeCropSensivity, leftSensivity: EdgeCropSensivity, rightSensivity: EdgeCropSensivity
+  ): EdgeCrop
   def cropEnabled_=(enabled: Boolean)
   def cropEnabled: Boolean
+  def topEdgeCropSensivity_=(topSensivity: EdgeCropSensivity)
+  def topEdgeCropSensivity: EdgeCropSensivity
+  def bottomEdgeCropSensivity_=(bottomSensivity: EdgeCropSensivity)
+  def bottomEdgeCropSensivity: EdgeCropSensivity
+  def leftEdgeCropSensivity_=(leftSensivity: EdgeCropSensivity)
+  def leftEdgeCropSensivity: EdgeCropSensivity
+  def rightEdgeCropSensivity_=(rightSensivity: EdgeCropSensivity)
+  def rightEdgeCropSensivity: EdgeCropSensivity
 
   def addLeftCropField(f: LeftCropField, selected: Boolean, redraw: Boolean = true): Option[LeftCropField]
   def addRightCropField(f: RightCropField, selected: Boolean, redraw: Boolean = true): Option[RightCropField]
