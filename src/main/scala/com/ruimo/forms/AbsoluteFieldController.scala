@@ -24,6 +24,9 @@ case object OcrEngineCodeGoogle extends OcrEngineCode {
 case object OcrEngineCodeMicrosoft extends OcrEngineCode {
   override def toString = "Microsoft OCR"
 }
+case object OcrEngineCodeCogent extends OcrEngineCode {
+  override def toString = "Cogent Tegaki"
+}
 
 class AbsoluteFieldController extends Initializable {
   @FXML
@@ -52,6 +55,7 @@ class AbsoluteFieldController extends Initializable {
     sfxOcrEngineComboBox += OcrEngineCodeTesseract
     sfxOcrEngineComboBox += OcrEngineCodeGoogle
     sfxOcrEngineComboBox += OcrEngineCodeMicrosoft
+    sfxOcrEngineComboBox += OcrEngineCodeCogent
     sfxOcrEngineComboBox.value = OcrEngineCodeTesseract
 
     sfxTesLangDropDown += TesseractLangJa

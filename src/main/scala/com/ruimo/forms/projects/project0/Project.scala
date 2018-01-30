@@ -637,20 +637,27 @@ class ProjectImpl(
   def modifySelectedCropField[T <: CropField](
     field: Option[T], isSelected: Boolean, modifier: T => T
   ) {
+    println("modifySelectedCropField()")
+    var fieldModified = false
     field.foreach { f =>
       if (isSelected) {
+        fieldModified = true
         val modified = modifier(f)
         addCropField(modified, true)
         projectContext.onSelectedCropFieldRemoved(f)
         projectContext.onSelectedCropFieldAdded(modified)
       }
     }
-    invalidateCachedImage(skewCorrected = true, cropped = true)
-    invalidateCachedImage(skewCorrected = false, cropped = true)
-    _isDirty = true
+
+    if (fieldModified) {
+      invalidateCachedImage(skewCorrected = true, cropped = true)
+      invalidateCachedImage(skewCorrected = false, cropped = true)
+      _isDirty = true
+    }
   }
 
   def moveSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    println("moveSelectedCropFields()")
     val modifier: CropField => CropField = _.move(formSize, from, to)
     modifySelectedCropField(topCropField, isTopCropFieldSelected, modifier)
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
@@ -699,6 +706,7 @@ class ProjectImpl(
   }
 
   def northResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    println("northResizeSelectedCropFields()")
     val modifier: CropField => CropField = _.northResize(formSize, from, to)
     modifySelectedCropField(topCropField, isTopCropFieldSelected, modifier)
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
@@ -707,6 +715,7 @@ class ProjectImpl(
   }
 
   def eastResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    println("eastResizeSelectedCropFields()")
     val modifier: CropField => CropField = _.eastResize(formSize, from, to)
     modifySelectedCropField(topCropField, isTopCropFieldSelected, modifier)
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
@@ -715,6 +724,7 @@ class ProjectImpl(
   }
 
   def westResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    println("westResizeSelectedCropFields()")
     val modifier: CropField => CropField = _.westResize(formSize, from, to)
     modifySelectedCropField(topCropField, isTopCropFieldSelected, modifier)
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
@@ -723,6 +733,7 @@ class ProjectImpl(
   }
 
   def southResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    println("southResizeSelectedCropFields()")
     val modifier: CropField => CropField = _.southResize(formSize, from, to)
     modifySelectedCropField(topCropField, isTopCropFieldSelected, modifier)
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
@@ -731,6 +742,7 @@ class ProjectImpl(
   }
 
   def northEastResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    println("northEastResizeSelectedCropFields()")
     val modifier: CropField => CropField = _.northEastResize(formSize, from, to)
     modifySelectedCropField(topCropField, isTopCropFieldSelected, modifier)
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
@@ -739,6 +751,7 @@ class ProjectImpl(
   }
 
   def northWestResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    println("northWestResizeSelectedCropFields()")
     val modifier: CropField => CropField = _.northWestResize(formSize, from, to)
     modifySelectedCropField(topCropField, isTopCropFieldSelected, modifier)
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
@@ -747,6 +760,7 @@ class ProjectImpl(
   }
 
   def southEastResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    println("southEastResizeSelectedCropFields()")
     val modifier: CropField => CropField = _.southEastResize(formSize, from, to)
     modifySelectedCropField(topCropField, isTopCropFieldSelected, modifier)
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
@@ -755,6 +769,7 @@ class ProjectImpl(
   }
 
   def southWestResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
+    println("southWestResizeSelectedCropFields()")
     val modifier: CropField => CropField = _.southWestResize(formSize, from, to)
     modifySelectedCropField(topCropField, isTopCropFieldSelected, modifier)
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
@@ -923,6 +938,12 @@ class ProjectImpl(
 
   def cropEnabled_=(enabled: Boolean) {
     _isEdgeCropEnabled = enabled
+    if (enabled) {
+      _isBottomCropFieldSelected = false
+      _isTopCropFieldSelected = false
+      _isLeftCropFieldSelected = false
+      _isRightCropFieldSelected = false
+    }
     listener.onCropEnabledChanged(enabled)
     _isDirty = true
   }
@@ -954,6 +975,7 @@ class ProjectImpl(
   }
 
   def topEdgeCropSensivity_=(topSensivity: EdgeCropSensivity) {
+    println("topEdgeCropSensivity changed")
     _topSensivity = topSensivity
     _isDirty = true
     invalidateCachedImage(skewCorrected = true, cropped = true)
@@ -963,6 +985,7 @@ class ProjectImpl(
   def topEdgeCropSensivity: EdgeCropSensivity = _topSensivity
 
   def bottomEdgeCropSensivity_=(bottomSensivity: EdgeCropSensivity) {
+    println("bottomEdgeCropSensivity changed")
     _bottomSensivity = bottomSensivity
     _isDirty = true
     invalidateCachedImage(skewCorrected = true, cropped = true)
@@ -972,6 +995,7 @@ class ProjectImpl(
   def bottomEdgeCropSensivity: EdgeCropSensivity = _bottomSensivity
 
   def leftEdgeCropSensivity_=(leftSensivity: EdgeCropSensivity) {
+    println("leftEdgeCropSensivity changed")
     _leftSensivity = leftSensivity
     _isDirty = true
     invalidateCachedImage(skewCorrected = true, cropped = true)
@@ -981,6 +1005,7 @@ class ProjectImpl(
   def leftEdgeCropSensivity: EdgeCropSensivity = _leftSensivity
 
   def rightEdgeCropSensivity_=(rightSensivity: EdgeCropSensivity) {
+    println("rightEdgeCropSensivity changed")
     _rightSensivity = rightSensivity
     _isDirty = true
     invalidateCachedImage(skewCorrected = true, cropped = true)
@@ -1272,10 +1297,12 @@ class ProjectImpl(
   }
 
   def flushCachedImage() {
+    println("flushCachedImage() called.")
     _cachedImage = Map()
   }
 
   override def invalidateCachedImage(skewCorrected: Boolean = false, cropped: Boolean = false) {
+    println("invalidateCachedImage(skewCorrected = " + skewCorrected + ", cropped = " + cropped + ") called")
     _cachedImage = _cachedImage.filter { case (key, value) =>
       val shouldDrop = skewCorrected == key._2 && cropped == key._3
       ! shouldDrop

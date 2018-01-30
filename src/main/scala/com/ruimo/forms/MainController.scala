@@ -1676,24 +1676,28 @@ class MainController extends Initializable with HandleBigJob {
           }
         },
         onNormalCropFieldAdded = (f: CropField) => {
+          println("onNormalCropFieldAdded")
           project.invalidateCachedImage(cropped = true)
           doWithImageSize { imgSz =>
             f.draw(imgSz, sfxImageCanvas.graphicsContext2D, false)
           }
         },
         onSelectedCropFieldAdded = (f: CropField) => {
+          println("onSelectedCropFieldAdded")
           project.invalidateCachedImage(cropped = true)
           doWithImageSize { imgSz =>
             f.draw(imgSz, sfxImageCanvas.graphicsContext2D, true)
           }
         },
         onNormalCropFieldRemoved = (f: CropField) => {
+          println("onNormalCropFieldRemoved")
           project.invalidateCachedImage(cropped = true)
           doWithImageSize { imgSz =>
             redrawRect(f.drawArea(imgSz))
           }
         },
         onSelectedCropFieldRemoved = (f: CropField) => {
+          println("onSelectedCropFieldRemoved")
           project.invalidateCachedImage(cropped = true)
           doWithImageSize { imgSz =>
             redrawRect(f.drawArea(imgSz))
