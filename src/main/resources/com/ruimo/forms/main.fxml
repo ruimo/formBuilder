@@ -91,6 +91,8 @@
                                     <AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" />
                                     <Button fx:id="skewCorrectionDetail" mnemonicParsing="false" onAction="#skewCorrectionDetailClicked" text="..." GridPane.columnIndex="2" GridPane.rowIndex="0"/>
                                     <Button fx:id="cropDetail" mnemonicParsing="false" onAction="#cropDetailClicked" text="..." GridPane.columnIndex="2" GridPane.rowIndex="1"/>
+                                    <Button fx:id="dotRemovalDetail" mnemonicParsing="false" onAction="#dotRemovalDetailClicked" text="..." GridPane.columnIndex="2" GridPane.rowIndex="2"/>
+                                    <Button fx:id="cropRectangleDetail" mnemonicParsing="false" onAction="#cropRectangleDetailClicked" text="..." GridPane.columnIndex="2" GridPane.rowIndex="3"/>
                                     <HBox alignment="BOTTOM_RIGHT" prefHeight="100.0" prefWidth="200.0" spacing="10.0" GridPane.columnIndex="1" GridPane.columnSpan="2" GridPane.halignment="RIGHT" GridPane.rowIndex="2">
                                        <opaqueInsets>
                                           <Insets />
@@ -101,6 +103,8 @@
                                     </HBox>
                                     <CheckBox fx:id="cropCheck" mnemonicParsing="false" onAction="#cropEnabledCheckClicked" text="余白切り落とし" GridPane.rowIndex="1" />
                                     <CheckBox fx:id="skewCorrectionCheck" mnemonicParsing="false" onAction="#skewCorrectionEnabledClicked" text="傾き補正" />
+                                    <CheckBox fx:id="dotRemovalCheck" mnemonicParsing="false" onAction="#dotRemovalEnabledClicked" text="黒点削除" GridPane.rowIndex="2"/>
+                                    <CheckBox fx:id="cropRectangleCheck" mnemonicParsing="false" onAction="#cropRectangleEnabledClicked" text="長方形クロップ" GridPane.rowIndex="3"/>
                                  </children>
                               </GridPane>
                            </content>

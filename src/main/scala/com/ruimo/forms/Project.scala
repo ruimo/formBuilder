@@ -66,6 +66,16 @@ sealed trait Field extends Widget[Field] {
   def southWestResize(formSize: (Double, Double), from: Point2D, to: Point2D): R
 }
 
+case class DotRemoval(
+  enabled: Boolean,
+  condition: DotRemovalCondition
+)
+
+case class CropRectangle(
+  enabled: Boolean,
+  condition: CropRectangleCondition
+)
+
 case class SkewCorrection(
   enabled: Boolean,
   condition: SkewCorrectionCondition
@@ -114,6 +124,93 @@ object SkewCorrection {
   }
 }
 
+trait DotRemovalCondition {
+  def maxDotSize: Int
+  def blackLevel: BlackLevel
+}
+
+object DotRemovalCondition {
+  import DotRemovalConditionImpl.dotRemovalConditionImplWrites
+  import DotRemovalConditionImpl.dotRemovalConditionImplReads
+
+  implicit object dotRemovalConditionFormat extends Format[DotRemovalCondition] {
+    override def reads(jv: JsValue): JsResult[DotRemovalCondition] = {
+      JsSuccess(
+        jv.as[DotRemovalConditionImpl]
+      )
+    }
+
+    override def writes(obj: DotRemovalCondition): JsValue = obj match {
+      case o: DotRemovalConditionImpl => dotRemovalConditionImplWrites.writes(o)
+    }
+  }
+}
+
+trait CropRectangleCondition {
+  def errorAllowance: Int
+  def topMargin: Double
+  def leftMargin: Double
+  def rightMargin: Double
+  def bottomMargin: Double
+}
+
+object CropRectangleCondition {
+  import CropRectangleConditionImpl.cropRectangleConditionImplWrites
+  import CropRectangleConditionImpl.cropRectangleConditionImplReads
+
+  implicit object cropRectangleConditionFormat extends Format[CropRectangleCondition] {
+    override def reads(jv: JsValue): JsResult[CropRectangleCondition] = {
+      JsSuccess(
+        jv.as[CropRectangleConditionImpl]
+      )
+    }
+
+    override def writes(obj: CropRectangleCondition): JsValue = obj match {
+      case o: CropRectangleConditionImpl => cropRectangleConditionImplWrites.writes(o)
+    }
+  }
+}
+
+object DotRemoval {
+  import DotRemovalCondition.dotRemovalConditionFormat
+
+  implicit object dotRemovalFormat extends Format[DotRemoval] {
+    override def reads(jv: JsValue): JsResult[DotRemoval] = {
+      JsSuccess(
+        DotRemoval(
+          (jv \ "enabled").as[Boolean],
+          (jv \ "condition").as[DotRemovalCondition]
+        )
+      )
+    }
+
+    override def writes(obj: DotRemoval): JsValue = Json.obj(
+      "enabled" -> JsBoolean(obj.enabled),
+      "condition" -> Json.toJson(obj.condition)
+    )
+  }
+}
+
+object CropRectangle {
+  import CropRectangleCondition.cropRectangleConditionFormat
+
+  implicit object cropRectangleFormat extends Format[CropRectangle] {
+    override def reads(jv: JsValue): JsResult[CropRectangle] = {
+      JsSuccess(
+        CropRectangle(
+          (jv \ "enabled").as[Boolean],
+          (jv \ "condition").as[CropRectangleCondition]
+        )
+      )
+    }
+
+    override def writes(obj: CropRectangle): JsValue = Json.obj(
+      "enabled" -> JsBoolean(obj.enabled),
+      "condition" -> Json.toJson(obj.condition)
+    )
+  }
+}
+
 case class EdgeCrop(
   enabled: Boolean,
   condition: EdgeCropCondition
@@ -130,8 +227,45 @@ case class EdgeCrop(
   }
 }
 
-// 0 - 255
-case class EdgeCropSensivity(value: Int) extends AnyVal
+// 0 - 254
+final class EdgeCropSensivity(val value: Int) extends AnyVal {
+  override def toString = "EdgeCropSensivity(" + value + ")"
+}
+
+object EdgeCropSensivity {
+  def apply(value: Int): EdgeCropSensivity = {
+    if (value < 0 || 254 < value)
+      throw new IllegalArgumentException("black level(=" + value + ") should be 0-254")
+    new EdgeCropSensivity(value)
+  }
+}
+
+// 0 - 254
+final class BlackLevel(val value: Int) extends AnyVal {
+  override def toString = "BlackLevel(" + value + ")"
+}
+
+object BlackLevel {
+  def apply(value: Int): BlackLevel = {
+    if (value < 0 || 254 < value)
+      throw new IllegalArgumentException("black level(=" + value + ") should be 0-254")
+    new BlackLevel(value)
+  }
+
+  implicit object blackLevelFormat extends Format[BlackLevel] {
+    override def reads(jv: JsValue): JsResult[BlackLevel] = {
+      JsSuccess(
+        BlackLevel(
+          (jv \ "value").as[Int]
+        )
+      )
+    }
+
+    override def writes(obj: BlackLevel): JsValue = Json.obj(
+      "value" -> JsNumber(obj.value)
+    )
+  }
+}
 
 trait EdgeCropCondition {
   def topArea: Option[Area]
@@ -386,11 +520,35 @@ trait BottomCropField extends CropField {
 trait ProjectListener {
   def onSkewCorrectionChanged(skewCorrection: SkewCorrection)
   def onCropEnabledChanged(enabled: Boolean)
+  def onDotRemovalChanged(dotRemoval: DotRemoval)
+  def onCropRectangleChanged(cropRectangle: CropRectangle)
 }
 
 object NullObjectListener extends ProjectListener {
-  def onSkewCorrectionChanged(skewCorrection: SkewCorrection) {}
-  def onCropEnabledChanged(enabled: Boolean) {}
+  override def onSkewCorrectionChanged(skewCorrection: SkewCorrection) {}
+  override def onCropEnabledChanged(enabled: Boolean) {}
+  override def onDotRemovalChanged(dotRemoval: DotRemoval) {}
+  override def onCropRectangleChanged(cropRectangle: CropRectangle) {}
+}
+
+case class CacheCondition(
+  isSkewCorrectionEnabled: Boolean,
+  isCropEnabled: Boolean,
+  isDotRemovalEnabled: Boolean,
+  isCropRectangleEnabled: Boolean
+)
+
+case class CacheConditionGlob(
+  isSkewCorrectionEnabled: Option[Boolean] = None,
+  isCropEnabled: Option[Boolean] = None,
+  isDotRemovalEnabled: Option[Boolean] = None,
+  isCropRectangleEnabled: Option[Boolean] = None
+) {
+  def isMatched(cond: CacheCondition): Boolean =
+    isSkewCorrectionEnabled.map(_ == cond.isSkewCorrectionEnabled).getOrElse(true) &&
+    isCropEnabled.map(_ == cond.isCropEnabled).getOrElse(true) &&
+    isDotRemovalEnabled.map(_ == cond.isDotRemovalEnabled).getOrElse(true) &&
+    isCropRectangleEnabled.map(_ == cond.isCropRectangleEnabled).getOrElse(true)
 }
 
 trait Project {
@@ -433,6 +591,12 @@ trait Project {
   def skewCorrection: SkewCorrection
   def skewCorrection_=(newSkewCorrection: SkewCorrection)
 
+  def dotRemoval: DotRemoval
+  def dotRemoval_=(newDotRemoval: DotRemoval)
+
+  def cropRectangle: CropRectangle
+  def cropRectangle_=(newCropRectangle: CropRectangle)
+
   def edgeCrop(
     formWidth: Double, formHeight: Double,
     topSensivity: EdgeCropSensivity, bottomSensivity: EdgeCropSensivity, leftSensivity: EdgeCropSensivity, rightSensivity: EdgeCropSensivity
@@ -470,11 +634,17 @@ trait Project {
 
   def cachedImage(
     file: SelectedImage,
-    isSkewCorrectionEnabled: Boolean = skewCorrection.enabled,
-    isCropEnabled: Boolean = cropEnabled
+    cacheCondition: CacheCondition = CacheCondition(
+      isSkewCorrectionEnabled = skewCorrection.enabled,
+      isCropEnabled = cropEnabled,
+      isDotRemovalEnabled = dotRemoval.enabled,
+      isCropRectangleEnabled = cropRectangle.enabled
+    )
   ): Either[RetrievePreparedImageRestResult, Future[RetrievePreparedImageRestResult]]
 
-  def invalidateCachedImage(skewCorrected: Boolean = false, cropped: Boolean = false): Unit
+  def invalidateCachedImage(
+    cacheCondition: CacheConditionGlob = CacheConditionGlob()
+  ): Unit
   def runCapture(si: SelectedImage): Future[Either[CaptureRestFailure, CaptureResultOk]]
   def cropFieldsAreReady: Boolean
   def listConfig(): Future[ListConfigRestResult]
@@ -482,7 +652,6 @@ trait Project {
   def removeConfig(configName: String): Future[RemoveConfigRestResult]
   def openConfig(configName: String): Future[OpenConfigRestResult]
 }
-
 
 class ProjectContext(
   val onNormalAbsoluteFieldAdded: AbsoluteField => Unit,

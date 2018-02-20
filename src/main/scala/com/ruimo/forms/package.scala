@@ -15,4 +15,10 @@ package object forms {
 
   type SkewCorrectionConditionImpl = projects.project0.SkewCorrectionConditionImpl
   val SkewCorrectionConditionImpl = projects.project0.SkewCorrectionConditionImpl
+
+  type DotRemovalConditionImpl = projects.project0.DotRemovalConditionImpl
+  val DotRemovalConditionImpl = projects.project0.DotRemovalConditionImpl
+
+  type CropRectangleConditionImpl = projects.project0.CropRectangleConditionImpl
+  val CropRectangleConditionImpl = projects.project0.CropRectangleConditionImpl
 }

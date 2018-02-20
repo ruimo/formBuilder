@@ -1,30 +1,21 @@
 package com.ruimo.forms.projects.project0
 
 import scalafx.application.Platform
-import play.api.libs.json._
 import play.api.libs.functional.syntax._
-import play.api.libs.json._
-import play.api.libs.ws.DefaultBodyReadables._
-import play.api.libs.ws.DefaultBodyWritables._
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import java.io.{FileInputStream, InputStream}
-import java.nio.ByteBuffer
+import java.io.FileInputStream
 import java.nio.channels.FileChannel
-import java.nio.file.{Files, Path, Paths, StandardOpenOption}
+import java.nio.file.{Files, Path, StandardOpenOption}
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 import java.util.zip.ZipInputStream
 import javafx.scene.input.MouseEvent
 import javafx.scene.paint.Color
 
-import play.api.libs.ws.JsonBodyReadables._
+import play.api.libs.ws.DefaultBodyWritables._
 import play.api.libs.ws.JsonBodyWritables._
-import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.StreamConverters
 import play.api.libs.ws._
-import play.api.libs.ws.ahc._
 import com.ruimo.forms._
 import play.api.libs.json._
 
@@ -39,8 +30,7 @@ import com.ruimo.scoins.LoanPattern._
 
 import scala.annotation.tailrec
 import scala.concurrent.{Await, Future}
-import scala.concurrent.duration.{Duration, FiniteDuration}
-import scala.util.{Failure, Success, Try}
+import scala.concurrent.duration.Duration
 
 object AbsoluteFieldImpl {
   val LineWidth = 2.0
@@ -347,7 +337,7 @@ case class SkewCorrectionConditionImpl(
 
 object SkewCorrectionConditionImpl {
   implicit val skewCorrectionConditionImplWrites = new Writes[SkewCorrectionConditionImpl] {
-    def writes(obj: SkewCorrectionConditionImpl) = Json.obj(
+    def writes(obj: SkewCorrectionConditionImpl): JsObject = Json.obj(
       "direction" -> Json.toJson(obj.direction),
       "lineCount" -> JsNumber(obj.lineCount),
       "maxAngleToDetect" -> JsNumber(obj.maxAngleToDetect)
@@ -359,6 +349,53 @@ object SkewCorrectionConditionImpl {
     (JsPath \ "lineCount").read[Int] and
     (JsPath \ "maxAngleToDetect").read[Double]
   )(SkewCorrectionConditionImpl.apply _)
+}
+
+case class DotRemovalConditionImpl(
+  maxDotSize: Int = 10,
+  blackLevel: BlackLevel = BlackLevel(200)
+) extends DotRemovalCondition
+
+object DotRemovalConditionImpl {
+  implicit val dotRemovalConditionImplWrites = new Writes[DotRemovalConditionImpl] {
+    def writes(obj: DotRemovalConditionImpl): JsObject = Json.obj(
+      "maxDotSize" -> JsNumber(obj.maxDotSize),
+      "blackLevel" -> JsNumber(obj.blackLevel.value)
+    )
+  }
+
+  implicit val dotRemovalConditionImplReads: Reads[DotRemovalConditionImpl] = (
+    (JsPath \ "maxDotSize").read[Int] and
+    (JsPath \ "blackLevel").read[BlackLevel]
+  )(DotRemovalConditionImpl.apply _)
+}
+
+case class CropRectangleConditionImpl(
+  errorAllowance: Int = 25,
+  topMargin: Double = 0,
+  leftMargin: Double = 0,
+  rightMargin: Double = 0,
+  bottomMargin: Double = 0
+) extends CropRectangleCondition
+
+object CropRectangleConditionImpl {
+  implicit val cropRectangleConditionImplWrites = new Writes[CropRectangleConditionImpl] {
+    def writes(obj: CropRectangleConditionImpl): JsObject = Json.obj(
+      "errorAllowance" -> JsNumber(obj.errorAllowance),
+      "topMargin" -> JsNumber(obj.topMargin),
+      "leftMargin" -> JsNumber(obj.leftMargin),
+      "rightMargin" -> JsNumber(obj.rightMargin),
+      "bottomMargin" -> JsNumber(obj.bottomMargin)
+    )
+  }
+
+  implicit val cropRectangleConditionImplReads: Reads[CropRectangleConditionImpl] = (
+    (JsPath \ "errorAllowance").read[Int] and
+      (JsPath \ "topMargin").read[Double] and
+      (JsPath \ "leftMargin").read[Double] and
+      (JsPath \ "rightMargin").read[Double] and
+      (JsPath \ "bottomMargin").read[Double]
+  )(CropRectangleConditionImpl.apply _)
 }
 
 case class EdgeCropConditionImpl(
@@ -409,7 +446,11 @@ class ProjectImpl(
   @volatile
   private[this] var _isDirty = false
   @volatile
-  private[this] var _skewCorrection: SkewCorrection = SkewCorrection(false, SkewCorrectionConditionImpl())
+  private[this] var _skewCorrection: SkewCorrection = SkewCorrection(enabled = false, SkewCorrectionConditionImpl())
+  @volatile
+  private[this] var _dotRemoval: DotRemoval = DotRemoval(enabled = false, DotRemovalConditionImpl())
+  @volatile
+  private[this] var _cropRectangle: CropRectangle = CropRectangle(enabled = false, CropRectangleConditionImpl())
   @volatile
   private[this] var _absFields = new AbsoluteFieldTable(projectContext)
   @volatile
@@ -431,7 +472,7 @@ class ProjectImpl(
   @volatile
   private[this] var _isEdgeCropEnabled: Boolean = false
   @volatile
-  private[this] var _cachedImage: imm.Map[(Path, Boolean, Boolean), RetrievePreparedImageResultOk] = Map()
+  private[this] var _cachedImage: imm.Map[(Path, CacheCondition), RetrievePreparedImageResultOk] = Map()
   @volatile
   private[this] var _topSensivity: EdgeCropSensivity = EdgeCropSensivity(254)
   @volatile
@@ -456,6 +497,26 @@ class ProjectImpl(
     if (newSkewCorrection != _skewCorrection) {
       this._skewCorrection = newSkewCorrection
       listener.onSkewCorrectionChanged(newSkewCorrection)
+      _isDirty = true
+    }
+  }
+
+  def dotRemoval: DotRemoval = _dotRemoval
+
+  def dotRemoval_=(newDotRemoval: DotRemoval): Unit = {
+    if (newDotRemoval != _dotRemoval) {
+      this._dotRemoval = newDotRemoval
+      listener.onDotRemovalChanged(newDotRemoval)
+      _isDirty = true
+    }
+  }
+  
+  def cropRectangle: CropRectangle = _cropRectangle
+
+  def cropRectangle_=(newCropRectangle: CropRectangle): Unit = {
+    if (newCropRectangle != _cropRectangle) {
+      this._cropRectangle = newCropRectangle
+      listener.onCropRectangleChanged(newCropRectangle)
       _isDirty = true
     }
   }
@@ -565,7 +626,7 @@ class ProjectImpl(
       _bottomCropField.filter(isSelected == isBottomCropFieldSelected && _.contains(formSize, x, y))
     )
 
-  def getSelectedCropFieldAt(formSize: (Double, Double), x: Double, y: Double): Option[CropField] = getCropFieldAt(formSize, x, y, true)
+  def getSelectedCropFieldAt(formSize: (Double, Double), x: Double, y: Double): Option[CropField] = getCropFieldAt(formSize, x, y, isSelected = true)
 
   def getNormalFieldAt(formSize: (Double, Double), x: Double, y: Double): Option[Field] =
     getNormalAbsoluteFieldAt(formSize, x, y).orElse(getNormalCropFieldAt(formSize, x, y))
@@ -573,7 +634,7 @@ class ProjectImpl(
   def getNormalAbsoluteFieldAt(formSize: (Double, Double), x: Double, y: Double): Option[AbsoluteField] =
     _absFields.getNormalFieldAt(formSize, x, y)
 
-  def getNormalCropFieldAt(formSize: (Double, Double), x: Double, y: Double): Option[CropField] = getCropFieldAt(formSize, x, y, false)
+  def getNormalCropFieldAt(formSize: (Double, Double), x: Double, y: Double): Option[CropField] = getCropFieldAt(formSize, x, y, isSelected = false)
 
   def moveSelectedFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
     moveSelectedAbsoluteFields(formSize, from, to)
@@ -643,15 +704,14 @@ class ProjectImpl(
       if (isSelected) {
         fieldModified = true
         val modified = modifier(f)
-        addCropField(modified, true)
+        addCropField(modified, selected = true)
         projectContext.onSelectedCropFieldRemoved(f)
         projectContext.onSelectedCropFieldAdded(modified)
       }
     }
 
     if (fieldModified) {
-      invalidateCachedImage(skewCorrected = true, cropped = true)
-      invalidateCachedImage(skewCorrected = false, cropped = true)
+      invalidateCachedImage(CacheConditionGlob(isCropEnabled = Some(true)))
       _isDirty = true
     }
   }
@@ -978,8 +1038,7 @@ class ProjectImpl(
     println("topEdgeCropSensivity changed")
     _topSensivity = topSensivity
     _isDirty = true
-    invalidateCachedImage(skewCorrected = true, cropped = true)
-    invalidateCachedImage(skewCorrected = false, cropped = true)
+    invalidateCachedImage(CacheConditionGlob(isCropEnabled = Some(true)))
   }
 
   def topEdgeCropSensivity: EdgeCropSensivity = _topSensivity
@@ -988,8 +1047,7 @@ class ProjectImpl(
     println("bottomEdgeCropSensivity changed")
     _bottomSensivity = bottomSensivity
     _isDirty = true
-    invalidateCachedImage(skewCorrected = true, cropped = true)
-    invalidateCachedImage(skewCorrected = false, cropped = true)
+    invalidateCachedImage(CacheConditionGlob(isCropEnabled = Some(true)))
   }
 
   def bottomEdgeCropSensivity: EdgeCropSensivity = _bottomSensivity
@@ -998,8 +1056,7 @@ class ProjectImpl(
     println("leftEdgeCropSensivity changed")
     _leftSensivity = leftSensivity
     _isDirty = true
-    invalidateCachedImage(skewCorrected = true, cropped = true)
-    invalidateCachedImage(skewCorrected = false, cropped = true)
+    invalidateCachedImage(CacheConditionGlob(isCropEnabled = Some(true)))
   }
 
   def leftEdgeCropSensivity: EdgeCropSensivity = _leftSensivity
@@ -1008,28 +1065,30 @@ class ProjectImpl(
     println("rightEdgeCropSensivity changed")
     _rightSensivity = rightSensivity
     _isDirty = true
-    invalidateCachedImage(skewCorrected = true, cropped = true)
-    invalidateCachedImage(skewCorrected = false, cropped = true)
+    invalidateCachedImage(CacheConditionGlob(isCropEnabled = Some(true)))
   }
 
   def rightEdgeCropSensivity: EdgeCropSensivity = _rightSensivity
 
   override def cachedImage(
     selectedImage: SelectedImage,
-    isSkewCorrectionEnabled: Boolean = skewCorrection.enabled,
-    isCropEnabled: Boolean = cropEnabled
+    cacheCondition: CacheCondition = CacheCondition(
+      isSkewCorrectionEnabled = skewCorrection.enabled,
+      isCropEnabled = cropEnabled,
+      isDotRemovalEnabled = dotRemoval.enabled,
+      isCropRectangleEnabled = cropRectangle.enabled
+    )
   ): Either[RetrievePreparedImageRestResult, Future[RetrievePreparedImageRestResult]] = {
-    println("cachedImage isSkewCorrectionEnabled = " + isSkewCorrectionEnabled + ", isCropEnabled = " + isCropEnabled)
+    println("cachedImage cacheCondition = " + cacheCondition)
 
-    val key = (selectedImage.file, isSkewCorrectionEnabled, isCropEnabled) 
+    val key = (selectedImage.file, cacheCondition)
     _cachedImage.get(key) match {
-      case Some(img) => {
+      case Some(img) =>
         println("cachedImage found.")
         Left(img)
-      }
-      case None => {
+      case None =>
         println("cachedImage not found. Call server to obtain image.")
-        val fimg: Future[RetrievePreparedImageRestResult] = retrievePreparedImage(selectedImage, isSkewCorrectionEnabled, isCropEnabled)
+        val fimg: Future[RetrievePreparedImageRestResult] = retrievePreparedImage(selectedImage, cacheCondition)
         Right(
           fimg.map {
             case ok: RetrievePreparedImageResultOk =>
@@ -1039,12 +1098,11 @@ class ProjectImpl(
               fail
           }
         )
-      }
     }
   }
 
   private def extention(path: Path): Option[String] = {
-    val fname = path.getFileName().toString()
+    val fname = path.getFileName.toString
     val idx = fname.lastIndexOf(".")
     if (idx == -1) None else Some(fname.substring(idx))
   }
@@ -1056,22 +1114,38 @@ class ProjectImpl(
     val fileName = "image001" + extention(image.file).getOrElse("")
     val cropTarget: Future[Either[RetrievePreparedImageRestFailure, (Double, Double)]] =
       if (skewCorrection.enabled) {
-        val fimg: Future[RetrievePreparedImageRestResult] = cachedImage(image, true, false).fold(Future.successful, identity)
+        val fimg: Future[RetrievePreparedImageRestResult] = cachedImage(
+          image,
+          CacheCondition(
+            isSkewCorrectionEnabled = true,
+            isCropEnabled = false,
+            isDotRemovalEnabled = false,
+            isCropRectangleEnabled = false
+          )
+        ).fold(Future.successful, identity)
         fimg.map {
           case img: RetrievePreparedImageResultOk =>
-            Right(img.image.getWidth(), img.image.getHeight())
+            Right(img.image.getWidth, img.image.getHeight)
           case fail: RetrievePreparedImageRestFailure =>
             Left(fail)
         }
       }
       else {
-        Future.successful(Right(image.image.getWidth() -> image.image.getHeight()))
+        Future.successful(Right(image.image.getWidth -> image.image.getHeight))
       }
     val captureTarget: Future[Either[RetrievePreparedImageRestFailure, (Double, Double)]] = {
-      val fimg: Future[RetrievePreparedImageRestResult] = cachedImage(image).fold(Future.successful, identity)
+      val fimg: Future[RetrievePreparedImageRestResult] =
+        cachedImage(
+          image, CacheCondition(
+            isSkewCorrectionEnabled = skewCorrection.enabled,
+            isCropEnabled = cropEnabled,
+            isDotRemovalEnabled = dotRemoval.enabled,
+            isCropRectangleEnabled = cropRectangle.enabled
+          )
+        ).fold(Future.successful, identity)
       fimg.map {
         case img: RetrievePreparedImageResultOk =>
-          Right(img.image.getWidth(), img.image.getHeight())
+          Right(img.image.getWidth, img.image.getHeight)
         case fail: RetrievePreparedImageRestFailure =>
           Left(fail)
       }
@@ -1116,34 +1190,37 @@ class ProjectImpl(
   }
 
   private def prepareFileForPrepareApi(
-    image: SelectedImage,
-    isSkewCorrectionEnabled: Boolean,
-    isCropEnabled: Boolean
+    image: SelectedImage, cond: CacheCondition
   ): Future[Either[RetrievePreparedImageRestFailure, Path]] = {
-    println("prepareFileForPrepareApi()")
+    println("prepareFileForPrepareApi(cond: " + cond + ")")
 
     val configFile = Files.createTempFile(null, null)
     val fileName = "image001" + extention(image.file).getOrElse("")
-    val cropTarget: Future[Either[RetrievePreparedImageRestFailure, (Double, Double)]] = if (! isCropEnabled) {
+    val cropTarget: Future[Either[RetrievePreparedImageRestFailure, (Double, Double)]] = if (! cond.isCropEnabled) {
       Future.successful(Right(0d -> 0d))
     }
     else if (skewCorrection.enabled) {
-      cachedImage(image, true, false).fold(Future.successful, identity).map {
+      cachedImage(
+        image,
+        CacheCondition(isSkewCorrectionEnabled = true, isCropEnabled = false, isDotRemovalEnabled = false, isCropRectangleEnabled = false)
+      ).fold(Future.successful, identity).map {
         case ok: RetrievePreparedImageResultOk =>
-          Right(ok.image.getWidth() -> ok.image.getHeight())
+          Right(ok.image.getWidth -> ok.image.getHeight)
         case fail: RetrievePreparedImageRestFailure => Left(fail)
       }
     }
     else {
-      Future.successful(Right(image.image.getWidth() -> image.image.getHeight()))
+      Future.successful(Right(image.image.getWidth -> image.image.getHeight))
     }
 
     cropTarget.map { (cpt: Either[RetrievePreparedImageRestFailure, (Double, Double)]) =>
       cpt.map { cropt =>
         val json = Json.obj(
           "inputFiles" -> JsArray(Seq(JsString(fileName))),
-          "skewCorrection" -> Json.toJson(skewCorrection.copy(enabled = isSkewCorrectionEnabled)),
-          "crop" -> edgeCrop(cropt._1, cropt._2, _topSensivity, _bottomSensivity, _leftSensivity, _rightSensivity).asJson(isCropEnabled)
+          "skewCorrection" -> Json.toJson(skewCorrection.copy(enabled = cond.isSkewCorrectionEnabled)),
+          "crop" -> edgeCrop(cropt._1, cropt._2, _topSensivity, _bottomSensivity, _leftSensivity, _rightSensivity).asJson(cond.isCropEnabled),
+          "dotRemoval" -> Json.toJson(dotRemoval.copy(enabled = cond.isDotRemovalEnabled)),
+          "cropRectangle" -> Json.toJson(cropRectangle.copy(enabled = cond.isCropRectangleEnabled))
         )
         println("Json to send: " + json)
         Files.write(configFile, json.toString.getBytes("utf-8"))
@@ -1213,7 +1290,7 @@ class ProjectImpl(
       @tailrec def parseZip(
         resp: Option[PrepareResult], finalImageFileName: Option[String], finalImage: Option[Image]
       ): RetrievePreparedImageRestResult = {
-        val entry = zipIn.getNextEntry()
+        val entry = zipIn.getNextEntry
         if (entry == null) new RetrievePreparedImageResultOk(resp, finalImage.get)
         else {
           entry.getName match {
@@ -1235,7 +1312,16 @@ class ProjectImpl(
                 prepareResult.skewCorrectionResult.map { scr =>
                   scr.correctedFiles.head
                 }
+              }.orElse {
+                prepareResult.dotRemovalResult.map {
+                  case DotRemovalResultSuccess(files) => files.head
+                }
+              }.orElse {
+                prepareResult.cropRectangleResult.map {
+                  case CropRectangleResultSuccess(files) => files.head
+                }
               }
+
               parseZip(Some(prepareResult), fileName, finalImage)
             case fname: String =>
               if (fname == finalImageFileName.get) {
@@ -1256,12 +1342,14 @@ class ProjectImpl(
 
   def retrievePreparedImage(
     si: SelectedImage,
-    isSkewCorrectionEnabled: Boolean,
-    isCropEnabled: Boolean
+    cond: CacheCondition
   ): Future[RetrievePreparedImageRestResult] = {
-    if (! isSkewCorrectionEnabled && ! isCropEnabled) Future.successful(new RetrievePreparedImageResultOk(None, si.image))
+    println("retrievePreparedImage(cond = " + cond + ") called")
+    if (
+      ! cond.isSkewCorrectionEnabled && ! cond.isCropEnabled && ! cond.isDotRemovalEnabled && ! cond.isCropRectangleEnabled
+    ) Future.successful(new RetrievePreparedImageResultOk(None, si.image))
     else {
-      prepareFileForPrepareApi(si, isSkewCorrectionEnabled, isCropEnabled).map { (fileToSubmit: Either[RetrievePreparedImageRestFailure, Path]) =>
+      prepareFileForPrepareApi(si, cond).map { (fileToSubmit: Either[RetrievePreparedImageRestFailure, Path]) =>
         fileToSubmit.map { f =>
           val urlPath = Settings.Loader.settings.auth.url.resolve("prepare")
           val auth = Settings.Loader.settings.auth
@@ -1301,10 +1389,17 @@ class ProjectImpl(
     _cachedImage = Map()
   }
 
-  override def invalidateCachedImage(skewCorrected: Boolean = false, cropped: Boolean = false) {
-    println("invalidateCachedImage(skewCorrected = " + skewCorrected + ", cropped = " + cropped + ") called")
+  override def invalidateCachedImage(
+    cond: CacheConditionGlob = CacheConditionGlob(
+      isSkewCorrectionEnabled = Some(false),
+      isCropEnabled = Some(false),
+      isDotRemovalEnabled = Some(false),
+      isCropRectangleEnabled = Some(false)
+    )
+  ) {
+    println("invalidateCachedImage(" + cond + ") called")
     _cachedImage = _cachedImage.filter { case (key, value) =>
-      val shouldDrop = skewCorrected == key._2 && cropped == key._3
+      val shouldDrop = cond.isMatched(key._2)
       ! shouldDrop
     }
   }
@@ -1498,13 +1593,21 @@ class ProjectImpl(
     val record = (result \ "record").as[JsValue]
     val config: JsValue = Json.parse((record \ "config").as[String])
 
-    (config \ "leftCropField").asOpt[JsValue].map(cropField(_, LeftCropFieldImpl.apply)).foreach { addLeftCropField(_, false, false) }
-    (config \ "topCropField").asOpt[JsValue].map(cropField(_, TopCropFieldImpl.apply)).foreach { addTopCropField(_, false, false) }
-    (config \ "rightCropField").asOpt[JsValue].map(cropField(_, RightCropFieldImpl.apply)).foreach { addRightCropField(_, false, false) }
-    (config \ "bottomCropField").asOpt[JsValue].map(cropField(_, BottomCropFieldImpl.apply)).foreach { addBottomCropField(_, false, false) }
+    (config \ "leftCropField").asOpt[JsValue].map(cropField(_, LeftCropFieldImpl.apply)).foreach {
+      addLeftCropField(_, selected = false, redraw = false)
+    }
+    (config \ "topCropField").asOpt[JsValue].map(cropField(_, TopCropFieldImpl.apply)).foreach {
+      addTopCropField(_, selected = false, redraw = false)
+    }
+    (config \ "rightCropField").asOpt[JsValue].map(cropField(_, RightCropFieldImpl.apply)).foreach {
+      addRightCropField(_, selected = false, redraw = false)
+    }
+    (config \ "bottomCropField").asOpt[JsValue].map(cropField(_, BottomCropFieldImpl.apply)).foreach {
+      addBottomCropField(_, selected = false, redraw = false)
+    }
 
     (config \ "absoluteFields").as[Seq[AbsoluteField]].foreach {
-      addAbsoluteField(_, false, false)
+      addAbsoluteField(_, isSelected = false, redraw = false)
     }
 
     cropEnabled = (config \ "isCropEnabled").as[Boolean]

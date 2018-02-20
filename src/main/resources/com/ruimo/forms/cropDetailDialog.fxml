@@ -34,7 +34,7 @@
                   <TextField fx:id="leftSensivityText" maxHeight="1.7976931348623157E308" GridPane.columnIndex="1" GridPane.hgrow="ALWAYS" GridPane.rowIndex="2" GridPane.vgrow="ALWAYS" />
                   <Label maxHeight="1.7976931348623157E308" text="感度(右)" GridPane.columnIndex="0" GridPane.hgrow="ALWAYS" GridPane.rowIndex="3" GridPane.vgrow="ALWAYS" />
                   <TextField fx:id="rightSensivityText" maxHeight="1.7976931348623157E308" GridPane.columnIndex="1" GridPane.hgrow="ALWAYS" GridPane.rowIndex="3" GridPane.vgrow="ALWAYS" />
-                  <Label maxHeight="1.7976931348623157E308" text="感度は254が最大（最も敏感）、0&#10;現バージョンでは感度(上)が全てに適用され、他は無視されます。" wrapText="true" GridPane.columnSpan="2" GridPane.hgrow="ALWAYS" GridPane.rowIndex="4" GridPane.vgrow="ALWAYS" />
+                  <Label maxHeight="1.7976931348623157E308" text="感度は254が最大（最も敏感）、0が最低&#10;現バージョンでは感度(上)が全てに適用され、他は無視されます。" wrapText="true" GridPane.columnSpan="2" GridPane.hgrow="ALWAYS" GridPane.rowIndex="4" GridPane.vgrow="ALWAYS" />
                </children>
             </GridPane>
          </children>

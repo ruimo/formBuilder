@@ -1,5 +1,6 @@
 package com.ruimo.forms
 
+import java.util.prefs.Preferences
 import scala.math
 import scalafx.scene.control.{ButtonType => SfxButtonType}
 import scala.annotation.tailrec
@@ -623,6 +624,7 @@ case class SelectedImage(file: Path, image: Image) {
 }
 
 class MainController extends Initializable with HandleBigJob {
+  val pref: Preferences = Preferences.userNodeForPackage(getClass)
   val settingsLoader: SettingsLoader = Settings.Loader
   private var imageTable: ImageTable = new ImageTable
   private var stage: Stage = _
@@ -795,6 +797,16 @@ class MainController extends Initializable with HandleBigJob {
   private[this] var cropCheck: CheckBox = _
 
   lazy val sfxCropCheck = new SfxCheckBox(cropCheck)
+
+  @FXML
+  private[this] var dotRemovalCheck: CheckBox = _
+
+  lazy val sfxDotRemovalCheck = new SfxCheckBox(dotRemovalCheck)
+
+  @FXML
+  private[this] var cropRectangleCheck: CheckBox = _
+
+  lazy val sfxCropRectangleCheck = new SfxCheckBox(cropRectangleCheck)
 
   @FXML
   private[this] var skewCorrectionCheck: CheckBox = _
@@ -1032,6 +1044,9 @@ class MainController extends Initializable with HandleBigJob {
     val fc = new FileChooser {
       title = "Select image file"
       extensionFilters.add(new FileChooser.ExtensionFilter("Image Files", Seq("*.png", "*.tif", "*.pdf")))
+      initialDirectory = new File(
+        pref.get("imageDirectory", System.getProperty("user.home"))
+      )
     }
 
     Option(fc.showOpenMultipleDialog(stage)).foreach { ftbl =>
@@ -1053,6 +1068,9 @@ class MainController extends Initializable with HandleBigJob {
       )
 
       imageTable.addFiles(pngFiles)
+      (pngFiles ++ pdfFiles ++ tifFiles).headOption.foreach { f =>
+        pref.put("imageDirectory", f.getParentFile.getAbsolutePath)
+      }
 
       if (! pdfFiles.isEmpty || ! tifFiles.isEmpty) {
         val alert = new SfxAlert(AlertType.Confirmation)
@@ -1215,6 +1233,137 @@ class MainController extends Initializable with HandleBigJob {
   }
 
   @FXML
+  def dotRemovalDetailClicked(e: ActionEvent) {
+    println("dotRemovalDetailClicked")
+    val loader = new FXMLLoader(getClass().getResource("dotRemoval.fxml"))
+    val root: DialogPane = loader.load()
+    val ctrl = loader.getController().asInstanceOf[DotRemovalDetailController]
+    ctrl.model = project.dotRemoval.condition
+    val alert = new SfxAlert(AlertType.Confirmation)
+    alert.dialogPane = new SfxDialogPane(root)
+    alert.title = "黒点削除"
+    alert.onCloseRequest = new EventHandler[DialogEvent] {
+      override def handle(t: DialogEvent) {
+        if (t.getTarget.asInstanceOf[Alert].getResult.getButtonData == ButtonBar.ButtonData.CANCEL_CLOSE) return
+
+        ctrl.validate match {
+          case None =>
+          case Some(MaxDotSizeInvalid) =>
+            val dlg = new SfxAlert(AlertType.Information) {
+              title = "黒点最大サイズ エラー"
+              contentText = "黒点最大サイズは、1以上の整数で指定してください"
+            }
+            dlg.showAndWait()
+            t.consume()
+          case Some(BlackLevelInvalid) =>
+            val dlg = new SfxAlert(AlertType.Information) {
+              title = "黒レベル エラー"
+              contentText = "黒レベルは、0-254で指定してください"
+            }
+            dlg.showAndWait()
+            t.consume()
+        }
+      }
+    }
+    alert.showAndWait().map(_.delegate) match {
+      case Some(ButtonType.APPLY) =>
+        val model = ctrl.model
+        println("apply dot removal detail " + model)
+        project.dotRemoval = project.dotRemoval.copy(condition = model)
+        project.invalidateCachedImage(
+          CacheConditionGlob(
+            isDotRemovalEnabled = Some(true)
+          )
+        )
+        if (sfxDotRemovalCheck.selected()) {
+          sfxDotRemovalCheck.selected = false
+          dotRemovalEnabledClicked(null)
+          sfxDotRemovalCheck.selected = true
+          dotRemovalEnabledClicked(null)
+        }
+
+      case Some(_) => println("canceled")
+      case None => println("bt = none")
+    }
+  }
+
+  @FXML
+  def cropRectangleDetailClicked(e: ActionEvent) {
+    println("cropRectangleDetailClicked")
+    val loader = new FXMLLoader(getClass().getResource("cropRectangle.fxml"))
+    val root: DialogPane = loader.load()
+    val ctrl = loader.getController().asInstanceOf[CropRectangleDetailController]
+    ctrl.model = project.cropRectangle.condition
+    val alert = new SfxAlert(AlertType.Confirmation)
+    alert.dialogPane = new SfxDialogPane(root)
+    alert.title = "長方形クロップ"
+    alert.onCloseRequest = new EventHandler[DialogEvent] {
+      override def handle(t: DialogEvent) {
+        if (t.getTarget.asInstanceOf[Alert].getResult.getButtonData == ButtonBar.ButtonData.CANCEL_CLOSE) return
+
+        ctrl.validate match {
+          case Some(InvalidErrorAllowance) =>
+            val dlg = new SfxAlert(AlertType.Error) {
+              title = "線途切れ許容量 エラー"
+              contentText = "線途切れ許容量は、0以上の整数で指定してください"
+            }
+            dlg.showAndWait()
+            t.consume()
+          case Some(InvalidTopMargin) =>
+            val dlg = new SfxAlert(AlertType.Error) {
+              title = "上方向マージン割合 エラー"
+              contentText = "0以上の数値で指定してください"
+            }
+            dlg.showAndWait()
+            t.consume()
+          case Some(InvalidLeftMargin) =>
+            val dlg = new SfxAlert(AlertType.Error) {
+              title = "左方向マージン割合 エラー"
+              contentText = "0以上の数値で指定してください"
+            }
+            dlg.showAndWait()
+            t.consume()
+          case Some(InvalidRightMargin) =>
+            val dlg = new SfxAlert(AlertType.Error) {
+              title = "右方向マージン割合 エラー"
+              contentText = "0以上の数値で指定してください"
+            }
+            dlg.showAndWait()
+            t.consume()
+          case Some(InvalidBottomMargin) =>
+            val dlg = new SfxAlert(AlertType.Error) {
+              title = "下方向マージン割合 エラー"
+              contentText = "0以上の数値で指定してください"
+            }
+            dlg.showAndWait()
+            t.consume()
+          case None =>
+        }
+      }
+    }
+    alert.showAndWait().map(_.delegate) match {
+      case Some(ButtonType.APPLY) =>
+        val model = ctrl.model
+        println("apply crop rectangle detail " + model)
+        project.cropRectangle = project.cropRectangle.copy(condition = model)
+        project.invalidateCachedImage(
+          CacheConditionGlob(
+            isCropRectangleEnabled = Some(true)
+          )
+        )
+        if (sfxCropRectangleCheck.selected()) {
+          sfxCropRectangleCheck.selected = false
+          cropRectangleEnabledClicked(null)
+          sfxCropRectangleCheck.selected = true
+          cropRectangleEnabledClicked(null)
+        }
+
+      case Some(_) => println("canceled")
+      case None => println("bt = none")
+    }
+  }
+
+  @FXML
   def skewCorrectionDetailClicked(e: ActionEvent) {
     println("skewCorrectionDetail")
     val loader = new FXMLLoader(getClass().getResource("skewCorrectionDialog.fxml"))
@@ -1237,8 +1386,11 @@ class MainController extends Initializable with HandleBigJob {
         val model = ctrl.model
         println("apply skew correction detail " + model)
         project.skewCorrection = SkewCorrection(project.skewCorrection.enabled, model)
-        project.invalidateCachedImage(true, true)
-        project.invalidateCachedImage(true, false)
+        project.invalidateCachedImage(
+          CacheConditionGlob(
+            isSkewCorrectionEnabled = Some(true)
+          )
+        )
         if (sfxSkewCorrectionCheck.selected()) {
           sfxSkewCorrectionCheck.selected = false
           skewCorrectionEnabledClicked(null)
@@ -1307,8 +1459,7 @@ class MainController extends Initializable with HandleBigJob {
     }
     alert.showAndWait().map(_.delegate) match {
       case Some(ButtonType.APPLY) =>
-        project.invalidateCachedImage(true, true)
-        project.invalidateCachedImage(false, true)
+        project.invalidateCachedImage(CacheConditionGlob(isCropEnabled = Some(true)))
         if (sfxCropCheck.selected()) {
           sfxCropCheck.selected = false
           cropEnabledCheckClicked(null)
@@ -1412,6 +1563,24 @@ class MainController extends Initializable with HandleBigJob {
   }
 
   @FXML
+  def dotRemovalEnabledClicked(e: ActionEvent) {
+    println("dotRemovalEnabledClicked")
+    project.dotRemoval = project.dotRemoval.copy(enabled = sfxDotRemovalCheck.selected())
+    redraw(
+      Some((t: Throwable) => project.dotRemoval.copy(enabled = false))
+    )
+  }
+
+  @FXML
+  def cropRectangleEnabledClicked(e: ActionEvent) {
+    println("cropRectangleEnabledClicked")
+    project.cropRectangle = project.cropRectangle.copy(enabled = sfxCropRectangleCheck.selected())
+    redraw(
+      Some((t: Throwable) => project.cropRectangle.copy(enabled = false))
+    )
+  }
+
+  @FXML
   def skewCorrectionEnabledClicked(e: ActionEvent) {
     println(
       "skewCorrectionEnabledClicked sfxSkewCorrectionCheck.selected() = " + sfxSkewCorrectionCheck.selected() +
@@ -1424,7 +1593,15 @@ class MainController extends Initializable with HandleBigJob {
       try {
         if (sfxSkewCorrectionCheck.selected()) {
           doBigJob(
-            project.cachedImage(si, isSkewCorrectionEnabled = true),
+            project.cachedImage(
+              si,
+              CacheCondition(
+                isSkewCorrectionEnabled = true,
+                isCropEnabled = project.cropEnabled,
+                isDotRemovalEnabled = project.dotRemoval.enabled,
+                isCropRectangleEnabled = project.cropRectangle.enabled
+              )
+            ),
             { t =>
               sfxSkewCorrectionCheck.selected = false
               showGeneralError()
@@ -1677,28 +1854,28 @@ class MainController extends Initializable with HandleBigJob {
         },
         onNormalCropFieldAdded = (f: CropField) => {
           println("onNormalCropFieldAdded")
-          project.invalidateCachedImage(cropped = true)
+          project.invalidateCachedImage(CacheConditionGlob(isCropEnabled = Some(true)))
           doWithImageSize { imgSz =>
             f.draw(imgSz, sfxImageCanvas.graphicsContext2D, false)
           }
         },
         onSelectedCropFieldAdded = (f: CropField) => {
           println("onSelectedCropFieldAdded")
-          project.invalidateCachedImage(cropped = true)
+          project.invalidateCachedImage(CacheConditionGlob(isCropEnabled = Some(true)))
           doWithImageSize { imgSz =>
             f.draw(imgSz, sfxImageCanvas.graphicsContext2D, true)
           }
         },
         onNormalCropFieldRemoved = (f: CropField) => {
           println("onNormalCropFieldRemoved")
-          project.invalidateCachedImage(cropped = true)
+          project.invalidateCachedImage(CacheConditionGlob(isCropEnabled = Some(true)))
           doWithImageSize { imgSz =>
             redrawRect(f.drawArea(imgSz))
           }
         },
         onSelectedCropFieldRemoved = (f: CropField) => {
           println("onSelectedCropFieldRemoved")
-          project.invalidateCachedImage(cropped = true)
+          project.invalidateCachedImage(CacheConditionGlob(isCropEnabled = Some(true)))
           doWithImageSize { imgSz =>
             redrawRect(f.drawArea(imgSz))
           }
@@ -1715,14 +1892,24 @@ class MainController extends Initializable with HandleBigJob {
         }
       ),
       new ProjectListener {
-        def onSkewCorrectionChanged(skewCorrection: SkewCorrection) {
+        override def onSkewCorrectionChanged(skewCorrection: SkewCorrection) {
           println("Skew correction changed " + skewCorrection)
           sfxSkewCorrectionCheck.selected = skewCorrection.enabled
         }
 
-        def onCropEnabledChanged(enabled: Boolean) {
+        override def onCropEnabledChanged(enabled: Boolean) {
           println("crop enabled changed " + enabled)
           sfxCropCheck.selected = enabled
+        }
+
+        override def onDotRemovalChanged(dotRemoval: DotRemoval): Unit = {
+          println("dot removal changed " + dotRemoval)
+          sfxDotRemovalCheck.selected = dotRemoval.enabled
+        }
+
+        override def onCropRectangleChanged(cropRectangle: CropRectangle): Unit = {
+          println("crop rectangle changed " + cropRectangle)
+          sfxCropRectangleCheck.selected = cropRectangle.enabled
         }
       }
     )
