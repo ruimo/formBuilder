@@ -61,6 +61,7 @@ import Helpers.toRect
 
 import scala.collection.immutable.Seq
 import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 
 case class EditorContext(
   drawWidget: (Widget[_], Boolean) => Unit,
@@ -1129,7 +1130,7 @@ class MainController extends Initializable with HandleBigJob {
               )
 
               Await.result(
-                Ws().url(urlPath).addHttpHeaders(
+                Ws().url(urlPath).withRequestTimeout(5.minutes).addHttpHeaders(
                   "Content-Type" -> "application/zip",
                   "Authorization" -> (auth.contractedUserId.value + "_" + auth.applicationToken.value)
                 ).post(

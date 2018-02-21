@@ -1,5 +1,6 @@
 package com.ruimo.forms.projects.project0
 
+import scala.concurrent.duration._
 import scalafx.application.Platform
 import play.api.libs.functional.syntax._
 
@@ -1248,7 +1249,7 @@ class ProjectImpl(
           val auth = Settings.Loader.settings.auth
 
         Await.result(
-          Ws().url(urlPath).addHttpHeaders(
+          Ws().url(urlPath).withRequestTimeout(5.minutes).addHttpHeaders(
             "Content-Type" -> "application/zip",
             "Authorization" -> (auth.contractedUserId.value + "_" + auth.applicationToken.value)
           ).post(
@@ -1274,7 +1275,7 @@ class ProjectImpl(
                 Left(RestUnknownFailure(resp.status, resp.statusText, resp.body))
             }
           },
-          Duration.apply(60, TimeUnit.SECONDS)
+          Duration.apply(5, TimeUnit.MINUTES)
         )
       case Left(fail) =>
         fail match {
@@ -1303,25 +1304,27 @@ class ProjectImpl(
                 Json.parse(new FileInputStream(tmp.toFile))
               }(f => Files.delete(f)).get
               val prepareResult = PrepareResult.parse(json)
-              val fileName: Option[String] = prepareResult.cropResult.flatMap { cr =>
-                cr match {
-                  case CropResultSuccess(correctedFiles) => Some(correctedFiles.head)
-                  case CropResultCannotFindEdge => None
-                }
-              }.orElse {
-                prepareResult.skewCorrectionResult.map { scr =>
-                  scr.correctedFiles.head
-                }
-              }.orElse {
-                prepareResult.dotRemovalResult.map {
-                  case DotRemovalResultSuccess(files) => files.head
-                }
-              }.orElse {
+              println("prepare result: " + json)
+              val fileName: Option[String] =
                 prepareResult.cropRectangleResult.map {
                   case CropRectangleResultSuccess(files) => files.head
+                }.orElse {
+                  prepareResult.dotRemovalResult.map {
+                    case DotRemovalResultSuccess(files) => files.head
+                  }
+                }.orElse {
+                  prepareResult.cropResult.flatMap { cr =>
+                    cr match {
+                      case CropResultSuccess(correctedFiles) => Some(correctedFiles.head)
+                      case CropResultCannotFindEdge => None
+                    }
+                  }
+                }.orElse {
+                  prepareResult.skewCorrectionResult.map { scr =>
+                    scr.correctedFiles.head
+                  }
                 }
-              }
-
+              println("fileName: " + fileName)
               parseZip(Some(prepareResult), fileName, finalImage)
             case fname: String =>
               if (fname == finalImageFileName.get) {
@@ -1355,7 +1358,7 @@ class ProjectImpl(
           val auth = Settings.Loader.settings.auth
 
           Await.result(
-            Ws().url(urlPath).addHttpHeaders(
+            Ws().url(urlPath).withRequestTimeout(5.minutes).addHttpHeaders(
               "Content-Type" -> "application/zip",
               "Authorization" -> (auth.contractedUserId.value + "_" + auth.applicationToken.value)
             ).post(
@@ -1377,7 +1380,7 @@ class ProjectImpl(
                   RestUnknownFailure(resp.status, resp.statusText, resp.body)
               }
             },
-            Duration.apply(60, TimeUnit.SECONDS)
+            Duration.apply(5, TimeUnit.MINUTES)
           )
         }.fold(identity, identity)
       }
@@ -1465,7 +1468,7 @@ class ProjectImpl(
     val urlPath = Settings.Loader.settings.auth.url.resolve("saveConfig")
     val auth = Settings.Loader.settings.auth
 
-    Ws().url(urlPath).addHttpHeaders(
+    Ws().url(urlPath).withRequestTimeout(5.minutes).addHttpHeaders(
       "Content-Type" -> "application/zip",
       "Authorization" -> (auth.contractedUserId.value + "_" + auth.applicationToken.value)
     ).post(
@@ -1517,7 +1520,7 @@ class ProjectImpl(
     val urlPath = Settings.Loader.settings.auth.url.resolve("listConfig")
     val auth = Settings.Loader.settings.auth
 
-    Ws().url(urlPath).addHttpHeaders(
+    Ws().url(urlPath).withRequestTimeout(5.minutes).addHttpHeaders(
       "Content-Type" -> "application/zip",
       "Authorization" -> (auth.contractedUserId.value + "_" + auth.applicationToken.value)
     ).post(
@@ -1552,7 +1555,7 @@ class ProjectImpl(
     val urlPath = Settings.Loader.settings.auth.url.resolve("removeConfig")
     val auth = Settings.Loader.settings.auth
 
-    Ws().url(urlPath).addHttpHeaders(
+    Ws().url(urlPath).withRequestTimeout(5.minutes).addHttpHeaders(
       "Authorization" -> (auth.contractedUserId.value + "_" + auth.applicationToken.value)
     ).post(
       Json.obj(
@@ -1621,7 +1624,7 @@ class ProjectImpl(
     val urlPath = Settings.Loader.settings.auth.url.resolve("loadConfig")
     val auth = Settings.Loader.settings.auth
 
-    Ws().url(urlPath).addHttpHeaders(
+    Ws().url(urlPath).withRequestTimeout(5.minutes).addHttpHeaders(
       "Authorization" -> (auth.contractedUserId.value + "_" + auth.applicationToken.value)
     ).post(
       Json.obj(
