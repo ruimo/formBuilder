@@ -332,6 +332,7 @@ case class BottomCropFieldImpl(
 
 case class SkewCorrectionConditionImpl(
   direction: SkewCorrectionDirection = SkewCorrectionDirectionHorizontal,
+  errorAllowance: Int = 25,
   lineCount: Int = 1,
   maxAngleToDetect: Double = 2.0
 ) extends SkewCorrectionCondition
@@ -340,6 +341,7 @@ object SkewCorrectionConditionImpl {
   implicit val skewCorrectionConditionImplWrites = new Writes[SkewCorrectionConditionImpl] {
     def writes(obj: SkewCorrectionConditionImpl): JsObject = Json.obj(
       "direction" -> Json.toJson(obj.direction),
+      "errorAllowance" -> JsNumber(obj.errorAllowance),
       "lineCount" -> JsNumber(obj.lineCount),
       "maxAngleToDetect" -> JsNumber(obj.maxAngleToDetect)
     )
@@ -347,6 +349,7 @@ object SkewCorrectionConditionImpl {
 
   implicit val skewCorrectionConditionImplReads: Reads[SkewCorrectionConditionImpl] = (
     (JsPath \ "direction").read[SkewCorrectionDirection] and
+    (JsPath \ "errorAllowance").read[Int] and
     (JsPath \ "lineCount").read[Int] and
     (JsPath \ "maxAngleToDetect").read[Double]
   )(SkewCorrectionConditionImpl.apply _)
@@ -1162,6 +1165,8 @@ class ProjectImpl(
                   "inputFiles" -> JsArray(Seq(JsString(fileName))),
                   "skewCorrection" -> Json.toJson(skewCorrection),
                   "crop" -> edgeCrop(cropt._1, cropt._2, _topSensivity, _bottomSensivity, _leftSensivity, _rightSensivity).asJson(cropEnabled),
+                  "dotRemoval" -> Json.toJson(dotRemoval),
+                  "cropRectangle" -> Json.toJson(cropRectangle),
                   "absoluteFields" -> _absFields.asJson
                 )
               )
@@ -1306,11 +1311,11 @@ class ProjectImpl(
               val prepareResult = PrepareResult.parse(json)
               println("prepare result: " + json)
               val fileName: Option[String] =
-                prepareResult.cropRectangleResult.map {
-                  case CropRectangleResultSuccess(files) => files.head
+                prepareResult.dotRemovalResult.map {
+                  case DotRemovalResultSuccess(files) => files.head
                 }.orElse {
-                  prepareResult.dotRemovalResult.map {
-                    case DotRemovalResultSuccess(files) => files.head
+                  prepareResult.cropRectangleResult.map {
+                    case CropRectangleResultSuccess(files) => files.head
                   }
                 }.orElse {
                   prepareResult.cropResult.flatMap { cr =>
