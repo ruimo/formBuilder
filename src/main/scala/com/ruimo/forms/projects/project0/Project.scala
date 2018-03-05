@@ -1251,9 +1251,9 @@ class ProjectImpl(
     prepareFileForCaptureApi(si).map {
       case Right(fileToSubmit) =>
         val urlPath = Settings.Loader.settings.auth.url.resolve("capture")
-          val auth = Settings.Loader.settings.auth
+        val auth = Settings.Loader.settings.auth
 
-        Await.result(
+        val postResp = Await.result(
           Ws().url(urlPath).withRequestTimeout(5.minutes).addHttpHeaders(
             "Content-Type" -> "application/zip",
             "Authorization" -> (auth.contractedUserId.value + "_" + auth.applicationToken.value)
@@ -1264,24 +1264,32 @@ class ProjectImpl(
             println("statusText = " + resp.statusText)
             resp.status match {
               case 200 =>
-                val jsonResult: JsValue = PathUtil.withTempFile(None, None) { f =>
-                  using(FileChannel.open(f, StandardOpenOption.CREATE, StandardOpenOption.WRITE)) { ch =>
-                    ch.write(resp.bodyAsBytes.toByteBuffer)
-                  }.get
-
-                  using(new FileInputStream(f.toFile)) { Json.parse }.get
-                }.get
-
-                println("result: " + jsonResult)
-                Right(CaptureResultOk.parse(jsonResult))
+                val respJson = Json.parse(resp.bodyAsBytes.toArray)
+                CaptureResultRunning((respJson \ "token").as[String].toLong)
               case 403 =>
-                Left(RestAuthFailure(resp.status, resp.statusText, resp.body))
+                RestAuthFailure(resp.status, resp.statusText, resp.body)
               case _ =>
-                Left(RestUnknownFailure(resp.status, resp.statusText, resp.body))
+                RestUnknownFailure(resp.status, resp.statusText, resp.body)
             }
           },
           Duration.apply(5, TimeUnit.MINUTES)
         )
+
+        postResp match {
+          case CaptureResultRunning(token) =>
+            val jobResp = getCaptureJobStatus(token, auth.contractedUserId.value.toLong, auth.applicationToken.value.toLong)
+            jobResp.status match {
+              case 200 =>
+                val jsonResult: JsValue = Json.parse(jobResp.body)
+                println("result: " + jsonResult)
+                Right(CaptureResultOk.parse(jsonResult))
+              case 403 =>
+                Left(RestAuthFailure(jobResp.status, jobResp.statusText, jobResp.body))
+              case _ =>
+                Left(RestUnknownFailure(jobResp.status, jobResp.statusText, jobResp.body))
+            }
+        }
+
       case Left(fail) =>
         fail match {
           case f: RestAuthFailure => Left(f)
@@ -1348,6 +1356,42 @@ class ProjectImpl(
     }.get
   }
 
+  @tailrec private def getPrepareJobStatus(token: Long, userId: Long, appToken: Long): StandaloneWSRequest#Response = {
+    val resp: StandaloneWSRequest#Response = Await.result(
+      Ws().url(
+        Settings.Loader.settings.auth.url.resolve("getPrepareJobStatus")
+      ).addQueryStringParameters(
+        "token" -> token.toString
+      ).withHttpHeaders(
+        "Authorization" -> ("" + userId+ "_" + appToken)
+      ).get(),
+      30.seconds
+    )
+    if (resp.status == 202) {
+      Thread.sleep(1000)
+      getPrepareJobStatus(token, userId, appToken)
+    }
+    else resp
+  }
+
+  @tailrec private def getCaptureJobStatus(token: Long, userId: Long, appToken: Long): StandaloneWSRequest#Response = {
+    val resp: StandaloneWSRequest#Response = Await.result(
+      Ws().url(
+        Settings.Loader.settings.auth.url.resolve("getCaptureJobStatus")
+      ).addQueryStringParameters(
+        "token" -> token.toString
+      ).withHttpHeaders(
+        "Authorization" -> ("" + userId+ "_" + appToken)
+      ).get(),
+      30.seconds
+    )
+    if (resp.status == 202) {
+      Thread.sleep(1000)
+      getCaptureJobStatus(token, userId, appToken)
+    }
+    else resp
+  }
+
   def retrievePreparedImage(
     si: SelectedImage,
     cond: CacheCondition
@@ -1357,12 +1401,12 @@ class ProjectImpl(
       ! cond.isSkewCorrectionEnabled && ! cond.isCropEnabled && ! cond.isDotRemovalEnabled && ! cond.isCropRectangleEnabled
     ) Future.successful(new RetrievePreparedImageResultOk(None, si.image))
     else {
+      val auth = Settings.Loader.settings.auth
       prepareFileForPrepareApi(si, cond).map { (fileToSubmit: Either[RetrievePreparedImageRestFailure, Path]) =>
         fileToSubmit.map { f =>
           val urlPath = Settings.Loader.settings.auth.url.resolve("prepare")
-          val auth = Settings.Loader.settings.auth
 
-          Await.result(
+          val postResp = Await.result(
             Ws().url(urlPath).withRequestTimeout(5.minutes).addHttpHeaders(
               "Content-Type" -> "application/zip",
               "Authorization" -> (auth.contractedUserId.value + "_" + auth.applicationToken.value)
@@ -1373,12 +1417,8 @@ class ProjectImpl(
               println("statusText = " + resp.statusText)
               resp.status match {
                 case 200 =>
-                  PathUtil.withTempFile(None, None) { f =>
-                    using(FileChannel.open(f, StandardOpenOption.CREATE, StandardOpenOption.WRITE)) { ch =>
-                      ch.write(resp.bodyAsBytes.toByteBuffer)
-                    }.get
-                    parseResponse(f)
-                  }.get
+                  val respJson = Json.parse(resp.bodyAsBytes.toArray)
+                  RetrievePreparedImageResultRunning((respJson \ "token").as[String].toLong)
                 case 403 =>
                   RestAuthFailure(resp.status, resp.statusText, resp.body)
                 case _ =>
@@ -1387,6 +1427,26 @@ class ProjectImpl(
             },
             Duration.apply(5, TimeUnit.MINUTES)
           )
+
+          postResp match {
+            case RetrievePreparedImageResultRunning(token) =>
+              val jobResp = getPrepareJobStatus(token, auth.contractedUserId.value.toLong, auth.applicationToken.value.toLong)
+              jobResp.status match {
+                case 200 =>
+                  PathUtil.withTempFile(None, None) { f =>
+                    using(FileChannel.open(f, StandardOpenOption.CREATE, StandardOpenOption.WRITE)) { ch =>
+                      ch.write(jobResp.bodyAsBytes.toByteBuffer)
+                    }.get
+                    parseResponse(f)
+                  }.get
+                case 403 =>
+                  RestAuthFailure(jobResp.status, jobResp.statusText, jobResp.body)
+                case _ =>
+                  RestUnknownFailure(jobResp.status, jobResp.statusText, jobResp.body)
+              }
+
+            case other => other
+          }
         }.fold(identity, identity)
       }
     }

@@ -41,10 +41,14 @@ case class RestUnknownFailure(
     with CaptureRestFailure with SaveConfigRestFailure with ListConfigRestFailure with RemoveConfigRestFailure
     with OpenConfigRestFailure
 
+case class RetrievePreparedImageResultRunning(token: Long) extends RetrievePreparedImageRestResult
+
 class RetrievePreparedImageResultOk(
   val serverResp: Option[PrepareResult],
   val image: Image
 ) extends RetrievePreparedImageRestResult
+
+case class CaptureResultRunning(token: Long) extends CaptureRestResult
 
 class CaptureResultOk(
   val serverResp: imm.Seq[CaptureResult]
