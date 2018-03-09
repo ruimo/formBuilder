@@ -1226,7 +1226,10 @@ class ProjectImpl(
           "skewCorrection" -> Json.toJson(skewCorrection.copy(enabled = cond.isSkewCorrectionEnabled)),
           "crop" -> edgeCrop(cropt._1, cropt._2, _topSensivity, _bottomSensivity, _leftSensivity, _rightSensivity).asJson(cond.isCropEnabled),
           "dotRemoval" -> Json.toJson(dotRemoval.copy(enabled = cond.isDotRemovalEnabled)),
-          "cropRectangle" -> Json.toJson(cropRectangle.copy(enabled = cond.isCropRectangleEnabled))
+          "cropRectangle" -> Json.toJson(cropRectangle.copy(enabled = cond.isCropRectangleEnabled)),
+          "ruledLineRemoval" -> Json.obj(
+            "enabled" -> false
+          )
         )
         println("Json to send: " + json)
         Files.write(configFile, json.toString.getBytes("utf-8"))
