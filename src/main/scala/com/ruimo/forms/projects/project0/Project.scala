@@ -1498,6 +1498,10 @@ class ProjectImpl(
         Seq()
       )
     ) ++ Json.obj(
+      "cropRectangle" -> cropRectangle
+    ) ++ Json.obj(
+      "dotRemoval" -> dotRemoval
+    ) ++ Json.obj(
       "absoluteFields" -> absoluteFields.asJson
     )
   }
@@ -1644,6 +1648,7 @@ class ProjectImpl(
   }
 
   private def reflect(result: JsValue) {
+    println("Open config: " + result)
     import AbsoluteFieldImpl.absoluteFieldFormat
 
     def cropField[T](config: JsValue, ctor: ((Double, Double), Rectangle2D) => T): T = {
@@ -1658,9 +1663,10 @@ class ProjectImpl(
       )
     }
 
+    deselectAllFields()
+
     val record = (result \ "record").as[JsValue]
     val config: JsValue = Json.parse((record \ "config").as[String])
-
     (config \ "leftCropField").asOpt[JsValue].map(cropField(_, LeftCropFieldImpl.apply)).foreach {
       addLeftCropField(_, selected = false, redraw = false)
     }
@@ -1672,6 +1678,22 @@ class ProjectImpl(
     }
     (config \ "bottomCropField").asOpt[JsValue].map(cropField(_, BottomCropFieldImpl.apply)).foreach {
       addBottomCropField(_, selected = false, redraw = false)
+    }
+
+    (config \ "dotRemoval").asOpt[JsValue].foreach { dr =>
+      val enabled = (dr \ "enabled").as[Boolean]
+      if (enabled) {
+        val cond = (dr \ "condition").as[DotRemovalConditionImpl]
+        dotRemoval = DotRemoval(enabled, cond)
+      }
+    }
+
+    (config \ "cropRectangle").asOpt[JsValue].foreach { cr =>
+      val enabled = (cr \ "enabled").as[Boolean]
+      if (enabled) {
+        val cond = (cr \ "condition").as[CropRectangleConditionImpl]
+        cropRectangle = CropRectangle(enabled, cond)
+      }
     }
 
     (config \ "absoluteFields").as[Seq[AbsoluteField]].foreach {
