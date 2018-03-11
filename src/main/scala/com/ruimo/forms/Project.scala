@@ -256,7 +256,7 @@ object BlackLevel {
     override def reads(jv: JsValue): JsResult[BlackLevel] = {
       JsSuccess(
         BlackLevel(
-          (jv \ "value").as[Int]
+          jv.as[Int]
         )
       )
     }
