@@ -85,6 +85,8 @@ trait SkewCorrectionCondition {
   def direction: SkewCorrectionDirection
   def lineCount: Int
   def maxAngleToDetect: Double
+  def detectAreaFrom: Percent
+  def detectAreaTo: Percent
 }
 
 object SkewCorrectionCondition {
@@ -121,6 +123,14 @@ object SkewCorrection {
       "enabled" -> JsBoolean(obj.enabled),
       "condition" -> Json.toJson(obj.condition)
     )
+  }
+
+  implicit object percentFormat extends Format[Percent] {
+    override def reads(jv: JsValue): JsResult[Percent] = {
+      JsSuccess(Percent(jv.as[Double]))
+    }
+
+    override def writes(obj: Percent): JsValue = JsNumber(obj.value)
   }
 }
 

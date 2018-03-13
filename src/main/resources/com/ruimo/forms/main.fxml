@@ -93,6 +93,7 @@
                                     <Button fx:id="cropDetail" mnemonicParsing="false" onAction="#cropDetailClicked" text="..." GridPane.columnIndex="2" GridPane.rowIndex="1"/>
                                     <Button fx:id="dotRemovalDetail" mnemonicParsing="false" onAction="#dotRemovalDetailClicked" text="..." GridPane.columnIndex="2" GridPane.rowIndex="2"/>
                                     <Button fx:id="cropRectangleDetail" mnemonicParsing="false" onAction="#cropRectangleDetailClicked" text="..." GridPane.columnIndex="2" GridPane.rowIndex="3"/>
+                                    <Button fx:id="removeRuledLineDetail" mnemonicParsing="false" onAction="#removeRuledLineDetailClicked" text="..." GridPane.columnIndex="2" GridPane.rowIndex="4"/>
                                     <HBox alignment="BOTTOM_RIGHT" prefHeight="100.0" prefWidth="200.0" spacing="10.0" GridPane.columnIndex="1" GridPane.columnSpan="2" GridPane.halignment="RIGHT" GridPane.rowIndex="2">
                                        <opaqueInsets>
                                           <Insets />
@@ -105,6 +106,7 @@
                                     <CheckBox fx:id="skewCorrectionCheck" mnemonicParsing="false" onAction="#skewCorrectionEnabledClicked" text="傾き補正" />
                                     <CheckBox fx:id="dotRemovalCheck" mnemonicParsing="false" onAction="#dotRemovalEnabledClicked" text="黒点削除" GridPane.rowIndex="2"/>
                                     <CheckBox fx:id="cropRectangleCheck" mnemonicParsing="false" onAction="#cropRectangleEnabledClicked" text="長方形クロップ" GridPane.rowIndex="3"/>
+                                    <CheckBox fx:id="removeRuledLineCheck" mnemonicParsing="false" onAction="#removeRuledLineEnabledClicked" text="罫線削除" GridPane.rowIndex="4"/>
                                  </children>
                               </GridPane>
                            </content>

@@ -5,6 +5,8 @@ import java.net.URL
 import java.util.ResourceBundle
 import javafx.scene.control.{ComboBox, TextField}
 
+import com.ruimo.scoins.Percent
+
 import scalafx.collections.ObservableBuffer
 import scalafx.scene.control.{ComboBox => SfxComboBox}
 
@@ -21,6 +23,12 @@ class SkewCorrectionDetailController extends Initializable {
   @FXML
   private[this] var maxAngleText: TextField = _
 
+  @FXML
+  private[this] var detectAreaFromText: TextField = _
+
+  @FXML
+  private[this] var detectAreaToText: TextField = _
+
   lazy val sfxHvComboBox = new SfxComboBox[String](hvComboBox)
 
   override def initialize(url: URL, resourceBundle: ResourceBundle) {
@@ -35,7 +43,9 @@ class SkewCorrectionDetailController extends Initializable {
       if (sfxHvComboBox.value() == HorizontalLineDetection) SkewCorrectionDirectionHorizontal
       else SkewCorrectionDirectionVertical,
     lineCount = lineCountText.getText().toInt,
-    maxAngleToDetect = maxAngleText.getText().toDouble
+    maxAngleToDetect = maxAngleText.getText().toDouble,
+    detectAreaFrom = Percent(detectAreaFromText.getText.toDouble),
+    detectAreaTo = Percent(detectAreaToText.getText.toDouble)
   )
 
   def model_=(newModel: SkewCorrectionCondition) {
@@ -47,5 +57,7 @@ class SkewCorrectionDetailController extends Initializable {
     sfxHvComboBox.value = dir
     lineCountText.setText(newModel.lineCount.toString)
     maxAngleText.setText(newModel.maxAngleToDetect.toString)
+    detectAreaFromText.setText(newModel.detectAreaFrom.value.toString)
+    detectAreaToText.setText(newModel.detectAreaTo.value.toString)
   }
 }

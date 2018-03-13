@@ -334,16 +334,22 @@ case class SkewCorrectionConditionImpl(
   direction: SkewCorrectionDirection = SkewCorrectionDirectionHorizontal,
   errorAllowance: Int = 25,
   lineCount: Int = 1,
-  maxAngleToDetect: Double = 2.0
+  maxAngleToDetect: Double = 2.0,
+  detectAreaFrom: Percent = Percent(0),
+  detectAreaTo: Percent = Percent(100)
 ) extends SkewCorrectionCondition
 
 object SkewCorrectionConditionImpl {
+  import com.ruimo.forms.SkewCorrection.percentFormat
+
   implicit val skewCorrectionConditionImplWrites = new Writes[SkewCorrectionConditionImpl] {
     def writes(obj: SkewCorrectionConditionImpl): JsObject = Json.obj(
       "direction" -> Json.toJson(obj.direction),
       "errorAllowance" -> JsNumber(obj.errorAllowance),
       "lineCount" -> JsNumber(obj.lineCount),
-      "maxAngleToDetect" -> JsNumber(obj.maxAngleToDetect)
+      "maxAngleToDetect" -> JsNumber(obj.maxAngleToDetect),
+      "detectAreaFrom" -> JsNumber(obj.detectAreaFrom.value),
+      "detectAreaTo" -> JsNumber(obj.detectAreaTo.value)
     )
   }
 
@@ -351,7 +357,9 @@ object SkewCorrectionConditionImpl {
     (JsPath \ "direction").read[SkewCorrectionDirection] and
     (JsPath \ "errorAllowance").read[Int] and
     (JsPath \ "lineCount").read[Int] and
-    (JsPath \ "maxAngleToDetect").read[Double]
+    (JsPath \ "maxAngleToDetect").read[Double] and
+    (JsPath \ "detectAreaFrom").readWithDefault(Percent(0)) and
+    (JsPath \ "detectAreaTo").readWithDefault(Percent(100))
   )(SkewCorrectionConditionImpl.apply _)
 }
 

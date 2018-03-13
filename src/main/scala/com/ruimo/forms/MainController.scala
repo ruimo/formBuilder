@@ -810,6 +810,11 @@ class MainController extends Initializable with HandleBigJob {
   lazy val sfxCropRectangleCheck = new SfxCheckBox(cropRectangleCheck)
 
   @FXML
+  private[this] var removeRuledLineCheck: CheckBox = _
+
+  lazy val sfxRemoveRuledLineCheck = new SfxCheckBox(removeRuledLineCheck)
+
+  @FXML
   private[this] var skewCorrectionCheck: CheckBox = _
 
   lazy val sfxSkewCorrectionCheck = new SfxCheckBox(skewCorrectionCheck)
@@ -1365,6 +1370,11 @@ class MainController extends Initializable with HandleBigJob {
   }
 
   @FXML
+  def removeRuledLineDetailClicked(e: ActionEvent) {
+    println("removeRuledLineDetail")
+  }
+
+  @FXML
   def skewCorrectionDetailClicked(e: ActionEvent) {
     println("skewCorrectionDetail")
     val loader = new FXMLLoader(getClass().getResource("skewCorrectionDialog.fxml"))
@@ -1402,14 +1412,6 @@ class MainController extends Initializable with HandleBigJob {
       case Some(_) => println("canceled")
       case None => println("bt = none")
     }
-
-//    val scene: Scene = new Scene(root)
-//    val myStage = new Stage()
-//    myStage.setTitle("傾き補正")
-//    myStage.initModality(Modality.ApplicationModal)
-//    myStage.initOwner(stage.getOwner())
-//    myStage.setScene(scene)
-//    myStage.show()
   }
 
   @FXML
@@ -1579,6 +1581,11 @@ class MainController extends Initializable with HandleBigJob {
     redraw(
       Some((t: Throwable) => project.cropRectangle.copy(enabled = false))
     )
+  }
+
+  @FXML
+  def removeRuledLineEnabledClicked(e: ActionEvent) {
+    println("removeRuledLineEnabledClicked")
   }
 
   @FXML

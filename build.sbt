@@ -20,7 +20,7 @@ lazy val root = (project in file(".")).
     scalacOptions := Seq("-unchecked", "-deprecation", "-feature"),
     libraryDependencies ++= Seq(
       "org.scalafx" % "scalafx_2.12" % "8.0.102-R11",
-      "com.ruimo" %% "scoins" % "1.12",
+      "com.ruimo" %% "scoins" % "1.13",
       "com.typesafe.play" %% "play-ahc-ws-standalone" % "1.1.3",
       "com.typesafe.play" %% "play-ws-standalone-json" % "1.1.3",
       "com.typesafe.play" % "play-json_2.12" % "2.6.8",
