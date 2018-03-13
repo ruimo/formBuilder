@@ -387,7 +387,8 @@ case class CropRectangleConditionImpl(
   topMargin: Double = 0,
   leftMargin: Double = 0,
   rightMargin: Double = 0,
-  bottomMargin: Double = 0
+  bottomMargin: Double = 0,
+  slantAllowance: Int = 1
 ) extends CropRectangleCondition
 
 object CropRectangleConditionImpl {
@@ -397,16 +398,18 @@ object CropRectangleConditionImpl {
       "topMargin" -> JsNumber(obj.topMargin),
       "leftMargin" -> JsNumber(obj.leftMargin),
       "rightMargin" -> JsNumber(obj.rightMargin),
-      "bottomMargin" -> JsNumber(obj.bottomMargin)
+      "bottomMargin" -> JsNumber(obj.bottomMargin),
+      "slantAllowance" -> JsNumber(obj.slantAllowance)
     )
   }
 
   implicit val cropRectangleConditionImplReads: Reads[CropRectangleConditionImpl] = (
     (JsPath \ "errorAllowance").read[Int] and
-      (JsPath \ "topMargin").read[Double] and
-      (JsPath \ "leftMargin").read[Double] and
-      (JsPath \ "rightMargin").read[Double] and
-      (JsPath \ "bottomMargin").read[Double]
+    (JsPath \ "topMargin").read[Double] and
+    (JsPath \ "leftMargin").read[Double] and
+    (JsPath \ "rightMargin").read[Double] and
+    (JsPath \ "bottomMargin").read[Double] and
+    (JsPath \ "slantAllowance").readWithDefault[Int](2)
   )(CropRectangleConditionImpl.apply _)
 }
 

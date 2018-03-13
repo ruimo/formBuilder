@@ -162,6 +162,7 @@ trait CropRectangleCondition {
   def leftMargin: Double
   def rightMargin: Double
   def bottomMargin: Double
+  def slantAllowance: Int
 }
 
 object CropRectangleCondition {

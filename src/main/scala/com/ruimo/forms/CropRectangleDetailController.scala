@@ -14,8 +14,11 @@ case object InvalidTopMargin extends CropRectangleDetailValidation
 case object InvalidLeftMargin extends CropRectangleDetailValidation
 case object InvalidRightMargin extends CropRectangleDetailValidation
 case object InvalidBottomMargin extends CropRectangleDetailValidation
+case object InvalidSlantAllowance extends CropRectangleDetailValidation
 
 class CropRectangleDetailController extends Initializable {
+  val SlantAllowanceMax = 5
+
   @FXML
   private[this] var errorAllowanceText: TextField = _
 
@@ -61,6 +64,15 @@ class CropRectangleDetailController extends Initializable {
 
   def bottomMargin: Double = bottomMarginText.getText.toDouble
 
+  @FXML
+  private[this] var slantAllowanceText: TextField = _
+
+  def slantAllowance_=(sa: Int) {
+    slantAllowanceText.setText(sa.toString)
+  }
+
+  def slantAllowance: Int = slantAllowanceText.getText.toInt
+
   def validate: Option[CropRectangleDetailValidation] = {
     (try {
       val value = errorAllowance
@@ -105,6 +117,16 @@ class CropRectangleDetailController extends Initializable {
         case e: NumberFormatException =>
           Some(InvalidBottomMargin)
       }
+    }.orElse {
+      try {
+        val value = slantAllowance
+        if (value < 0.0) Some(InvalidSlantAllowance) else None
+        if (value > SlantAllowanceMax) Some(InvalidSlantAllowance) else None
+      }
+      catch {
+        case e: NumberFormatException =>
+          Some(InvalidSlantAllowance)
+      }
     }
   }
 
@@ -113,7 +135,8 @@ class CropRectangleDetailController extends Initializable {
     topMargin = topMargin,
     leftMargin = leftMargin,
     rightMargin = rightMargin,
-    bottomMargin = bottomMargin
+    bottomMargin = bottomMargin,
+    slantAllowance = slantAllowance
   )
 
   def model_=(newModel: CropRectangleCondition) {
@@ -122,6 +145,7 @@ class CropRectangleDetailController extends Initializable {
     leftMargin = newModel.leftMargin
     rightMargin = newModel.rightMargin
     bottomMargin = newModel.bottomMargin
+    slantAllowance = newModel.slantAllowance
   }
 
   override def initialize(url: URL, resourceBundle: ResourceBundle) {
