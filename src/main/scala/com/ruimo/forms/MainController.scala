@@ -1372,6 +1372,77 @@ class MainController extends Initializable with HandleBigJob {
   @FXML
   def removeRuledLineDetailClicked(e: ActionEvent) {
     println("removeRuledLineDetail")
+    val loader = new FXMLLoader(getClass().getResource("removeRuledLine.fxml"))
+    val root: DialogPane = loader.load()
+    val ctrl = loader.getController().asInstanceOf[RemoveRuledLineDetailController]
+    ctrl.model = project.removeRuledLine.condition
+    val alert = new SfxAlert(AlertType.Confirmation)
+    alert.dialogPane = new SfxDialogPane(root)
+    alert.title = "罫線削除"
+    alert.onCloseRequest = new EventHandler[DialogEvent] {
+      override def handle(t: DialogEvent) {
+        if (t.getTarget.asInstanceOf[Alert].getResult.getButtonData == ButtonBar.ButtonData.CANCEL_CLOSE) return
+
+        ctrl.validate match {
+          case Some(InvalidLineDeltaX) =>
+            val dlg = new SfxAlert(AlertType.Error) {
+              title = "垂直線の太さ エラー"
+              contentText = "垂直線の太さは、1以上の整数で指定してください"
+            }
+            dlg.showAndWait()
+            t.consume()
+          case Some(InvalidLineDeltaY) =>
+            val dlg = new SfxAlert(AlertType.Error) {
+              title = "水平線の太さ エラー"
+              contentText = "水平線の太さは、1以上の整数で指定してください"
+            }
+            dlg.showAndWait()
+            t.consume()
+          case Some(InvalidLineDotRatio) =>
+            val dlg = new SfxAlert(AlertType.Error) {
+              title = "線とみなす黒点割合(%) エラー"
+              contentText = "線とみなす黒点割合(%)は、1以上100以下の整数で指定してください"
+            }
+            dlg.showAndWait()
+            t.consume()
+          case Some(InvalidCorrectOverlappingDelta) =>
+            val dlg = new SfxAlert(AlertType.Error) {
+              title = "重複判断領域の幅 エラー"
+              contentText = "重複判断領域の幅は、1以上の整数で指定してください"
+            }
+            dlg.showAndWait()
+            t.consume()
+          case Some(InvalidCorrectOverlappingDotRatio) =>
+            val dlg = new SfxAlert(AlertType.Error) {
+              title = "重複とみなす黒点割合(%) エラー"
+              contentText = "重複とみなす黒点割合(%)は、1以上100以下の整数で指定してください"
+            }
+            dlg.showAndWait()
+            t.consume()
+          case None =>
+        }
+      }
+    }
+    alert.showAndWait().map(_.delegate) match {
+      case Some(ButtonType.APPLY) =>
+        val model = ctrl.model
+        println("apply remove ruled line detail " + model)
+        project.removeRuledLine = project.removeRuledLine.copy(condition = model)
+        project.invalidateCachedImage(
+          CacheConditionGlob(
+            isRemoveRuledLineEnabled = Some(true)
+          )
+        )
+        if (sfxRemoveRuledLineCheck.selected()) {
+          sfxRemoveRuledLineCheck.selected = false
+          removeRuledLineEnabledClicked(null)
+          sfxRemoveRuledLineCheck.selected = true
+          removeRuledLineEnabledClicked(null)
+        }
+
+      case Some(_) => println("canceled")
+      case None => println("bt = none")
+    }
   }
 
   @FXML
@@ -1586,6 +1657,10 @@ class MainController extends Initializable with HandleBigJob {
   @FXML
   def removeRuledLineEnabledClicked(e: ActionEvent) {
     println("removeRuledLineEnabledClicked")
+    project.removeRuledLine = project.removeRuledLine.copy(enabled = sfxRemoveRuledLineCheck.selected())
+    redraw(
+      Some((t: Throwable) => project.removeRuledLine.copy(enabled = false))
+    )
   }
 
   @FXML
@@ -1607,7 +1682,8 @@ class MainController extends Initializable with HandleBigJob {
                 isSkewCorrectionEnabled = true,
                 isCropEnabled = project.cropEnabled,
                 isDotRemovalEnabled = project.dotRemoval.enabled,
-                isCropRectangleEnabled = project.cropRectangle.enabled
+                isCropRectangleEnabled = project.cropRectangle.enabled,
+                isRemoveRuledLineEnabled = project.removeRuledLine.enabled
               )
             ),
             { t =>
@@ -1918,6 +1994,11 @@ class MainController extends Initializable with HandleBigJob {
         override def onCropRectangleChanged(cropRectangle: CropRectangle): Unit = {
           println("crop rectangle changed " + cropRectangle)
           sfxCropRectangleCheck.selected = cropRectangle.enabled
+        }
+
+        override def onRemoveRuledLineChanged(removeRuledLine: RemoveRuledLine): Unit = {
+          println("remove ruled line changed " + removeRuledLine)
+          sfxRemoveRuledLineCheck.selected = removeRuledLine.enabled
         }
       }
     )

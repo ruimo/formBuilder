@@ -21,4 +21,7 @@ package object forms {
 
   type CropRectangleConditionImpl = projects.project0.CropRectangleConditionImpl
   val CropRectangleConditionImpl = projects.project0.CropRectangleConditionImpl
+
+  type RemoveRuledLineConditionImpl = projects.project0.RemoveRuledLineConditionImpl
+  val RemoveRuledLineConditionImpl = projects.project0.RemoveRuledLineConditionImpl
 }
