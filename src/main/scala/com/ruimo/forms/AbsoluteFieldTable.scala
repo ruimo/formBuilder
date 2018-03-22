@@ -76,6 +76,19 @@ class AbsoluteFieldTable(
     projectContext.onNormalAbsoluteFieldRemoved(f)
   }
 
+  def deleteAllFields() {
+    deleteAllSelectedFields()
+    deleteAllNonSelectedFields()
+  }
+
+  def deleteAllNonSelectedFields() {
+    val buf = _normalAbsoluteFields
+    _normalAbsoluteFields = imm.Seq()
+    buf.foreach { f =>
+      projectContext.onSelectedAbsoluteFieldRemoved(f)
+    }
+  }
+
   def deleteAllSelectedFields() {
     val buf = _selectedAbsoluteFields
     _selectedAbsoluteFields = imm.Seq()

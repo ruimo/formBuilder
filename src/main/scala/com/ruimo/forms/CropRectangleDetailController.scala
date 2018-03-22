@@ -16,8 +16,11 @@ case object InvalidRightMargin extends CropRectangleDetailValidation
 case object InvalidBottomMargin extends CropRectangleDetailValidation
 case object InvalidSlantAllowance extends CropRectangleDetailValidation
 
+object CropRectangleDetailController {
+  val SlantAllowanceMax = 8
+}
+
 class CropRectangleDetailController extends Initializable {
-  val SlantAllowanceMax = 5
 
   @FXML
   private[this] var errorAllowanceText: TextField = _
@@ -121,7 +124,7 @@ class CropRectangleDetailController extends Initializable {
       try {
         val value = slantAllowance
         if (value < 0.0) Some(InvalidSlantAllowance) else None
-        if (value > SlantAllowanceMax) Some(InvalidSlantAllowance) else None
+        if (value > CropRectangleDetailController.SlantAllowanceMax) Some(InvalidSlantAllowance) else None
       }
       catch {
         case e: NumberFormatException =>

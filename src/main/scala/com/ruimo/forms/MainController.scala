@@ -1343,6 +1343,13 @@ class MainController extends Initializable with HandleBigJob {
             }
             dlg.showAndWait()
             t.consume()
+          case Some(InvalidSlantAllowance) =>
+            val dlg = new SfxAlert(AlertType.Error) {
+              title = "傾斜許容ドット数 エラー"
+              contentText = "0以上、" + CropRectangleDetailController.SlantAllowanceMax + "までの数値で指定してください"
+            }
+            dlg.showAndWait()
+            t.consume()
           case None =>
         }
       }

@@ -1178,6 +1178,9 @@ class ProjectImpl(
                   "crop" -> edgeCrop(cropt._1, cropt._2, _topSensivity, _bottomSensivity, _leftSensivity, _rightSensivity).asJson(cropEnabled),
                   "dotRemoval" -> Json.toJson(dotRemoval),
                   "cropRectangle" -> Json.toJson(cropRectangle),
+                  "ruledLineRemoval" -> Json.obj(
+                    "enabled" -> false
+                  ),
                   "absoluteFields" -> _absFields.asJson
                 )
               )
@@ -1677,7 +1680,7 @@ class ProjectImpl(
       )
     }
 
-    deselectAllFields()
+    _absFields.deleteAllFields()
 
     val record = (result \ "record").as[JsValue]
     val config: JsValue = Json.parse((record \ "config").as[String])
