@@ -413,6 +413,41 @@ object CropRectangleConditionImpl {
   )(CropRectangleConditionImpl.apply _)
 }
 
+case class RemoveRuledLineConditionImpl(
+  lineDeltaX: Int = 1,
+  lineDeltaY: Int = 1,
+  lineDotRatio: Int = 40,
+  correctOverlappingEnabled: Boolean = true,
+  correctOverlappingDelta: Int = 2,
+  correctOverlappingDotRatio: Int = 40
+) extends RemoveRuledLineCondition
+
+object RemoveRuledLineConditionImpl {
+  implicit val removeRuledLineConditionImplWrites = new Writes[RemoveRuledLineConditionImpl] {
+    def writes(obj: RemoveRuledLineConditionImpl): JsObject = Json.obj(
+      "line" -> Json.obj(
+        "deltaX" -> JsNumber(obj.lineDeltaX),
+        "deltaY" -> JsNumber(obj.lineDeltaY),
+        "dotRatio" -> JsNumber(obj.lineDotRatio)
+      ),
+      "correctOverlapping" -> Json.obj(
+        "enabled" -> JsBoolean(obj.correctOverlappingEnabled),
+        "delta" -> JsNumber(obj.correctOverlappingDelta),
+        "dotRatio" -> JsNumber(obj.correctOverlappingDotRatio)
+      )
+    )
+  }
+
+  implicit val removeRuledLineConditionImplReads: Reads[RemoveRuledLineConditionImpl] = (
+    (JsPath \ "line" \ "deltaX").read[Int] and
+    (JsPath \ "line" \ "deltaY").read[Int] and
+    (JsPath \ "line" \ "dotRatio").read[Int] and
+    (JsPath \ "correctOverlapping" \ "enabled").read[Boolean] and
+    (JsPath \ "correctOverlapping" \ "delta").read[Int] and
+    (JsPath \ "correctOverlapping" \ "dotRatio").read[Int]
+  )(RemoveRuledLineConditionImpl.apply _)
+}
+
 case class EdgeCropConditionImpl(
   topArea: Option[Area],
   bottomArea: Option[Area],
@@ -466,6 +501,8 @@ class ProjectImpl(
   private[this] var _dotRemoval: DotRemoval = DotRemoval(enabled = false, DotRemovalConditionImpl())
   @volatile
   private[this] var _cropRectangle: CropRectangle = CropRectangle(enabled = false, CropRectangleConditionImpl())
+  @volatile
+  private[this] var _removeRuledLines: RemoveRuledLine = RemoveRuledLine(enabled = false, RemoveRuledLineConditionImpl())
   @volatile
   private[this] var _absFields = new AbsoluteFieldTable(projectContext)
   @volatile
@@ -532,6 +569,16 @@ class ProjectImpl(
     if (newCropRectangle != _cropRectangle) {
       this._cropRectangle = newCropRectangle
       listener.onCropRectangleChanged(newCropRectangle)
+      _isDirty = true
+    }
+  }
+  
+  def removeRuledLine: RemoveRuledLine = _removeRuledLines
+
+  def removeRuledLine_=(newRemoveRuledLine: RemoveRuledLine): Unit = {
+    if (newRemoveRuledLine != _removeRuledLines) {
+      this._removeRuledLines = newRemoveRuledLine
+      listener.onRemoveRuledLineChanged(newRemoveRuledLine)
       _isDirty = true
     }
   }
@@ -1091,7 +1138,8 @@ class ProjectImpl(
       isSkewCorrectionEnabled = skewCorrection.enabled,
       isCropEnabled = cropEnabled,
       isDotRemovalEnabled = dotRemoval.enabled,
-      isCropRectangleEnabled = cropRectangle.enabled
+      isCropRectangleEnabled = cropRectangle.enabled,
+      isRemoveRuledLineEnabled = removeRuledLine.enabled
     )
   ): Either[RetrievePreparedImageRestResult, Future[RetrievePreparedImageRestResult]] = {
     println("cachedImage cacheCondition = " + cacheCondition)
@@ -1135,7 +1183,8 @@ class ProjectImpl(
             isSkewCorrectionEnabled = true,
             isCropEnabled = false,
             isDotRemovalEnabled = false,
-            isCropRectangleEnabled = false
+            isCropRectangleEnabled = false,
+            isRemoveRuledLineEnabled = false
           )
         ).fold(Future.successful, identity)
         fimg.map {
@@ -1155,7 +1204,8 @@ class ProjectImpl(
             isSkewCorrectionEnabled = skewCorrection.enabled,
             isCropEnabled = cropEnabled,
             isDotRemovalEnabled = dotRemoval.enabled,
-            isCropRectangleEnabled = cropRectangle.enabled
+            isCropRectangleEnabled = cropRectangle.enabled,
+            isRemoveRuledLineEnabled = removeRuledLine.enabled
           )
         ).fold(Future.successful, identity)
       fimg.map {
@@ -1178,9 +1228,7 @@ class ProjectImpl(
                   "crop" -> edgeCrop(cropt._1, cropt._2, _topSensivity, _bottomSensivity, _leftSensivity, _rightSensivity).asJson(cropEnabled),
                   "dotRemoval" -> Json.toJson(dotRemoval),
                   "cropRectangle" -> Json.toJson(cropRectangle),
-                  "ruledLineRemoval" -> Json.obj(
-                    "enabled" -> false
-                  ),
+                  "ruledLineRemoval" -> Json.toJson(removeRuledLine),
                   "absoluteFields" -> _absFields.asJson
                 )
               )
@@ -1222,7 +1270,7 @@ class ProjectImpl(
     else if (skewCorrection.enabled) {
       cachedImage(
         image,
-        CacheCondition(isSkewCorrectionEnabled = true, isCropEnabled = false, isDotRemovalEnabled = false, isCropRectangleEnabled = false)
+        CacheCondition(isSkewCorrectionEnabled = true, isCropEnabled = false, isDotRemovalEnabled = false, isCropRectangleEnabled = false, isRemoveRuledLineEnabled = false)
       ).fold(Future.successful, identity).map {
         case ok: RetrievePreparedImageResultOk =>
           Right(ok.image.getWidth -> ok.image.getHeight)
@@ -1241,9 +1289,7 @@ class ProjectImpl(
           "crop" -> edgeCrop(cropt._1, cropt._2, _topSensivity, _bottomSensivity, _leftSensivity, _rightSensivity).asJson(cond.isCropEnabled),
           "dotRemoval" -> Json.toJson(dotRemoval.copy(enabled = cond.isDotRemovalEnabled)),
           "cropRectangle" -> Json.toJson(cropRectangle.copy(enabled = cond.isCropRectangleEnabled)),
-          "ruledLineRemoval" -> Json.obj(
-            "enabled" -> false
-          )
+          "ruledLineRemoval" -> Json.toJson(removeRuledLine.copy(enabled = cond.isRemoveRuledLineEnabled))
         )
         println("Json to send: " + json)
         Files.write(configFile, json.toString.getBytes("utf-8"))
@@ -1339,6 +1385,10 @@ class ProjectImpl(
                 prepareResult.dotRemovalResult.map {
                   case DotRemovalResultSuccess(files) => files.head
                 }.orElse {
+                  prepareResult.removeRuledLineResult.map {
+                    case RemoveRuledLineResultSuccess(files) => files.head
+                  }
+                }.orElse {
                   prepareResult.cropRectangleResult.map {
                     case CropRectangleResultSuccess(files) => files.head
                   }
@@ -1415,7 +1465,7 @@ class ProjectImpl(
   ): Future[RetrievePreparedImageRestResult] = {
     println("retrievePreparedImage(cond = " + cond + ") called")
     if (
-      ! cond.isSkewCorrectionEnabled && ! cond.isCropEnabled && ! cond.isDotRemovalEnabled && ! cond.isCropRectangleEnabled
+      ! cond.isSkewCorrectionEnabled && ! cond.isCropEnabled && ! cond.isDotRemovalEnabled && ! cond.isCropRectangleEnabled && ! cond.isRemoveRuledLineEnabled
     ) Future.successful(new RetrievePreparedImageResultOk(None, si.image))
     else {
       val auth = Settings.Loader.settings.auth
@@ -1479,7 +1529,8 @@ class ProjectImpl(
       isSkewCorrectionEnabled = Some(false),
       isCropEnabled = Some(false),
       isDotRemovalEnabled = Some(false),
-      isCropRectangleEnabled = Some(false)
+      isCropRectangleEnabled = Some(false),
+      isRemoveRuledLineEnabled = Some(false)
     )
   ) {
     println("invalidateCachedImage(" + cond + ") called")
@@ -1514,6 +1565,8 @@ class ProjectImpl(
       ).getOrElse(
         Seq()
       )
+    ) ++ Json.obj(
+      "ruledLineRemoval" -> removeRuledLine
     ) ++ Json.obj(
       "cropRectangle" -> cropRectangle
     ) ++ Json.obj(
@@ -1710,6 +1763,14 @@ class ProjectImpl(
       if (enabled) {
         val cond = (cr \ "condition").as[CropRectangleConditionImpl]
         cropRectangle = CropRectangle(enabled, cond)
+      }
+    }
+
+    (config \ "removeRuledline").asOpt[JsValue].foreach { cr =>
+      val enabled = (cr \ "enabled").as[Boolean]
+      if (enabled) {
+        val cond = (cr \ "condition").as[RemoveRuledLineConditionImpl]
+        removeRuledLine = RemoveRuledLine(enabled, cond)
       }
     }
 

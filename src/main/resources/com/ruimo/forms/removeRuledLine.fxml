@@ -28,18 +28,18 @@
                   <RowConstraints />
                </rowConstraints>
                <children>
-                  <Label fx:id="lineDeltaXLabel" maxHeight="1.7976931348623157E308" text="垂直線太さ" GridPane.hgrow="ALWAYS" GridPane.vgrow="ALWAYS" />
-                  <Label fx:id="leftDeltaYLabel" maxHeight="1.7976931348623157E308" text="水平線太さ" GridPane.hgrow="ALWAYS" GridPane.rowIndex="1" GridPane.vgrow="ALWAYS" />
-                  <Label fx:id="lineDotRatioLabel" maxHeight="1.7976931348623157E308" text="線と判断する矩形領域内の黒点数の割合(%)" GridPane.hgrow="ALWAYS" GridPane.rowIndex="2" GridPane.vgrow="ALWAYS" />
-                  <Label fx:id="correctOverlappingDeltaLabel" maxHeight="1.7976931348623157E308" text="追加の削除ドット幅" GridPane.hgrow="ALWAYS" GridPane.rowIndex="4" GridPane.vgrow="ALWAYS" />
-                  <Label fx:id="correctOverlappingDotRationLabel" maxHeight="1.7976931348623157E308" text="線と文字が重複していると判断する黒点割合(%)" GridPane.hgrow="ALWAYS" GridPane.rowIndex="5" GridPane.vgrow="ALWAYS" />
+                  <Label fx:id="lineDeltaXLabel" maxHeight="1.7976931348623157E308" text="垂直線の太さ" GridPane.hgrow="ALWAYS" GridPane.vgrow="ALWAYS" />
+                  <Label fx:id="lineDeltaYLabel" maxHeight="1.7976931348623157E308" text="水平線の太さ" GridPane.hgrow="ALWAYS" GridPane.rowIndex="1" GridPane.vgrow="ALWAYS" />
+                  <Label fx:id="lineDotRatioLabel" maxHeight="1.7976931348623157E308" text="線とみなす黒点割合(%)" GridPane.hgrow="ALWAYS" GridPane.rowIndex="2" GridPane.vgrow="ALWAYS" />
+                  <Label fx:id="correctOverlappingDeltaLabel" maxHeight="1.7976931348623157E308" text=" 重複判断領域の幅" GridPane.hgrow="ALWAYS" GridPane.rowIndex="4" GridPane.vgrow="ALWAYS" />
+                  <Label fx:id="correctOverlappingDotRationLabel" maxHeight="1.7976931348623157E308" text=" 重複とみなす黒点割合(%)" GridPane.hgrow="ALWAYS" GridPane.rowIndex="5" GridPane.vgrow="ALWAYS" />
 
                   <TextField fx:id="lineDeltaXText" maxHeight="1.7976931348623157E308" GridPane.columnIndex="1" GridPane.hgrow="ALWAYS" GridPane.vgrow="ALWAYS" />
                   <TextField fx:id="lineDeltaYText" maxHeight="1.7976931348623157E308" GridPane.columnIndex="1" GridPane.hgrow="ALWAYS" GridPane.rowIndex="1" GridPane.vgrow="ALWAYS" />
                   <TextField fx:id="lineDotRatioText" maxHeight="1.7976931348623157E308" GridPane.columnIndex="1" GridPane.hgrow="ALWAYS" GridPane.rowIndex="2" GridPane.vgrow="ALWAYS" />
                   <TextField fx:id="correctOverlappingDeltaText" maxHeight="1.7976931348623157E308" GridPane.columnIndex="1" GridPane.hgrow="ALWAYS" GridPane.rowIndex="4" GridPane.vgrow="ALWAYS" />
                   <TextField fx:id="correctOverlappingDotRatioText" maxHeight="1.7976931348623157E308" GridPane.columnIndex="1" GridPane.hgrow="ALWAYS" GridPane.rowIndex="5" GridPane.vgrow="ALWAYS" />
-                  <CheckBox maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="罫線と文字の重複を考慮" GridPane.columnSpan="2" GridPane.hgrow="ALWAYS" GridPane.rowIndex="3" />
+                  <CheckBox fx:id="correctOverlappingEnabledCheckBox" maxWidth="1.7976931348623157E308" mnemonicParsing="false" text="罫線と文字の重複を考慮" onAction="#correctOverlappingEnabledClicked" GridPane.columnSpan="2" GridPane.hgrow="ALWAYS" GridPane.rowIndex="3" />
                </children>
             </GridPane>
          </children>

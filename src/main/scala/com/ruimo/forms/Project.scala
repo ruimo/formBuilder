@@ -76,6 +76,11 @@ case class CropRectangle(
   condition: CropRectangleCondition
 )
 
+case class RemoveRuledLine(
+  enabled: Boolean,
+  condition: RemoveRuledLineCondition
+)
+
 case class SkewCorrection(
   enabled: Boolean,
   condition: SkewCorrectionCondition
@@ -182,6 +187,32 @@ object CropRectangleCondition {
   }
 }
 
+trait RemoveRuledLineCondition {
+  def lineDeltaX: Int
+  def lineDeltaY: Int
+  def lineDotRatio: Int
+  def correctOverlappingEnabled: Boolean
+  def correctOverlappingDelta: Int
+  def correctOverlappingDotRatio: Int
+}
+
+object RemoveRuledLineCondition {
+  import RemoveRuledLineConditionImpl.removeRuledLineConditionImplWrites
+  import RemoveRuledLineConditionImpl.removeRuledLineConditionImplReads
+
+  implicit object removeRuledLineConditionFormat extends Format[RemoveRuledLineCondition] {
+    override def reads(jv: JsValue): JsResult[RemoveRuledLineCondition] = {
+      JsSuccess(
+        jv.as[RemoveRuledLineConditionImpl]
+      )
+    }
+
+    override def writes(obj: RemoveRuledLineCondition): JsValue = obj match {
+      case o: RemoveRuledLineConditionImpl => removeRuledLineConditionImplWrites.writes(o)
+    }
+  }
+}
+
 object DotRemoval {
   import DotRemovalCondition.dotRemovalConditionFormat
 
@@ -216,6 +247,26 @@ object CropRectangle {
     }
 
     override def writes(obj: CropRectangle): JsValue = Json.obj(
+      "enabled" -> JsBoolean(obj.enabled),
+      "condition" -> Json.toJson(obj.condition)
+    )
+  }
+}
+
+object RemoveRuledLine {
+  import RemoveRuledLineCondition.removeRuledLineConditionFormat
+
+  implicit object removeRuleLineFormat extends Format[RemoveRuledLine] {
+    override def reads(jv: JsValue): JsResult[RemoveRuledLine] = {
+      JsSuccess(
+        RemoveRuledLine(
+          (jv \ "enabled").as[Boolean],
+          (jv \ "condition").as[RemoveRuledLineCondition]
+        )
+      )
+    }
+
+    override def writes(obj: RemoveRuledLine): JsValue = Json.obj(
       "enabled" -> JsBoolean(obj.enabled),
       "condition" -> Json.toJson(obj.condition)
     )
@@ -533,6 +584,7 @@ trait ProjectListener {
   def onCropEnabledChanged(enabled: Boolean)
   def onDotRemovalChanged(dotRemoval: DotRemoval)
   def onCropRectangleChanged(cropRectangle: CropRectangle)
+  def onRemoveRuledLineChanged(removeRuledLine: RemoveRuledLine)
 }
 
 object NullObjectListener extends ProjectListener {
@@ -540,26 +592,30 @@ object NullObjectListener extends ProjectListener {
   override def onCropEnabledChanged(enabled: Boolean) {}
   override def onDotRemovalChanged(dotRemoval: DotRemoval) {}
   override def onCropRectangleChanged(cropRectangle: CropRectangle) {}
+  override def onRemoveRuledLineChanged(removeRuledLine: RemoveRuledLine) {}
 }
 
 case class CacheCondition(
   isSkewCorrectionEnabled: Boolean,
   isCropEnabled: Boolean,
   isDotRemovalEnabled: Boolean,
-  isCropRectangleEnabled: Boolean
+  isCropRectangleEnabled: Boolean,
+  isRemoveRuledLineEnabled: Boolean
 )
 
 case class CacheConditionGlob(
   isSkewCorrectionEnabled: Option[Boolean] = None,
   isCropEnabled: Option[Boolean] = None,
   isDotRemovalEnabled: Option[Boolean] = None,
-  isCropRectangleEnabled: Option[Boolean] = None
+  isCropRectangleEnabled: Option[Boolean] = None,
+  isRemoveRuledLineEnabled: Option[Boolean] = None
 ) {
   def isMatched(cond: CacheCondition): Boolean =
     isSkewCorrectionEnabled.map(_ == cond.isSkewCorrectionEnabled).getOrElse(true) &&
     isCropEnabled.map(_ == cond.isCropEnabled).getOrElse(true) &&
     isDotRemovalEnabled.map(_ == cond.isDotRemovalEnabled).getOrElse(true) &&
-    isCropRectangleEnabled.map(_ == cond.isCropRectangleEnabled).getOrElse(true)
+    isCropRectangleEnabled.map(_ == cond.isCropRectangleEnabled).getOrElse(true) &&
+    isRemoveRuledLineEnabled.map(_ == cond.isRemoveRuledLineEnabled).getOrElse(true)
 }
 
 trait Project {
@@ -608,6 +664,9 @@ trait Project {
   def cropRectangle: CropRectangle
   def cropRectangle_=(newCropRectangle: CropRectangle)
 
+  def removeRuledLine: RemoveRuledLine
+  def removeRuledLine_=(newRemoveRuledLine: RemoveRuledLine)
+
   def edgeCrop(
     formWidth: Double, formHeight: Double,
     topSensivity: EdgeCropSensivity, bottomSensivity: EdgeCropSensivity, leftSensivity: EdgeCropSensivity, rightSensivity: EdgeCropSensivity
@@ -649,7 +708,8 @@ trait Project {
       isSkewCorrectionEnabled = skewCorrection.enabled,
       isCropEnabled = cropEnabled,
       isDotRemovalEnabled = dotRemoval.enabled,
-      isCropRectangleEnabled = cropRectangle.enabled
+      isCropRectangleEnabled = cropRectangle.enabled,
+      isRemoveRuledLineEnabled = removeRuledLine.enabled
     )
   ): Either[RetrievePreparedImageRestResult, Future[RetrievePreparedImageRestResult]]
 
