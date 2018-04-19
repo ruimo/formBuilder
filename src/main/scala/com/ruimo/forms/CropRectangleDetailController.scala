@@ -15,6 +15,7 @@ case object InvalidLeftMargin extends CropRectangleDetailValidation
 case object InvalidRightMargin extends CropRectangleDetailValidation
 case object InvalidBottomMargin extends CropRectangleDetailValidation
 case object InvalidSlantAllowance extends CropRectangleDetailValidation
+case object InvalidBlackLevel extends CropRectangleDetailValidation
 
 object CropRectangleDetailController {
   val SlantAllowanceMax = 8
@@ -76,6 +77,15 @@ class CropRectangleDetailController extends Initializable {
 
   def slantAllowance: Int = slantAllowanceText.getText.toInt
 
+  @FXML
+  private[this] var blackLevelText: TextField = _
+
+  def blackLevel_=(bl: Int) {
+    blackLevelText.setText(bl.toString)
+  }
+
+  def blackLevel: Int = blackLevelText.getText.toInt
+
   def validate: Option[CropRectangleDetailValidation] = {
     (try {
       val value = errorAllowance
@@ -130,6 +140,16 @@ class CropRectangleDetailController extends Initializable {
         case e: NumberFormatException =>
           Some(InvalidSlantAllowance)
       }
+    }.orElse {
+      try {
+        val value = blackLevel
+        if (value < 0) Some(InvalidBlackLevel) else None
+        if (value > 254) Some(InvalidBlackLevel) else None
+      }
+      catch {
+        case e: NumberFormatException =>
+          Some(InvalidBlackLevel)
+      }
     }
   }
 
@@ -139,7 +159,8 @@ class CropRectangleDetailController extends Initializable {
     leftMargin = leftMargin,
     rightMargin = rightMargin,
     bottomMargin = bottomMargin,
-    slantAllowance = slantAllowance
+    slantAllowance = slantAllowance,
+    blackLevel = blackLevel
   )
 
   def model_=(newModel: CropRectangleCondition) {
@@ -149,6 +170,7 @@ class CropRectangleDetailController extends Initializable {
     rightMargin = newModel.rightMargin
     bottomMargin = newModel.bottomMargin
     slantAllowance = newModel.slantAllowance
+    blackLevel = newModel.blackLevel
   }
 
   override def initialize(url: URL, resourceBundle: ResourceBundle) {

@@ -388,7 +388,8 @@ case class CropRectangleConditionImpl(
   leftMargin: Double = 0,
   rightMargin: Double = 0,
   bottomMargin: Double = 0,
-  slantAllowance: Int = 1
+  slantAllowance: Int = 1,
+  blackLevel: Int = 20,
 ) extends CropRectangleCondition
 
 object CropRectangleConditionImpl {
@@ -399,7 +400,8 @@ object CropRectangleConditionImpl {
       "leftMargin" -> JsNumber(obj.leftMargin),
       "rightMargin" -> JsNumber(obj.rightMargin),
       "bottomMargin" -> JsNumber(obj.bottomMargin),
-      "slantAllowance" -> JsNumber(obj.slantAllowance)
+      "slantAllowance" -> JsNumber(obj.slantAllowance),
+      "blackLevel" -> JsNumber(obj.blackLevel)
     )
   }
 
@@ -409,7 +411,8 @@ object CropRectangleConditionImpl {
     (JsPath \ "leftMargin").read[Double] and
     (JsPath \ "rightMargin").read[Double] and
     (JsPath \ "bottomMargin").read[Double] and
-    (JsPath \ "slantAllowance").readWithDefault[Int](2)
+    (JsPath \ "slantAllowance").readWithDefault[Int](2) and
+    (JsPath \ "blackLevel").readWithDefault[Int](200)
   )(CropRectangleConditionImpl.apply _)
 }
 

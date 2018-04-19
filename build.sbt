@@ -3,19 +3,15 @@ import Dependencies._
 resolvers += "ruimo.com" at "http://static.ruimo.com/release"
 
 lazy val root = (project in file(".")).
-   enablePlugins(JavaAppPackaging).
+   enablePlugins(JavaAppPackaging, BuildInfoPlugin).
    settings(
     inThisBuild(List(
       organization := "site.functionalcapture",
-      scalaVersion := "2.12.3",
-      version      := "1.0.0-SNAPSHOT"
+      scalaVersion := "2.12.4",
+      buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
+      buildInfoPackage := "generated"
     )),
     name := "FormBuilder",
-//    unmanagedJars in Compile += {
-//        val ps = new sys.SystemProperties
-//        val jh = ps("java.home")
-//        Attributed.blank(file(jh) / "lib/ext/jfxrt.jar")
-//    },
     fork in run := true,
     scalacOptions := Seq("-unchecked", "-deprecation", "-feature"),
     libraryDependencies ++= Seq(
@@ -29,3 +25,10 @@ lazy val root = (project in file(".")).
       "org.specs2" %% "specs2-core" % "4.0.0" % "test"
     )
   )
+
+publishTo := Some(
+  Resolver.file(
+    "formbuilder",
+    new File(Option(System.getenv("RELEASE_DIR")).getOrElse("/tmp"))
+  )
+)
