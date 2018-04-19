@@ -24,7 +24,7 @@ class SettingsSpec extends Specification {
           confFile,
           util.Arrays.asList(
             "auth {",
-            "  userName = userName0",
+            "  contractedUserId = 12345",
             "  applicationToken = applicationToken0",
             "  url = url0",
             "}"
@@ -32,7 +32,7 @@ class SettingsSpec extends Specification {
         )
         val loader = new SettingsLoader(confFile)
         val settings = loader.settings
-        settings.auth.contractedUserId === ContractedUserId("userName0")
+        settings.auth.contractedUserId === ContractedUserId("12345")
         settings.auth.applicationToken === ApplicationToken("applicationToken0")
         settings.auth.url === Url("url0")
       }.get
@@ -50,7 +50,7 @@ class SettingsSpec extends Specification {
           )
         )
         val conf = ConfigFactory.parseFile(confFile.toFile)
-        conf.getString("auth.userName") === "userName0"
+        conf.getString("auth.contractedUserId") === "userName0"
         conf.getString("auth.applicationToken") === "applicationToken0"
         conf.getString("auth.url") === "url0"
       }.get
@@ -63,7 +63,7 @@ class SettingsSpec extends Specification {
           confFile,
           util.Arrays.asList(
             "auth {",
-            "  userName = userName0",
+            "  contractedUserId = 12345",
             "  applicationToken = applicationToken0",
             "  url = url0",
             "}"
@@ -74,12 +74,12 @@ class SettingsSpec extends Specification {
         loader.update(
           settings.copy(
             auth = AuthSettingsImpl(
-              ContractedUserId("userName1"), ApplicationToken("applicationToken1"), Url("url1")
+              ContractedUserId("98765"), ApplicationToken("applicationToken1"), Url("url1")
             )
           )
         )
         val conf = ConfigFactory.parseFile(confFile.toFile)
-        conf.getString("auth.userName") === "userName1"
+        conf.getString("auth.contractedUserId") === "98765"
         conf.getString("auth.applicationToken") === "applicationToken1"
         conf.getString("auth.url") === "url1"
       }.get
