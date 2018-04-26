@@ -1,0 +1,24 @@
+#!/bin/sh
+cd `dirname $0`
+
+if [ -e formbuilder.app ]; then
+  rm -rf formbuilder
+  mv formbuilder.app formbuilder
+fi
+
+if [ -e formbuilder ]; then
+  cat > update << EOF
+#!/bin/sh
+rm -rf app jdk run run.cmd
+mv formbuilder/app formbuilder/jdk formbuilder/run formbuilder/run.cmd .
+rm -rf formbuilder
+exec ./run
+EOF
+  chmod +x update
+  exec ./update
+else
+  rm -f update
+fi
+
+JAVA_HOME=jdk
+exec app/formbuilder/bin/formbuilder

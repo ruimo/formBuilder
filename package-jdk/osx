@@ -1,0 +1,39 @@
+#!/bin/sh -xe
+echo VERSION: ${VERSION:?}
+echo JDK_HOME: ${JDK_HOME:?}
+echo APP_HOME: ${APP_HOME:?}
+
+. ../jdk-version.conf
+
+rm -f formbuilder-osx-$VERSION.zip
+rm -rf formbuilder.app
+mkdir formbuilder.app
+cd formbuilder.app
+mkdir -p Contents
+mkdir -p Contents/MacOS
+mkdir -p Contents/Resources
+
+cd Contents
+cat > Info.plist <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>CFBundleExecutable</key>
+    <string>run</string>
+  </dict>
+</plist>
+EOF
+
+cd MacOS
+
+tar xf $APP_HOME/formbuilder-$VERSION.tgz
+mv formbuilder-$VERSION formbuilder 
+mkdir app
+mv formbuilder app/
+
+tar xf $JDK_HOME/osx/$JDK_VERSION.tgz
+cp ../../../run .
+cd ../../..
+
+zip -r formbuilder-osx-$VERSION.zip formbuilder.app
