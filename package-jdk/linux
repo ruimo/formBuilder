@@ -1,0 +1,22 @@
+#!/bin/sh -xe
+echo VERSION: ${VERSION:?}
+echo JDK_HOME: ${JDK_HOME:?}
+echo APP_HOME: ${APP_HOME:?}
+
+. ../jdk-version.conf
+
+rm -f formbuilder_linux-$VERSION.zip
+rm -rf formbuilder
+mkdir formbuilder
+cd formbuilder
+
+tar xf $APP_HOME/formbuilder-$VERSION.tgz
+mv formbuilder-$VERSION formbuilder 
+mkdir app
+mv formbuilder app/
+
+tar xf $JDK_HOME/linux/$JDK_VERSION.tgz
+cp ../../../run .
+cd ../../..
+
+zip -r formbuilder_linux-$VERSION.zip formbuilder.app
