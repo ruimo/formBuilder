@@ -495,7 +495,6 @@ class ProjectImpl(
   projectContext: ProjectContext,
   val listener: ProjectListener
 ) extends com.ruimo.forms.Project {
-  val version = VersionOne
   @volatile
   private[this] var _isDirty = false
   @volatile

@@ -621,7 +621,6 @@ case class CacheConditionGlob(
 
 trait Project {
   def isDirty: Boolean
-  val version: Version
   def listener: ProjectListener
 
   def withListener(newListener: ProjectListener): Project

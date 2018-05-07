@@ -5,7 +5,7 @@ echo APP_HOME: ${APP_HOME:?}
 
 . ../jdk-version.conf
 
-rm -f formbuilder-osx-$VERSION.zip
+rm -f formbuilder_osx-$VERSION.zip
 rm -rf formbuilder.app
 mkdir formbuilder.app
 cd formbuilder.app
@@ -36,4 +36,4 @@ tar xf $JDK_HOME/osx/$JDK_VERSION.tgz
 cp ../../../run .
 cd ../../..
 
-zip -r formbuilder-osx-$VERSION.zip formbuilder.app
+zip -r formbuilder_osx-$VERSION.zip formbuilder.app

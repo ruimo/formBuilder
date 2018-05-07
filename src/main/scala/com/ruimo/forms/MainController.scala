@@ -1,6 +1,8 @@
 package com.ruimo.forms
 
+import generated.BuildInfo
 import java.util.prefs.Preferences
+
 import scala.math
 import scalafx.scene.control.{ButtonType => SfxButtonType}
 import scala.annotation.tailrec
@@ -45,14 +47,13 @@ import scalafx.scene.control.{DialogPane => SfxDialogPane}
 import scalafx.scene.control.Alert.AlertType
 import play.api.libs.ws.JsonBodyReadables._
 import play.api.libs.ws.JsonBodyWritables._
-
 import play.api.libs.ws.DefaultBodyReadables._
 import play.api.libs.ws.DefaultBodyWritables._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
-import com.ruimo.scoins.{LoanPattern, PathUtil, Zip}
+import com.ruimo.scoins.{LoanPattern, PathUtil, Version, Zip}
 import com.ruimo.scoins.LoanPattern._
 import play.api.libs.json._
 
@@ -625,6 +626,7 @@ case class SelectedImage(file: Path, image: Image) {
 }
 
 class MainController extends Initializable with HandleBigJob {
+  val ModuleServerUrl = "https://dev.functionalcapture.com"
   val pref: Preferences = Preferences.userNodeForPackage(getClass)
   val settingsLoader: SettingsLoader = Settings.Loader
   private var imageTable: ImageTable = new ImageTable
@@ -2017,5 +2019,37 @@ class MainController extends Initializable with HandleBigJob {
       )
     )
     editor.initialize()
+
+    performUpdateCheck()
+  }
+
+  def performUpdateCheck() {
+    val latestVersion: Version = Await.result(
+      Ws().url(ModuleServerUrl + "/getLatest.json").withQueryStringParameters(
+        "moduleName" -> "formBuilder",
+        "baseName" -> "formbuilder"
+      ).get().map { resp =>
+        val json = Json.parse(resp.body)
+        Version.parse(
+          (json \ "version").as[String]
+        )
+      },
+      Duration(1, TimeUnit.MINUTES)
+    )
+    
+    println(s"Current version: ${generated.BuildInfo.version}, Latest version: ${latestVersion}")
+//      if (latestVersion > Version.parse(generated.BuildInfo.version)) {
+    if (true) {
+      val dlg = new Alert(
+        javafx.scene.control.Alert.AlertType.CONFIRMATION,
+        s"アプリケーションの更新が必要です。\nクリックして進んでください。\n現在:${generated.BuildInfo.version}, 最新:${latestVersion}",
+        javafx.scene.control.ButtonType.APPLY
+      )
+      dlg.setTitle("アプリケーション更新")
+      dlg.initOwner(stage)
+      dlg.showAndWait()
+
+
+    }
   }
 }
