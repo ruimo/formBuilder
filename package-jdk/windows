@@ -5,7 +5,7 @@ echo APP_HOME: ${APP_HOME:?}
 
 . ../jdk-version.conf
 
-rm -f formbuilder_linux-$VERSION.zip
+rm -f formbuilder_win-$VERSION.zip
 rm -rf formbuilder
 mkdir formbuilder
 cd formbuilder
@@ -15,8 +15,8 @@ mv formbuilder-$VERSION formbuilder
 mkdir app
 mv formbuilder app/
 
-tar xf $JDK_HOME/linux/$JDK_VERSION.tgz
-cp ../run .
+tar xf $JDK_HOME/win/$JDK_VERSION.tgz
+cp ../run.cmd .
 cd ..
 
-zip -r formbuilder_linux-$VERSION.zip formbuilder
+zip -r formbuilder_win-$VERSION.zip formbuilder
