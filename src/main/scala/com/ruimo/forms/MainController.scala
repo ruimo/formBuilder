@@ -1913,6 +1913,18 @@ class MainController extends Initializable with HandleBigJob {
     }
   }
 
+  @FXML
+  def helpAboutClicked(e: ActionEvent) {
+    println("helpAboutClicked")
+
+    val alert = new SfxAlert(AlertType.None) {
+      title = "About"
+      contentText = "FormBuilder " + Version.parse(generated.BuildInfo.version)
+      buttonTypes = Seq(SfxButtonType.OK)
+    }
+    alert.showAndWait()
+  }
+
   override def initialize(url: URL, resourceBundle: ResourceBundle) {
     imageTable.addChangeListener(new ImageTableListener() {
       override def onFilesChanged(before: imm.Set[File], after: imm.Set[File]) {

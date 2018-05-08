@@ -41,9 +41,9 @@
                   <MenuItem onAction="#authSettingsMenuClicked" text="認証(_A)" />
                </items>
             </Menu>
-          <Menu mnemonicParsing="false" text="Help">
+          <Menu mnemonicParsing="false" text="Help(_H)">
             <items>
-              <MenuItem mnemonicParsing="false" text="About" />
+              <MenuItem onAction="#helpAboutClicked" text="About(_A)" />
             </items>
           </Menu>
         </menus>
