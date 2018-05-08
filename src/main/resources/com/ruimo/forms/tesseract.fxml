@@ -2,17 +2,19 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.ButtonType?>
+<?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.DialogPane?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.FlowPane?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.StackPane?>
 
-<DialogPane maxHeight="-Infinity" maxWidth="-Infinity" xmlns="http://javafx.com/javafx/9" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.ruimo.forms.AbsoluteFieldController">
+<DialogPane maxHeight="-Infinity" maxWidth="-Infinity" xmlns="http://javafx.com/javafx/8.0.60" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.ruimo.forms.AbsoluteFieldController">
    <content>
       <AnchorPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="313.0" prefWidth="532.0">
          <children>
@@ -33,7 +35,7 @@
                   <TextField fx:id="fieldNameText" maxHeight="1.7976931348623157E308" GridPane.columnIndex="1" GridPane.hgrow="ALWAYS" GridPane.vgrow="ALWAYS" />
                   <StackPane prefHeight="150.0" prefWidth="200.0" GridPane.columnSpan="2" GridPane.rowIndex="2">
                      <children>
-                        <GridPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="147.0" prefWidth="495.0">
+                        <GridPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" vgap="10.0">
                            <columnConstraints>
                               <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
                               <ColumnConstraints hgrow="ALWAYS" maxWidth="1.7976931348623157E308" minWidth="10.0" prefWidth="100.0" />
@@ -41,17 +43,10 @@
                            <rowConstraints>
                               <RowConstraints fillHeight="false" vgrow="NEVER" />
                               <RowConstraints fillHeight="false" vgrow="NEVER" />
+                              <RowConstraints fillHeight="false" vgrow="NEVER" />
                               <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" prefHeight="30.0" vgrow="ALWAYS" />
                            </rowConstraints>
                            <children>
-                              <ComboBox fx:id="tesCharsDropDown" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" GridPane.columnIndex="1" GridPane.hgrow="ALWAYS" GridPane.rowIndex="1" GridPane.vgrow="ALWAYS">
-                                 <padding>
-                                    <Insets top="5.0" />
-                                 </padding>
-                                 <GridPane.margin>
-                                    <Insets top="10.0" />
-                                 </GridPane.margin>
-                              </ComboBox>
                               <Label text="言語" />
                               <ComboBox fx:id="tesLangDropDown" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" GridPane.columnIndex="1" GridPane.hgrow="ALWAYS" GridPane.vgrow="ALWAYS">
                                  <padding>
@@ -62,9 +57,39 @@
                                  </GridPane.margin>
                               </ComboBox>
                               <Label text="文字種" GridPane.rowIndex="1" />
+                              <FlowPane hgap="10.0" prefHeight="200.0" prefWidth="200.0" vgap="6.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                                 <children>
+                                    <CheckBox fx:id="tesDigitCheck" mnemonicParsing="false" text="数字(0-9)" />
+                                    <CheckBox fx:id="tesUpperAlphCheck" mnemonicParsing="false" text="大文字英字(A-Z)" />
+                                    <CheckBox fx:id="tesLowerAlphCheck" mnemonicParsing="false" text="小文字英字(a-z)" />
+                                    <CheckBox fx:id="tesCommaCheck" mnemonicParsing="false" text="カンマ(,)">
+                                       <opaqueInsets>
+                                          <Insets />
+                                       </opaqueInsets>
+                                    </CheckBox>
+                                    <CheckBox fx:id="tesPeriodCheck" mnemonicParsing="false" text="ピリオド(.)" />
+                                    <CheckBox fx:id="tesMinusCheck" mnemonicParsing="false" text="マイナス(-)" />
+                                    <CheckBox fx:id="tesPlusCheck" mnemonicParsing="false" text="プラス(+)" />
+                                    <CheckBox fx:id="tesSlashCheck" mnemonicParsing="false" text="スラッシュ(/)" />
+                                    <CheckBox fx:id="tesSharpCheck" mnemonicParsing="false" text="シャープ(#)" />
+                                    <CheckBox fx:id="tesDollerCheck" mnemonicParsing="false" text="ドル($)" />
+                                    <CheckBox fx:id="tesBraceCheck" mnemonicParsing="false" text="カッコ" />
+                                    <CheckBox fx:id="tesPercentCheck" mnemonicParsing="false" text="パーセント(%)" />
+                                    <CheckBox fx:id="tesColonCheck" mnemonicParsing="false" text="コロン(:)" />
+                                    <CheckBox fx:id="tesSemiColonCheck" mnemonicParsing="false" text="セミコロン(;)" />
+                                    <CheckBox fx:id="tesEqualCheck" mnemonicParsing="false" text="等号(=)" />
+                                    <CheckBox fx:id="tesAsteriskCheck" mnemonicParsing="false" text="アスタリスク(*)" />
+                                    <CheckBox fx:id="tesAllCheck" mnemonicParsing="false" text="全て" />
+                                 </children>
+                                 <opaqueInsets>
+                                    <Insets />
+                                 </opaqueInsets>
+                              </FlowPane>
+                              <Label text="文字種(カスタム)" GridPane.rowIndex="2" />
+                              <TextField fx:id="tesCustomeChar" GridPane.columnIndex="1" GridPane.rowIndex="2" />
                            </children>
                            <padding>
-                              <Insets bottom="1.0" right="1.0" top="10.0" />
+                              <Insets right="1.0" top="10.0" />
                            </padding>
                         </GridPane>
                      </children>
