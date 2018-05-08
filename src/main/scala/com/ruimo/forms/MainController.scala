@@ -2093,6 +2093,7 @@ class MainController extends Initializable with HandleBigJob {
           m.onComplete { _ =>
             println("Download completed.")
             println("Explode " + downloadedFile + " into " + cwd)
+            Zip.explode(downloadedFile, cwd, maxZipEntrySize = 100 * 1000 * 1000)
             Platform.runLater(terminateApplication())
           }
         case _ =>
