@@ -27,6 +27,7 @@ import scalafx.scene.image.Image
 import scalafx.stage.{FileChooser, Modality, Stage, StageStyle}
 import java.net.{HttpURLConnection, URL}
 import java.nio.channels.FileChannel
+import java.nio.charset.Charset
 import java.nio.file._
 import java.util
 import java.util.ResourceBundle
@@ -37,6 +38,7 @@ import javafx.scene.{Cursor, Scene}
 import scalafx.scene.control.{Alert => SfxAlert, ListView => SfxListView, TextInputDialog => SfxTextInputDialog}
 import scalafx.scene.control.{ChoiceDialog => SfxChoiceDialog}
 import scalafx.scene.control.{CheckBox => SfxCheckBox}
+import scalafx.scene.control.{ButtonType => SfxButtonType}
 import javafx.scene.canvas.Canvas
 import javafx.scene.control._
 import javafx.scene.paint.Color
@@ -59,10 +61,11 @@ import play.api.libs.json._
 
 import scalafx.geometry.{Point2D, Rectangle2D}
 import Helpers.toRect
+import akka.stream.scaladsl.FileIO
 
-import scala.collection.immutable.Seq
 import scala.concurrent.duration.Duration
 import scala.concurrent.duration._
+import scala.util.Try
 
 case class EditorContext(
   drawWidget: (Widget[_], Boolean) => Unit,
@@ -2038,18 +2041,63 @@ class MainController extends Initializable with HandleBigJob {
     )
     
     println(s"Current version: ${generated.BuildInfo.version}, Latest version: ${latestVersion}")
-//      if (latestVersion > Version.parse(generated.BuildInfo.version)) {
-    if (true) {
-      val dlg = new Alert(
-        javafx.scene.control.Alert.AlertType.CONFIRMATION,
-        s"アプリケーションの更新が必要です。\nクリックして進んでください。\n現在:${generated.BuildInfo.version}, 最新:${latestVersion}",
-        javafx.scene.control.ButtonType.APPLY
-      )
-      dlg.setTitle("アプリケーション更新")
+    if (latestVersion > Version.parse(generated.BuildInfo.version)) {
+      val dlg = new SfxAlert(
+        alertType = SfxAlert.AlertType.Confirmation
+      ) {
+        title = "アプリケーション更新"
+        contentText = s"アプリケーションの更新が必要です。\nクリックして進んでください。\n現在:${generated.BuildInfo.version}, 最新:${latestVersion}\nwithout JDK版を使用している方は取消を選び、\nご自分で最新版をDownloadしてください。"
+        buttonTypes = Seq(
+          SfxButtonType.Apply, SfxButtonType.Cancel
+        )
+      }
       dlg.initOwner(stage)
-      dlg.showAndWait()
-
-
+      dlg.showAndWait() match {
+        case Some(SfxButtonType.Apply) => performUpdate(latestVersion)
+        case _ => Platform.runLater(terminateApplication())
+      }
     }
+  }
+
+  def performUpdate(v: Version) {
+    implicit val system = ActorSystem()
+    implicit val materializer = ActorMaterializer()
+    val cwd = Paths.get(System.getProperty("user.dir"))
+    val fileName = Os().fileName(v)
+    val downloadedFile = cwd.resolve(fileName)
+    println("Downloading + " + downloadedFile)
+    val dlg = new Alert(AlertType.None)
+    dlg.setTitle("ダウンロード中")
+    dlg.setContentText("ダウンロード中。お待ちください")
+    dlg.initOwner(stage)
+
+    Ws().url(ModuleServerUrl + "/getModule").withQueryStringParameters(
+      "moduleName" -> "formBuilder",
+      "fileName" -> fileName
+    ).get().map { resp =>
+      resp.status match {
+        case 200 =>
+          val m = resp.bodyAsSource.runWith(FileIO.toPath(downloadedFile))
+          m.onComplete { _ =>
+            println("Download completed.")
+            println("Explode " + downloadedFile + " into " + cwd)
+            Platform.runLater(terminateApplication())
+          }
+        case _ =>
+          println("Cannot download file status: " + resp.status + "(" + resp.statusText + ")")
+          dlg.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL);
+          dlg.close()
+          Platform.runLater {
+            val dlg = new SfxAlert(AlertType.Error) {
+              title = "ダウンロード エラー"
+              contentText = "ダウンロードに失敗しました。code: " + resp.status + "\n(" + resp.statusText + ")"
+            }
+            dlg.showAndWait()
+            Platform.runLater(terminateApplication())
+          }
+      }
+    }
+
+    dlg.showAndWait()
   }
 }

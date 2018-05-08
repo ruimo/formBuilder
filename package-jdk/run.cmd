@@ -1,5 +1,8 @@
 cd %~dp0
 
+set JAVA_HOME=jdk
+app\formbuilder\bin\formbuilder.bat
+
 if exist formbuilder (
   echo rd /s /q app jdk run run.cmd > update.cmd
   echo move formbuilder\app . >> update.cmd
@@ -13,6 +16,3 @@ if exist formbuilder (
 ) else (
   del update.cmd
 )
-
-set JAVA_HOME=jdk
-app\formbuilder\bin\formbuilder.bat
