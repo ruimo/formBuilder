@@ -15,6 +15,7 @@ if [ -e formbuilder ]; then
 rm -rf app jdk run run.cmd
 mv formbuilder/app formbuilder/jdk formbuilder/run formbuilder/run.cmd .
 rm -rf formbuilder
+chmod +x run
 exec ./run
 EOF
   chmod +x update
