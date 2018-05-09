@@ -23,11 +23,12 @@ object Os {
     override def fileName(v: Version): String = "formbuilder-" + v + ".tgz"
   }
 
-  private val value: Os = System.getProperty("os.name").toLowerCase match {
-    case "linux" => Linux
-    case "mac" => Osx
-    case "windows" => Windows
-    case _ => Other
+  private val value: Os = {
+    val osName = System.getProperty("os.name").toLowerCase
+    if (osName.startsWith("linux")) Linux
+    else if (osName.startsWith("mac")) Osx
+    else if (osName.startsWith("windows")) Windows
+    else Other
   }
 
   def apply(): Os = value
