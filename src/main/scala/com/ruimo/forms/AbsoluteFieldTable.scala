@@ -161,11 +161,11 @@ class AbsoluteFieldTable(
 
   def renameSelectedField(af: AbsoluteField, newName: String) {
     if (af.name != newName) {
-      val newField = af.withName(newName)
+      val newField = af.withNewValue(newName = newName)
       _selectedAbsoluteFields.zipWithIndex.find { _._1 == af } match {
         case Some((f, idx)) =>
           val sp = _selectedAbsoluteFields.splitAt(idx)
-          _selectedAbsoluteFields = (sp._1 :+ f.withName(newName)) ++ sp._2.tail
+          _selectedAbsoluteFields = (sp._1 :+ f.withNewValue(newName = newName)) ++ sp._2.tail
         case None =>
       }
     }

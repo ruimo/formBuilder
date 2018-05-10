@@ -2,6 +2,10 @@ package com.ruimo
 
 package object forms {
   type TesseractOcrSettingsImpl = projects.project0.TesseractOcrSettingsImpl
+  val TesseractOcrSettingsImpl = projects.project0.TesseractOcrSettingsImpl
+
+  type TesseractAcceptCharsCustomImpl = projects.project0.TesseractAcceptCharsImpl
+  val TesseractAcceptCharsCustomImpl = projects.project0.TesseractAcceptCharsImpl
 
   type TesseractAcceptCharsImpl = projects.project0.TesseractAcceptCharsImpl
 

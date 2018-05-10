@@ -978,8 +978,11 @@ class MainController extends Initializable with HandleBigJob {
           val (dlg, ctrl) = absoluteFieldDialog
           dlg.showAndWait().map(_.delegate) match {
             case Some(ButtonType.APPLY) =>
-              project.addAbsoluteField(af.withName(ctrl.fieldName), true)
               println("APPLY")
+              project.addAbsoluteField(
+                af.withNewValue(newName = ctrl.fieldName, newOcrSettings = Some(ctrl.ocrSettings)),
+                true
+              )
             case Some(_) =>
               println("canceled")
               redrawRect(field.drawArea(imgSz))
@@ -1792,6 +1795,7 @@ class MainController extends Initializable with HandleBigJob {
         project.getSelectedAbsoluteFieldAt(imgSz, e.getX, e.getY) foreach { f =>
           val (dlg, ctrl) = absoluteFieldDialog
           ctrl.fieldName = f.name
+          f.ocrSettings.foreach { os => ctrl.ocrSettings = os }
           dlg.showAndWait().map(_.delegate) match {
             case Some(ButtonType.APPLY) =>
               project.renameSelectedAbsoluteField(f, ctrl.fieldName)

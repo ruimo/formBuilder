@@ -531,28 +531,42 @@ trait RectField extends Field {
   }
 }
 
-sealed trait TesseractLang
+sealed trait TesseractLang {
+  val code: String
+}
 case object TesseractLangJa extends TesseractLang {
+  val code: String = "ja"
   override def toString = "日本語"
 }
 case object TesseractLangEn extends TesseractLang {
+  val code: String = "en"
   override def toString = "英語"
 }
 
-trait OcrSettings {
+object TesseractLang {
+  implicit object tesseractLangFormat extends Format[TesseractLang] {
+    override def reads(jv: JsValue): JsResult[TesseractLang] = {
+      val code = jv.as[String]
+      JsSuccess(
+        if (code == TesseractLangEn.code) TesseractLangEn else TesseractLangJa
+      )
+    }
+
+    override def writes(d: TesseractLang): JsValue = JsString(d.code)
+  }
 }
 
-trait TesseractOcrSettings extends OcrSettings {
-}
+trait OcrSettings
+
+trait TesseractOcrSettings extends OcrSettings
 
 trait TesseractAcceptChars
 
 trait AbsoluteField extends Field with RectField {
   type R <: AbsoluteField
   def name: String
-  def withName(newName: String): R
   def ocrSettings: Option[OcrSettings]
-  def withOcrSettings(newOcrSettings: Option[OcrSettings]): R
+  def withNewValue(newName: String = name, newOcrSettings: Option[OcrSettings] = ocrSettings): R
 }
 
 trait CropField extends Field with RectField {

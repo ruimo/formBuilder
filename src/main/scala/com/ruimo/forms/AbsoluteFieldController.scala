@@ -5,18 +5,22 @@ import scalafx.scene.control.{Label => SfxLabel}
 import scalafx.scene.control.{TextField => SfxTextField}
 import javafx.event.ActionEvent
 import scalafx.scene.control.{ComboBox => SfxComboBox}
+
 import scala.collection.JavaConverters._
 import scalafx.collections.ObservableBuffer
 import javafx.scene.control._
 import javafx.scene.control.TableColumn.CellDataFeatures
 import java.net.URL
 import java.util.ResourceBundle
+
 import javafx.fxml.{FXML, Initializable}
 import javafx.scene.control.TableView
 import javafx.util.Callback
 import javafx.beans.value.ObservableValue
 import javafx.beans.property.ReadOnlyStringWrapper
 import javafx.scene.input.{KeyCode, KeyEvent, MouseButton, MouseEvent}
+
+import scala.collection.{immutable => imm}
 
 sealed trait OcrEngineCode
 case object OcrEngineCodeTesseract extends OcrEngineCode {
@@ -113,10 +117,6 @@ class AbsoluteFieldController extends Initializable {
   lazy val sfxTesAsteriskCheck = new SfxCheckBox(tesAsteriskCheck)
 
   @FXML
-  private[this] var tesAllCheck: CheckBox = _
-  lazy val sfxTesAllCheck = new SfxCheckBox(tesAllCheck)
-
-  @FXML
   private[this] var tesCustomChar: TextField = _
   lazy val sfxTesCustomChar = new SfxTextField(tesCustomChar)
 
@@ -124,37 +124,72 @@ class AbsoluteFieldController extends Initializable {
   private[this] var tesCustomLabel: Label = _
   lazy val sfxTesCustomLabel = new SfxLabel(tesCustomLabel)
 
-  @FXML
-  def tesAllCheckClicked(e: ActionEvent) {
-    println("All clicked: " + sfxTesAllCheck.selected())
-    def onAllChecked(isChecked: Boolean) {
-      sfxTesCustomChar.visible = !isChecked
-      sfxTesCustomLabel.visible = !isChecked
-      sfxTesDigitCheck.visible = !isChecked
-      sfxTesUpperAlphCheck.visible = !isChecked
-      sfxTesLowerAlphCheck.visible = !isChecked
-      sfxTesCommaCheck.visible = !isChecked
-      sfxTesPeriodCheck.visible = !isChecked
-      sfxTesMinusCheck.visible = !isChecked
-      sfxTesPlusCheck.visible = !isChecked
-      sfxTesSlashCheck.visible = !isChecked
-      sfxTesSharpCheck.visible = !isChecked
-      sfxTesDollerCheck.visible = !isChecked
-      sfxTesBraceCheck.visible = !isChecked
-      sfxTesPercentCheck.visible = !isChecked
-      sfxTesColonCheck.visible = !isChecked
-      sfxTesSemiColonCheck.visible = !isChecked
-      sfxTesEqualCheck.visible = !isChecked
-      sfxTesAsteriskCheck.visible = !isChecked
-    }
-
-    onAllChecked(sfxTesAllCheck.selected())
-  }
-
   def fieldName: String = fieldNameText.getText()
 
   def fieldName_=(newName: String) {
     fieldNameText.setText(newName)
+  }
+
+  def tesseractAcceptChars: imm.Set[Tesseract.OcrChars] = {
+    var chars = imm.Set[Tesseract.OcrChars]()
+    if (sfxTesDigitCheck.isSelected()) chars = chars + Tesseract.OcrDigit
+    if (sfxTesUpperAlphCheck.isSelected()) chars = chars + Tesseract.OcrUpperAlphabet
+    if (sfxTesLowerAlphCheck.isSelected()) chars = chars + Tesseract.OcrLowerALphabet
+    if (sfxTesCommaCheck.isSelected()) chars = chars + Tesseract.OcrComma
+    if (sfxTesPeriodCheck.isSelected()) chars = chars + Tesseract.OcrPeriod
+    if (sfxTesMinusCheck.isSelected()) chars = chars + Tesseract.OcrMinus
+    if (sfxTesPlusCheck.isSelected()) chars = chars + Tesseract.OcrPlus
+    if (sfxTesSlashCheck.isSelected()) chars = chars + Tesseract.OcrSlash
+    if (sfxTesSharpCheck.isSelected()) chars = chars + Tesseract.OcrSharp
+    if (sfxTesDollerCheck.isSelected()) chars = chars + Tesseract.OcrDoller
+    if (sfxTesBraceCheck.isSelected()) chars = chars + Tesseract.OcrBrace
+    if (sfxTesPercentCheck.isSelected()) chars = chars + Tesseract.OcrPercent
+    if (sfxTesColonCheck.isSelected()) chars = chars + Tesseract.OcrColon
+    if (sfxTesSemiColonCheck.isSelected()) chars = chars + Tesseract.OcrSemiColon
+    if (sfxTesEqualCheck.isSelected()) chars = chars + Tesseract.OcrEqual
+    if (sfxTesAsteriskCheck.isSelected()) chars = chars + Tesseract.OcrAsterisc
+    chars
+  }
+
+  def applyTesseractAcceptChars(chars: Set[Tesseract.OcrChars]) {
+    sfxTesDigitCheck.selected = chars.contains(Tesseract.OcrDigit)
+    sfxTesUpperAlphCheck.selected = chars.contains(Tesseract.OcrUpperAlphabet)
+    sfxTesLowerAlphCheck.selected = chars.contains(Tesseract.OcrLowerALphabet)
+    sfxTesCommaCheck.selected = chars.contains(Tesseract.OcrComma)
+    sfxTesPeriodCheck.selected = chars.contains(Tesseract.OcrPeriod)
+    sfxTesMinusCheck.selected = chars.contains(Tesseract.OcrMinus)
+    sfxTesPlusCheck.selected = chars.contains(Tesseract.OcrPlus)
+    sfxTesSlashCheck.selected = chars.contains(Tesseract.OcrSlash)
+    sfxTesSharpCheck.selected = chars.contains(Tesseract.OcrSharp)
+    sfxTesDollerCheck.selected = chars.contains(Tesseract.OcrDoller)
+    sfxTesBraceCheck.selected = chars.contains(Tesseract.OcrBrace)
+    sfxTesPercentCheck.selected = chars.contains(Tesseract.OcrPercent)
+    sfxTesColonCheck.selected = chars.contains(Tesseract.OcrColon)
+    sfxTesSemiColonCheck.selected = chars.contains(Tesseract.OcrSemiColon)
+    sfxTesEqualCheck.selected = chars.contains(Tesseract.OcrEqual)
+    sfxTesAsteriskCheck.selected = chars.contains(Tesseract.OcrAsterisc)
+  }
+
+  def ocrSettings: OcrSettings = sfxOcrEngineComboBox.value() match {
+    case _ => TesseractOcrSettingsImpl(
+      lang = sfxTesLangDropDown.value(),
+      acceptChars = TesseractAcceptCharsCustomImpl(
+        tesseractAcceptChars,
+        sfxTesCustomChar.text()
+      )
+    )
+  }
+
+  def ocrSettings_=(newOcrSettings: OcrSettings) {
+    newOcrSettings match {
+      case TesseractOcrSettingsImpl(lang, acceptChars) =>
+        sfxTesLangDropDown.value = lang
+        acceptChars match {
+          case TesseractAcceptCharsCustomImpl(chars, custom) =>
+            applyTesseractAcceptChars(chars)
+            sfxTesCustomChar.text = custom
+        }
+    }
   }
 
   override def initialize(url: URL, resourceBundle: ResourceBundle) {

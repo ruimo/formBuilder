@@ -79,7 +79,6 @@
                                     <CheckBox fx:id="tesSemiColonCheck" mnemonicParsing="false" text="セミコロン(;)" />
                                     <CheckBox fx:id="tesEqualCheck" mnemonicParsing="false" text="等号(=)" />
                                     <CheckBox fx:id="tesAsteriskCheck" mnemonicParsing="false" text="アスタリスク(*)" />
-                                    <CheckBox fx:id="tesAllCheck" mnemonicParsing="false" onAction="#tesAllCheckClicked" text="全て" />
                                  </children>
                                  <opaqueInsets>
                                     <Insets />

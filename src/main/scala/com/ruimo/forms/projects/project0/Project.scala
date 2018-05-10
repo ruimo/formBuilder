@@ -33,6 +33,56 @@ import scala.annotation.tailrec
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
 
+case class TesseractAcceptCharsImpl(
+  chars: imm.Set[Tesseract.OcrChars],
+  custom: String
+) extends TesseractAcceptChars
+
+object TesseractAcceptCharsImpl {
+  implicit object tesseractAcceptCharsImplFormat extends Format[TesseractAcceptCharsImpl] {
+    override def reads(jv: JsValue): JsResult[TesseractAcceptCharsImpl] = JsSuccess(
+      TesseractAcceptCharsImpl(
+        ((jv \ "chars").as[Seq[String]]).flatMap { s =>
+          Tesseract.OcrChars.tryParse(s)
+        }.toSet,
+        (jv \ "custom").as[String]
+      )
+    )
+
+    override def writes(f: TesseractAcceptCharsImpl): JsValue = Json.obj(
+      "chars" -> f.chars.map(_.code),
+      "custom" -> f.custom
+    )
+  }
+}
+
+case class TesseractOcrSettingsImpl(
+  lang: TesseractLang,
+  acceptChars: TesseractAcceptChars
+) extends TesseractOcrSettings
+
+object TesseractOcrSettingsImpl {
+  import TesseractAcceptCharsImpl.tesseractAcceptCharsImplFormat
+
+  implicit object tesseractOcrSettingsImplFormat extends Format[TesseractOcrSettingsImpl] {
+    override def reads(jv: JsValue): JsResult[TesseractOcrSettingsImpl] = JsSuccess(
+      TesseractOcrSettingsImpl(
+        (jv \ "lang").as[TesseractLang],
+        (jv \ "acceptChars").as[TesseractAcceptCharsImpl]
+      )
+    )
+
+    override def writes(f: TesseractOcrSettingsImpl): JsValue = Json.obj(
+      "lang" -> f.lang,
+      "acceptChars" -> (
+        f.acceptChars match {
+          case ta: TesseractAcceptCharsImpl => ta
+        }
+      )
+    )
+  }
+}
+
 object AbsoluteFieldImpl {
   val LineWidth = 2.0
 
@@ -52,6 +102,8 @@ object AbsoluteFieldImpl {
       )
     }
 
+    import projects.project0.TesseractOcrSettingsImpl.tesseractOcrSettingsImplFormat
+
     override def writes(f: AbsoluteField): JsValue = Json.obj(
       "originalSize" -> JsArray(Seq(JsNumber(f.originalSize._1), JsNumber(f.originalSize._2))),
       "x" -> f.rect.getMinX(),
@@ -59,6 +111,14 @@ object AbsoluteFieldImpl {
       "w" -> f.rect.getWidth(),
       "h" -> f.rect.getHeight(),
       "name" -> f.name
+    ) ++ (
+      f.ocrSettings match {
+        case None => Json.obj()
+        case Some(os) => os match {
+          case ts: TesseractOcrSettingsImpl =>
+            Json.obj("ocrSettings" -> ts)
+        }
+      }
     )
   }
 }
@@ -91,11 +151,8 @@ case class AbsoluteFieldImpl(
 
   def withNewRect(newRect: Rectangle2D, formSize: (Double, Double)): R = copy(rect = newRect, originalSize = formSize)
 
-  def withName(newName: String): AbsoluteFieldImpl =
-    if (newName != name) copy(name = newName) else this
-
-  def withOcrSettings(newOcrSettings: Option[OcrSettings]): AbsoluteFieldImpl =
-    if (newOcrSettings != ocrSettings) copy(ocrSettings = newOcrSettings) else this
+  def withNewValue(newName: String = name, newOcrSettings: Option[OcrSettings] = ocrSettings): AbsoluteFieldImpl =
+    if (newName == name && newOcrSettings == ocrSettings) this else copy(name = newName, ocrSettings = newOcrSettings)
 
   def possibleMouseOperation(formSize: (Double, Double), x: Double, y: Double): MouseOperation = {
     val cornerSize = LineWidth * 2
@@ -1822,7 +1879,5 @@ class ProjectImpl(
   }
 }
 
-case class TesseractOcrSettingsImpl(
-  lang: TesseractLang,
-  acceptChars: TesseractAcceptChars
-) extends TesseractOcrSettings
+
+
