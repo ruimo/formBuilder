@@ -19,5 +19,4 @@ object Tesseract {
   case object OcrEqual extends OcrChars
   case object OcrAsterisc extends OcrChars
   case object OcrAll extends OcrChars
-
 }

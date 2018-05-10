@@ -542,17 +542,17 @@ case object TesseractLangEn extends TesseractLang {
 trait OcrSettings {
 }
 
-case class TesseractAcceptChars(code: String) extends AnyVal
+trait TesseractOcrSettings extends OcrSettings {
+}
 
-case class TesseractOcrSettings(
-  lang: TesseractLang,
-  acceptChars: TesseractAcceptChars
-) extends OcrSettings
+trait TesseractAcceptChars
 
 trait AbsoluteField extends Field with RectField {
   type R <: AbsoluteField
   def name: String
   def withName(newName: String): R
+  def ocrSettings: Option[OcrSettings]
+  def withOcrSettings(newOcrSettings: Option[OcrSettings]): R
 }
 
 trait CropField extends Field with RectField {

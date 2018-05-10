@@ -79,14 +79,14 @@
                                     <CheckBox fx:id="tesSemiColonCheck" mnemonicParsing="false" text="セミコロン(;)" />
                                     <CheckBox fx:id="tesEqualCheck" mnemonicParsing="false" text="等号(=)" />
                                     <CheckBox fx:id="tesAsteriskCheck" mnemonicParsing="false" text="アスタリスク(*)" />
-                                    <CheckBox fx:id="tesAllCheck" mnemonicParsing="false" text="全て" />
+                                    <CheckBox fx:id="tesAllCheck" mnemonicParsing="false" onAction="#tesAllCheckClicked" text="全て" />
                                  </children>
                                  <opaqueInsets>
                                     <Insets />
                                  </opaqueInsets>
                               </FlowPane>
-                              <Label text="文字種(カスタム)" GridPane.rowIndex="2" />
-                              <TextField fx:id="tesCustomeChar" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+                              <Label fx:id="tesCustomLabel" text="文字種(カスタム)" GridPane.rowIndex="2" />
+                              <TextField fx:id="tesCustomChar" GridPane.columnIndex="1" GridPane.rowIndex="2" />
                            </children>
                            <padding>
                               <Insets right="1.0" top="10.0" />

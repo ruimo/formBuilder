@@ -63,7 +63,10 @@ object AbsoluteFieldImpl {
   }
 }
 
-case class AbsoluteFieldImpl(originalSize: (Double, Double), rect: Rectangle2D, name: String) extends AbsoluteField {
+case class AbsoluteFieldImpl(
+  originalSize: (Double, Double), rect: Rectangle2D,
+  name: String, ocrSettings: Option[OcrSettings] = None
+) extends AbsoluteField {
   import AbsoluteFieldImpl._
   override type R = AbsoluteFieldImpl
 
@@ -90,6 +93,9 @@ case class AbsoluteFieldImpl(originalSize: (Double, Double), rect: Rectangle2D, 
 
   def withName(newName: String): AbsoluteFieldImpl =
     if (newName != name) copy(name = newName) else this
+
+  def withOcrSettings(newOcrSettings: Option[OcrSettings]): AbsoluteFieldImpl =
+    if (newOcrSettings != ocrSettings) copy(ocrSettings = newOcrSettings) else this
 
   def possibleMouseOperation(formSize: (Double, Double), x: Double, y: Double): MouseOperation = {
     val cornerSize = LineWidth * 2
@@ -1815,3 +1821,8 @@ class ProjectImpl(
     }
   }
 }
+
+case class TesseractOcrSettingsImpl(
+  lang: TesseractLang,
+  acceptChars: TesseractAcceptChars
+) extends TesseractOcrSettings
