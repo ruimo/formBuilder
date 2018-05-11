@@ -20,7 +20,7 @@ object Main extends JFXApp with HasLogger {
   }
 
   {
-    logger.info("Application start.")
+    logger.info("Application start. Version: " + generated.BuildInfo.version)
     val loader = new jfxf.FXMLLoader(resource)
     val root: jfxs.Parent = loader.load()
 

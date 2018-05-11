@@ -1,26 +1,30 @@
 package com.ruimo.forms
 
+import java.awt.Desktop
+
 import generated.BuildInfo
 import java.util.prefs.Preferences
 
 import scala.math
 import scalafx.scene.control.{ButtonType => SfxButtonType}
+
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.concurrent.{Await, Future}
 import java.util.zip.ZipInputStream
+
 import javafx.animation.AnimationTimer
 
 import scala.math.{Pi, abs, cos, sin}
 import java.io._
 
 import scalafx.scene.canvas.{GraphicsContext => SfxGraphicsContext}
+
 import scala.collection.{immutable => imm, mutable => mut}
 import javafx.fxml.{FXML, FXMLLoader, Initializable}
 import javafx.event.ActionEvent
 import javafx.scene.input.{KeyCode, KeyEvent, MouseEvent}
 import javafx.event.EventHandler
-
 import scalafx.collections.ObservableBuffer
 import scalafx.application.Platform
 import scalafx.scene.image.Image
@@ -33,8 +37,8 @@ import java.util
 import java.util.ResourceBundle
 import java.util.concurrent.TimeUnit
 import java.util.zip.{ZipEntry, ZipOutputStream}
-import javafx.scene.{Cursor, Scene}
 
+import javafx.scene.{Cursor, Scene}
 import scalafx.scene.control.{Alert => SfxAlert, ListView => SfxListView, TextInputDialog => SfxTextInputDialog}
 import scalafx.scene.control.{ChoiceDialog => SfxChoiceDialog}
 import scalafx.scene.control.{CheckBox => SfxCheckBox}
@@ -43,7 +47,6 @@ import javafx.scene.canvas.Canvas
 import javafx.scene.control._
 import javafx.scene.paint.Color
 import javafx.stage.WindowEvent
-
 import scalafx.scene.canvas.{Canvas => SfxCanvas}
 import scalafx.scene.control.{DialogPane => SfxDialogPane}
 import scalafx.scene.control.Alert.AlertType
@@ -58,7 +61,6 @@ import akka.stream.ActorMaterializer
 import com.ruimo.scoins.{LoanPattern, PathUtil, Version, Zip}
 import com.ruimo.scoins.LoanPattern._
 import play.api.libs.json._
-
 import scalafx.geometry.{Point2D, Rectangle2D}
 import Helpers.toRect
 import akka.stream.scaladsl.FileIO
@@ -629,6 +631,7 @@ case class SelectedImage(file: Path, image: Image) {
 }
 
 class MainController extends Initializable with HandleBigJob {
+  val cwd = Paths.get(System.getProperty("user.dir"))
   val ModuleServerUrl = "https://dev.functionalcapture.com"
   val pref: Preferences = Preferences.userNodeForPackage(getClass)
   val settingsLoader: SettingsLoader = Settings.Loader
@@ -1960,6 +1963,20 @@ class MainController extends Initializable with HandleBigJob {
     alert.showAndWait()
   }
 
+  @FXML
+  def showDiagnoseInfoClicked(e: ActionEvent) {
+    logger.info("showDiagnoseInfoClicked")
+
+    val alert = new SfxAlert(AlertType.None) {
+      title = "診断情報の表示"
+      contentText = "ログファイルが存在するディレクトリを開きます\n" + cwd.toAbsolutePath + "\n" + "うまく開かない場合は、このディレクトリを\n" + "直接開いてください。"
+      buttonTypes = Seq(SfxButtonType.OK)
+    }
+    alert.showAndWait()
+
+    Desktop.getDesktop().open(cwd.toFile)
+  }
+
   override def initialize(url: URL, resourceBundle: ResourceBundle) {
     imageTable.addChangeListener(new ImageTableListener() {
       override def onFilesChanged(before: imm.Set[File], after: imm.Set[File]) {
@@ -2109,7 +2126,6 @@ class MainController extends Initializable with HandleBigJob {
   def performUpdate(v: Version) {
     implicit val system = ActorSystem()
     implicit val materializer = ActorMaterializer()
-    val cwd = Paths.get(System.getProperty("user.dir"))
     val fileName = Os().fileName(v)
     val downloadedFile = cwd.resolve(fileName)
     logger.info("Downloading + " + downloadedFile)

@@ -21,35 +21,36 @@
 <?import javafx.scene.layout.VBox?>
 
 <BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/8.0.111" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.ruimo.forms.MainController">
-   <top>
-      <MenuBar BorderPane.alignment="CENTER">
-        <menus>
-          <Menu text="ファイル(_F)">
-            <items>
-                  <MenuItem onAction="#openMenuClicked" text="開く(_0)" />
-              <MenuItem onAction="#saveMenuClicked" text="保管(_S)" />
-              <MenuItem onAction="#exitMenuClicked" text="終了(_X)" />
-            </items>
-          </Menu>
-            <Menu text="帳票イメージ(_I)">
-              <items>
-                <MenuItem onAction="#imageOpenMenuClicked" text="開く(_O)" />
-              </items>
-            </Menu>
-            <Menu text="オプション(_O)">
-               <items>
-                  <MenuItem onAction="#authSettingsMenuClicked" text="認証(_A)" />
-               </items>
-            </Menu>
-          <Menu mnemonicParsing="false" text="Help(_H)">
-            <items>
-              <MenuItem onAction="#helpAboutClicked" text="About(_A)" />
-            </items>
-          </Menu>
-        </menus>
-      </MenuBar>
-   </top>
-   <center>
+  <top>
+    <MenuBar BorderPane.alignment="CENTER">
+      <menus>
+        <Menu text="ファイル(_F)">
+          <items>
+            <MenuItem onAction="#openMenuClicked" text="開く(_0)" />
+            <MenuItem onAction="#saveMenuClicked" text="保管(_S)" />
+            <MenuItem onAction="#exitMenuClicked" text="終了(_X)" />
+          </items>
+        </Menu>
+        <Menu text="帳票イメージ(_I)">
+          <items>
+            <MenuItem onAction="#imageOpenMenuClicked" text="開く(_O)" />
+          </items>
+        </Menu>
+        <Menu text="オプション(_O)">
+          <items>
+            <MenuItem onAction="#authSettingsMenuClicked" text="認証(_A)" />
+          </items>
+        </Menu>
+        <Menu mnemonicParsing="false" text="Help(_H)">
+          <items>
+            <MenuItem onAction="#showDiagnoseInfoClicked" text="診断情報の表示(_L)" />
+            <MenuItem onAction="#helpAboutClicked" text="About(_A)" />
+          </items>
+        </Menu>
+      </menus>
+    </MenuBar>
+  </top>
+  <center>
       <SplitPane dividerPositions="0.7289972899728997" orientation="VERTICAL" prefHeight="200.0" prefWidth="160.0" BorderPane.alignment="CENTER">
         <items>
             <SplitPane dividerPositions="0.5">
