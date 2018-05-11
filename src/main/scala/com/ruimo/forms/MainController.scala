@@ -1798,7 +1798,7 @@ class MainController extends Initializable with HandleBigJob {
           f.ocrSettings.foreach { os => ctrl.ocrSettings = os }
           dlg.showAndWait().map(_.delegate) match {
             case Some(ButtonType.APPLY) =>
-              project.renameSelectedAbsoluteField(f, ctrl.fieldName)
+              project.updateSelectedAbsoluteField(f, ctrl.fieldName, Some(ctrl.ocrSettings))
             case Some(_) =>
               println("canceled")
             case None =>

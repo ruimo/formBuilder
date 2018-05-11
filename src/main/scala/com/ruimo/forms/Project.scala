@@ -1,8 +1,7 @@
 package com.ruimo.forms
 
-import play.api.libs.json._ // JSON library
-import play.api.libs.json.Reads._ // Custom validation helpers
-
+import play.api.libs.json._
+import play.api.libs.json.Reads._
 import play.api.libs.functional.syntax._
 import com.ruimo.scoins.Percent
 
@@ -10,6 +9,8 @@ import scala.concurrent.Future
 import java.nio.file.Path
 import javafx.scene.Cursor
 import javafx.scene.input.MouseEvent
+
+import com.ruimo.forms.common.OcrSettings
 
 import scalafx.scene.image.Image
 import scalafx.geometry.{Point2D, Rectangle2D}
@@ -531,37 +532,6 @@ trait RectField extends Field {
   }
 }
 
-sealed trait TesseractLang {
-  val code: String
-}
-case object TesseractLangJa extends TesseractLang {
-  val code: String = "ja"
-  override def toString = "日本語"
-}
-case object TesseractLangEn extends TesseractLang {
-  val code: String = "en"
-  override def toString = "英語"
-}
-
-object TesseractLang {
-  implicit object tesseractLangFormat extends Format[TesseractLang] {
-    override def reads(jv: JsValue): JsResult[TesseractLang] = {
-      val code = jv.as[String]
-      JsSuccess(
-        if (code == TesseractLangEn.code) TesseractLangEn else TesseractLangJa
-      )
-    }
-
-    override def writes(d: TesseractLang): JsValue = JsString(d.code)
-  }
-}
-
-trait OcrSettings
-
-trait TesseractOcrSettings extends OcrSettings
-
-trait TesseractAcceptChars
-
 trait AbsoluteField extends Field with RectField {
   type R <: AbsoluteField
   def name: String
@@ -658,6 +628,7 @@ trait Project {
   def moveSelectedAbsoluteFields(formSize: (Double, Double), from: Point2D, to: Point2D): Unit
   def moveSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D): Unit
   def renameSelectedAbsoluteField(f: AbsoluteField, newName: String): Unit
+  def updateSelectedAbsoluteField(f: AbsoluteField, newName: String, newOcrSettings: Option[OcrSettings]): Unit
   def redraw(): Unit
   def possibleMouseOperation(formSize: (Double, Double), x: Double, y: Double): MouseOperation
   def northResizeSelectedFields(formSize: (Double, Double), p0: Point2D, p1: Point2D)

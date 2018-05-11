@@ -2,6 +2,7 @@ package com.ruimo.forms
 
 import javafx.scene.input.MouseEvent
 
+import com.ruimo.forms.common.OcrSettings
 import play.api.libs.json._
 
 import scala.collection.{immutable => imm}
@@ -159,16 +160,20 @@ class AbsoluteFieldTable(
     }
   }
 
-  def renameSelectedField(af: AbsoluteField, newName: String) {
-    if (af.name != newName) {
-      val newField = af.withNewValue(newName = newName)
+  def updateSelectedField(af: AbsoluteField, newName: String, newOcrSettings: Option[OcrSettings]) {
+    if (af.name != newName || af.ocrSettings != newOcrSettings) {
       _selectedAbsoluteFields.zipWithIndex.find { _._1 == af } match {
         case Some((f, idx)) =>
           val sp = _selectedAbsoluteFields.splitAt(idx)
-          _selectedAbsoluteFields = (sp._1 :+ f.withNewValue(newName = newName)) ++ sp._2.tail
+          _selectedAbsoluteFields = (sp._1 :+ f.withNewValue(newName = newName, newOcrSettings = newOcrSettings)) ++ sp._2.tail
         case None =>
       }
+
     }
+  }
+
+  def renameSelectedField(af: AbsoluteField, newName: String) {
+    updateSelectedField(af, newName, af.ocrSettings)
   }
 
   def redraw() {

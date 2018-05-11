@@ -18,6 +18,7 @@ import play.api.libs.ws.DefaultBodyWritables._
 import play.api.libs.ws.JsonBodyWritables._
 import play.api.libs.ws._
 import com.ruimo.forms._
+import com.ruimo.forms.common.{OcrSettings, TesseractOcrSettings}
 import play.api.libs.json._
 
 import scala.collection.{immutable => imm}
@@ -33,56 +34,6 @@ import scala.annotation.tailrec
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
 
-case class TesseractAcceptCharsImpl(
-  chars: imm.Set[Tesseract.OcrChars],
-  custom: String
-) extends TesseractAcceptChars
-
-object TesseractAcceptCharsImpl {
-  implicit object tesseractAcceptCharsImplFormat extends Format[TesseractAcceptCharsImpl] {
-    override def reads(jv: JsValue): JsResult[TesseractAcceptCharsImpl] = JsSuccess(
-      TesseractAcceptCharsImpl(
-        ((jv \ "chars").as[Seq[String]]).flatMap { s =>
-          Tesseract.OcrChars.tryParse(s)
-        }.toSet,
-        (jv \ "custom").as[String]
-      )
-    )
-
-    override def writes(f: TesseractAcceptCharsImpl): JsValue = Json.obj(
-      "chars" -> f.chars.map(_.code),
-      "custom" -> f.custom
-    )
-  }
-}
-
-case class TesseractOcrSettingsImpl(
-  lang: TesseractLang,
-  acceptChars: TesseractAcceptChars
-) extends TesseractOcrSettings
-
-object TesseractOcrSettingsImpl {
-  import TesseractAcceptCharsImpl.tesseractAcceptCharsImplFormat
-
-  implicit object tesseractOcrSettingsImplFormat extends Format[TesseractOcrSettingsImpl] {
-    override def reads(jv: JsValue): JsResult[TesseractOcrSettingsImpl] = JsSuccess(
-      TesseractOcrSettingsImpl(
-        (jv \ "lang").as[TesseractLang],
-        (jv \ "acceptChars").as[TesseractAcceptCharsImpl]
-      )
-    )
-
-    override def writes(f: TesseractOcrSettingsImpl): JsValue = Json.obj(
-      "lang" -> f.lang,
-      "acceptChars" -> (
-        f.acceptChars match {
-          case ta: TesseractAcceptCharsImpl => ta
-        }
-      )
-    )
-  }
-}
-
 object AbsoluteFieldImpl {
   val LineWidth = 2.0
 
@@ -97,12 +48,11 @@ object AbsoluteFieldImpl {
             (field \ "x").as[Double], (field \ "y").as[Double],
             (field \ "w").as[Double], (field \ "h").as[Double]
           ),
-          (jv \ "name").as[String]
+          (jv \ "name").as[String],
+          (field \ "ocrSettings").asOpt[OcrSettings]
         )
       )
     }
-
-    import projects.project0.TesseractOcrSettingsImpl.tesseractOcrSettingsImplFormat
 
     override def writes(f: AbsoluteField): JsValue = Json.obj(
       "originalSize" -> JsArray(Seq(JsNumber(f.originalSize._1), JsNumber(f.originalSize._2))),
@@ -115,7 +65,7 @@ object AbsoluteFieldImpl {
       f.ocrSettings match {
         case None => Json.obj()
         case Some(os) => os match {
-          case ts: TesseractOcrSettingsImpl =>
+          case ts: TesseractOcrSettings =>
             Json.obj("ocrSettings" -> ts)
         }
       }
@@ -965,7 +915,11 @@ class ProjectImpl(
   }
 
   def renameSelectedAbsoluteField(f: AbsoluteField, newName: String) {
-    _absFields.renameSelectedField(f, newName)
+    updateSelectedAbsoluteField(f, newName, f.ocrSettings)
+  }
+
+  def updateSelectedAbsoluteField(f: AbsoluteField, newName: String, newOcrSettings: Option[OcrSettings]) {
+    _absFields.updateSelectedField(f, newName, newOcrSettings)
     _isDirty = true
   }
 

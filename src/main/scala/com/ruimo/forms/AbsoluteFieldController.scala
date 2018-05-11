@@ -4,21 +4,22 @@ import scalafx.scene.control.{CheckBox => SfxCheckBox}
 import scalafx.scene.control.{Label => SfxLabel}
 import scalafx.scene.control.{TextField => SfxTextField}
 import javafx.event.ActionEvent
-import scalafx.scene.control.{ComboBox => SfxComboBox}
 
+import scalafx.scene.control.{ComboBox => SfxComboBox}
 import scala.collection.JavaConverters._
 import scalafx.collections.ObservableBuffer
 import javafx.scene.control._
 import javafx.scene.control.TableColumn.CellDataFeatures
 import java.net.URL
 import java.util.ResourceBundle
-
 import javafx.fxml.{FXML, Initializable}
 import javafx.scene.control.TableView
 import javafx.util.Callback
 import javafx.beans.value.ObservableValue
 import javafx.beans.property.ReadOnlyStringWrapper
 import javafx.scene.input.{KeyCode, KeyEvent, MouseButton, MouseEvent}
+
+import com.ruimo.forms.common.{TesseractAcceptChars, _}
 
 import scala.collection.{immutable => imm}
 
@@ -171,9 +172,9 @@ class AbsoluteFieldController extends Initializable {
   }
 
   def ocrSettings: OcrSettings = sfxOcrEngineComboBox.value() match {
-    case _ => TesseractOcrSettingsImpl(
+    case _ => TesseractOcrSettings(
       lang = sfxTesLangDropDown.value(),
-      acceptChars = TesseractAcceptCharsCustomImpl(
+      acceptChars = TesseractAcceptChars(
         tesseractAcceptChars,
         sfxTesCustomChar.text()
       )
@@ -182,12 +183,13 @@ class AbsoluteFieldController extends Initializable {
 
   def ocrSettings_=(newOcrSettings: OcrSettings) {
     newOcrSettings match {
-      case TesseractOcrSettingsImpl(lang, acceptChars) =>
-        sfxTesLangDropDown.value = lang
-        acceptChars match {
-          case TesseractAcceptCharsCustomImpl(chars, custom) =>
-            applyTesseractAcceptChars(chars)
-            sfxTesCustomChar.text = custom
+      case tos: TesseractOcrSettings =>
+        sfxTesLangDropDown.value = tos.lang
+        tos.acceptChars match {
+          case ta: TesseractAcceptChars =>
+            applyTesseractAcceptChars(ta.chars)
+            sfxTesCustomChar.text = ta.custom
+          case _ =>
         }
     }
   }
