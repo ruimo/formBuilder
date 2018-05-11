@@ -969,6 +969,14 @@ class MainController extends Initializable with HandleBigJob {
     new Rectangle2D(minX, minY, maxX - minX, maxY - minY)
   }
 
+  def showErrorDialog(titleText: String, content: String) {
+    val err = new SfxAlert(AlertType.Error) {
+      title = titleText
+      contentText = content
+    }
+    err.showAndWait()
+  }
+
   def fieldCreated(field: Field): Unit = {
     println("fieldCreated(" + field + ")")
 
@@ -976,6 +984,17 @@ class MainController extends Initializable with HandleBigJob {
       field match {
         case af: AbsoluteField => {
           val (dlg, ctrl) = absoluteFieldDialog
+          dlg.onCloseRequest = new EventHandler[DialogEvent] {
+            override def handle(t: DialogEvent) {
+              if (t.getTarget.asInstanceOf[Alert].getResult.getButtonData == ButtonBar.ButtonData.CANCEL_CLOSE) return
+
+              if (af.name != ctrl.fieldName && project.isAbsoluteFieldNameAlreadyUsed(ctrl.fieldName)) {
+                showErrorDialog("名前エラー", "この名前は使用済みです。")
+                t.consume()
+              }
+            }
+          }
+
           dlg.showAndWait().map(_.delegate) match {
             case Some(ButtonType.APPLY) =>
               println("APPLY")
@@ -1783,6 +1802,7 @@ class MainController extends Initializable with HandleBigJob {
     val alert = new SfxAlert(AlertType.Confirmation)
     alert.dialogPane = new SfxDialogPane(root)
     alert.title = "フィールド設定"
+
     (alert, ctrl)
   }
 
@@ -1794,6 +1814,17 @@ class MainController extends Initializable with HandleBigJob {
       doWithImageSize { imgSz =>
         project.getSelectedAbsoluteFieldAt(imgSz, e.getX, e.getY) foreach { f =>
           val (dlg, ctrl) = absoluteFieldDialog
+          dlg.onCloseRequest = new EventHandler[DialogEvent] {
+            override def handle(t: DialogEvent) {
+              if (t.getTarget.asInstanceOf[Alert].getResult.getButtonData == ButtonBar.ButtonData.CANCEL_CLOSE) return
+
+              if (f.name != ctrl.fieldName && project.isAbsoluteFieldNameAlreadyUsed(ctrl.fieldName)) {
+                showErrorDialog("名前エラー", "この名前は使用済みです。")
+                t.consume()
+              }
+            }
+          }
+
           ctrl.fieldName = f.name
           f.ocrSettings.foreach { os => ctrl.ocrSettings = os }
           dlg.showAndWait().map(_.delegate) match {

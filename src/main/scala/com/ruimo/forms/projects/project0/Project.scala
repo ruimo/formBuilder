@@ -923,6 +923,8 @@ class ProjectImpl(
     _isDirty = true
   }
 
+  def isAbsoluteFieldNameAlreadyUsed(name: String): Boolean = _absFields.isAbsoluteFIeldNameAlreadyUsed(name)
+
   def onCropFieldRemoved(f: CropField, isSelected: Boolean) {
     if (isSelected) {
       projectContext.onSelectedCropFieldRemoved(f)

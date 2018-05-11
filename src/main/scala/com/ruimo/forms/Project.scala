@@ -629,6 +629,7 @@ trait Project {
   def moveSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D): Unit
   def renameSelectedAbsoluteField(f: AbsoluteField, newName: String): Unit
   def updateSelectedAbsoluteField(f: AbsoluteField, newName: String, newOcrSettings: Option[OcrSettings]): Unit
+  def isAbsoluteFieldNameAlreadyUsed(name: String): Boolean
   def redraw(): Unit
   def possibleMouseOperation(formSize: (Double, Double), x: Double, y: Double): MouseOperation
   def northResizeSelectedFields(formSize: (Double, Double), p0: Point2D, p1: Point2D)

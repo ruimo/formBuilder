@@ -19,7 +19,18 @@ class AbsoluteFieldTable(
   def normalFields: imm.Seq[AbsoluteField] = _normalAbsoluteFields
   def selectedFields: imm.Seq[AbsoluteField] = _selectedAbsoluteFields
 
+  def isAbsoluteFIeldNameAlreadyUsed(name: String): Boolean =
+    normalFields.find(_.name == name) != None || selectedFields.find(_.name == name) != None
+
+  def assumeNewName(f: AbsoluteField) {
+    if (isAbsoluteFIeldNameAlreadyUsed(f.name)) {
+      throw new AbsoluteFieldTable.DuplicatedNameException(f.name)
+    }
+  }
+
   def addAbsoluteField(f: AbsoluteField, isSelected: Boolean, redraw: Boolean = true) {
+    assumeNewName(f)
+
     if (isSelected)
       _selectedAbsoluteFields= _selectedAbsoluteFields :+ f
     else
@@ -215,3 +226,10 @@ class AbsoluteFieldTable(
   )
 }
 
+object AbsoluteFieldTable {
+  class DuplicatedNameException(fieldName: String, cause: Throwable) extends Exception(
+    "'" + fieldName + "' is already existed", cause
+  ) {
+    def this(fieldName: String) = this(fieldName, null)
+  }
+}
