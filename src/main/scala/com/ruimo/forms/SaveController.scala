@@ -8,11 +8,13 @@ import javafx.scene.input.{KeyCode, KeyEvent, MouseButton, MouseEvent}
 import javafx.fxml.{FXML, Initializable}
 import java.net.URL
 import java.util.ResourceBundle
+
 import javafx.beans.property.ReadOnlyStringWrapper
 import javafx.beans.value.ObservableValue
 import javafx.scene.control.TableColumn.CellDataFeatures
 import javafx.scene.control._
 import javafx.util.Callback
+import org.slf4j.LoggerFactory
 
 import scala.collection.{immutable => imm}
 import scalafx.collections.ObservableBuffer
@@ -22,7 +24,7 @@ import scalafx.scene.control.{TableView => SfxTableView}
 import scalafx.scene.control.{ContextMenu => SfxContextMenu}
 import scalafx.scene.control.{MenuItem => SfxMenuItem}
 
-class SaveController extends SaveOpenController {
+class SaveController extends SaveOpenController with HasLogger {
   @FXML
   private[this] var saveConfigNameText: TextField = _
 
@@ -38,12 +40,12 @@ class SaveController extends SaveOpenController {
   @FXML
   def onFormTableClicked(e: MouseEvent) {
     val conf: FormConfig = configTable.selectionModel().getSelectedItem
-    println("onFormTableClicked " + conf)
+    logger.info("onFormTableClicked " + conf)
     e.getButton match {
       case MouseButton.PRIMARY =>
         configName = conf.configName
       case MouseButton.SECONDARY =>
-        println("Right clicked")
+        logger.info("Right clicked")
         showContextMenu(conf, configTable, e)
       case _ =>
     }

@@ -1,6 +1,7 @@
 package com.ruimo.forms
 
 import javafx.scene.control.ButtonType
+import org.slf4j.LoggerFactory
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -8,7 +9,7 @@ import scalafx.application.Platform
 import scalafx.scene.control.Alert
 import scalafx.scene.control.Alert.AlertType
 
-trait HandleBigJob {
+trait HandleBigJob extends HasLogger {
   def doBigJob[T](in: Either[T, Future[T]])(f: T => Unit) {
     doBigJob(in, onError = t => showGeneralError())(f)
   }
@@ -30,7 +31,7 @@ trait HandleBigJob {
             dlg.close()
           })
         }.failed.foreach { t =>
-          t.printStackTrace
+          logger.error("Unknown error while performing big job." , t)
           Platform.runLater(() -> {
             // Avoid JavaFX bug to close dialog.
             dlg.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL);

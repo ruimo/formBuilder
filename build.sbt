@@ -12,8 +12,11 @@ libraryDependencies ++= Seq(
   "com.typesafe.play" %% "play-ahc-ws-standalone" % "1.1.8",
   "com.typesafe.play" %% "play-ws-standalone-json" % "1.1.8",
   "com.typesafe.play" % "play-json_2.12" % "2.6.8",
-  "com.ruimo" %% "graphics" % "1.2",
+  "com.ruimo" %% "graphics" % "1.10",
   "com.typesafe" % "config" % "1.3.1",
+  "org.slf4j" % "slf4j-api" % "1.7.25",
+  "ch.qos.logback" % "logback-classic" % "1.2.3",
+  "ch.qos.logback" % "logback-core" % "1.2.3",
   "org.specs2" %% "specs2-core" % "4.0.0" % "test"
 )
 

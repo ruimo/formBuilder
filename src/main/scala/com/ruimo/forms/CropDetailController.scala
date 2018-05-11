@@ -3,12 +3,13 @@ package com.ruimo.forms
 import javafx.fxml.{FXML, Initializable}
 import java.net.URL
 import java.util.ResourceBundle
-import javafx.scene.control.{ComboBox, TextField}
 
+import javafx.scene.control.{ComboBox, TextField}
+import org.slf4j.LoggerFactory
 import scalafx.collections.ObservableBuffer
 import scalafx.scene.control.{ComboBox => SfxComboBox}
 
-class CropDetailController extends Initializable {
+class CropDetailController extends Initializable with HasLogger {
   @FXML
   private[this] var topSensivityText: TextField = _
 
@@ -46,6 +47,6 @@ class CropDetailController extends Initializable {
   def rightSensivity: EdgeCropSensivity = EdgeCropSensivity(rightSensivityText.getText.toInt)
 
   override def initialize(url: URL, resourceBundle: ResourceBundle) {
-    println("CropDetailController initialize")
+    logger.info("CropDetailController initialize")
   }
 }

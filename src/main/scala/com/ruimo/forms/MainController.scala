@@ -721,7 +721,7 @@ class MainController extends Initializable with HandleBigJob {
                   openProject()
                 }
                 case Some(fc) =>
-                  println("Open config: " + fc)
+                  logger.info("Open config: " + fc)
                   doBigJob {
                     Right(project.openConfig(fc.configName))
                   } {
@@ -834,7 +834,7 @@ class MainController extends Initializable with HandleBigJob {
   lazy val sfxImageCanvas = new SfxCanvas(imageCanvas)
 
   def redrawRect(rect: Rectangle2D): Unit = {
-    println("redrawRect(" + rect + ")")
+    logger.info("redrawRect(" + rect + ")")
     val gc = sfxImageCanvas.graphicsContext2D
     selectedImage.foreach { si =>
       doBigJob(project.cachedImage(si)) {
@@ -950,7 +950,7 @@ class MainController extends Initializable with HandleBigJob {
   def orgImageSize: (Double, Double) = selectedImage.get.imageSize
 
   def drawSelectionRect(rect: Rectangle2D): Unit = {
-    println("drawSelectionRect(" + rect + ")")
+    logger.info("drawSelectionRect(" + rect + ")")
     val gc = sfxImageCanvas.graphicsContext2D
     gc.setLineWidth(2.0)
     gc.setLineDashes()
@@ -978,7 +978,7 @@ class MainController extends Initializable with HandleBigJob {
   }
 
   def fieldCreated(field: Field): Unit = {
-    println("fieldCreated(" + field + ")")
+    logger.info("fieldCreated(" + field + ")")
 
     doWithImageSize { imgSz =>
       field match {
@@ -997,15 +997,15 @@ class MainController extends Initializable with HandleBigJob {
 
           dlg.showAndWait().map(_.delegate) match {
             case Some(ButtonType.APPLY) =>
-              println("APPLY")
+              logger.info("APPLY")
               project.addAbsoluteField(
                 af.withNewValue(newName = ctrl.fieldName, newOcrSettings = Some(ctrl.ocrSettings)),
                 true
               )
             case Some(_) =>
-              println("canceled")
+              logger.info("canceled")
               redrawRect(field.drawArea(imgSz))
-            case None => println("bt = none")
+            case None => logger.info("bt = none")
           }
         }
           // val dlg = new SfxTextInputDialog("")
@@ -1042,7 +1042,7 @@ class MainController extends Initializable with HandleBigJob {
   }
 
   def selectFields(rect: Rectangle2D, e: MouseEvent): Unit = {
-    println("selectFields(" + rect + ", " + e + ")")
+    logger.info("selectFields(" + rect + ", " + e + ")")
     doWithImageSize { imgSz =>
       project.selectAbsoluteFields(imgSz, rect, e)
       project.selectCropFields(imgSz, rect, e)
@@ -1051,7 +1051,7 @@ class MainController extends Initializable with HandleBigJob {
 
   @FXML
   def exitMenuClicked(event: ActionEvent) {
-    println("exitMenuClicked()")
+    logger.info("exitMenuClicked()")
     stage.getOnCloseRequest().handle(
       new WindowEvent(
         stage,
@@ -1062,13 +1062,13 @@ class MainController extends Initializable with HandleBigJob {
 
   @FXML
   def saveMenuClicked(event: ActionEvent) {
-    println("saveMenuClicked()")
+    logger.info("saveMenuClicked()")
     saveProject()
   }
 
   @FXML
   def openMenuClicked(event: ActionEvent) {
-    println("openMenuClicked()")
+    logger.info("openMenuClicked()")
     openProject()
   }
 
@@ -1111,7 +1111,7 @@ class MainController extends Initializable with HandleBigJob {
         alert.contentText = "pdf/tiffファイルは、pngファイルに変換します。"
         alert.showAndWait().map(_.delegate) match {
           case Some(ButtonType.OK) =>
-            println("Convert confirmed")
+            logger.info("Convert confirmed")
             doBigJob {
               convertFiles(pdfFiles ++ tifFiles)
             } { (results: imm.Seq[ConvertFilesResult]) =>
@@ -1131,9 +1131,9 @@ class MainController extends Initializable with HandleBigJob {
               )
             }
           case Some(btn) =>
-            println("Button: " + btn)
+            logger.info("Button: " + btn)
           case None =>
-            println("Canceled")
+            logger.info("Canceled")
         }
       }
     }
@@ -1168,8 +1168,8 @@ class MainController extends Initializable with HandleBigJob {
                 ).post(
                   zipFileToSubmit.toFile
                 ).map { resp =>
-                  println("status = " + resp.status)
-                  println("statusText = " + resp.statusText)
+                  logger.info("status = " + resp.status)
+                  logger.info("statusText = " + resp.statusText)
                   resp.status match {
                     case 200 =>
                       PathUtil.withTempFile(None, None) { zipFile =>
@@ -1178,7 +1178,7 @@ class MainController extends Initializable with HandleBigJob {
                         }.get
                         val out: Path = Files.createTempDirectory(null)
                         OnShutdown.addDeleteDirectory(out)
-                        println("Convert result: " + out)
+                        logger.info("Convert result: " + out)
                         Zip.explode(zipFile, out)
                         new ConvertFilesResultOk(out.toFile.listFiles().toList)
                       }.get
@@ -1200,7 +1200,7 @@ class MainController extends Initializable with HandleBigJob {
   @FXML
   def imageSelected(e: MouseEvent) {
     val imageFile = e.getSource().asInstanceOf[ListView[File]].getSelectionModel().getSelectedItem()
-    println("Image selected " + imageFile)
+    logger.info("Image selected " + imageFile)
     if (imageFile != null) {
       val img = new Image(imageFile.toURI().toString())
       selectedImage = Some(SelectedImage(imageFile.toPath, img))
@@ -1217,7 +1217,7 @@ class MainController extends Initializable with HandleBigJob {
   }
 
   def redraw(onError: Option[Throwable => Unit] = None) {
-    println("redraw()")
+    logger.info("redraw()")
     selectedImage.foreach { selectedImage =>
       doBigJob(
         project.cachedImage(selectedImage),
@@ -1267,7 +1267,7 @@ class MainController extends Initializable with HandleBigJob {
 
   @FXML
   def dotRemovalDetailClicked(e: ActionEvent) {
-    println("dotRemovalDetailClicked")
+    logger.info("dotRemovalDetailClicked")
     val loader = new FXMLLoader(getClass().getResource("dotRemoval.fxml"))
     val root: DialogPane = loader.load()
     val ctrl = loader.getController().asInstanceOf[DotRemovalDetailController]
@@ -1301,7 +1301,7 @@ class MainController extends Initializable with HandleBigJob {
     alert.showAndWait().map(_.delegate) match {
       case Some(ButtonType.APPLY) =>
         val model = ctrl.model
-        println("apply dot removal detail " + model)
+        logger.info("apply dot removal detail " + model)
         project.dotRemoval = project.dotRemoval.copy(condition = model)
         project.invalidateCachedImage(
           CacheConditionGlob(
@@ -1315,14 +1315,14 @@ class MainController extends Initializable with HandleBigJob {
           dotRemovalEnabledClicked(null)
         }
 
-      case Some(_) => println("canceled")
-      case None => println("bt = none")
+      case Some(_) => logger.info("canceled")
+      case None => logger.info("bt = none")
     }
   }
 
   @FXML
   def cropRectangleDetailClicked(e: ActionEvent) {
-    println("cropRectangleDetailClicked")
+    logger.info("cropRectangleDetailClicked")
     val loader = new FXMLLoader(getClass().getResource("cropRectangle.fxml"))
     val root: DialogPane = loader.load()
     val ctrl = loader.getController().asInstanceOf[CropRectangleDetailController]
@@ -1384,7 +1384,7 @@ class MainController extends Initializable with HandleBigJob {
     alert.showAndWait().map(_.delegate) match {
       case Some(ButtonType.APPLY) =>
         val model = ctrl.model
-        println("apply crop rectangle detail " + model)
+        logger.info("apply crop rectangle detail " + model)
         project.cropRectangle = project.cropRectangle.copy(condition = model)
         project.invalidateCachedImage(
           CacheConditionGlob(
@@ -1398,14 +1398,14 @@ class MainController extends Initializable with HandleBigJob {
           cropRectangleEnabledClicked(null)
         }
 
-      case Some(_) => println("canceled")
-      case None => println("bt = none")
+      case Some(_) => logger.info("canceled")
+      case None => logger.info("bt = none")
     }
   }
 
   @FXML
   def removeRuledLineDetailClicked(e: ActionEvent) {
-    println("removeRuledLineDetail")
+    logger.info("removeRuledLineDetail")
     val loader = new FXMLLoader(getClass().getResource("removeRuledLine.fxml"))
     val root: DialogPane = loader.load()
     val ctrl = loader.getController().asInstanceOf[RemoveRuledLineDetailController]
@@ -1460,7 +1460,7 @@ class MainController extends Initializable with HandleBigJob {
     alert.showAndWait().map(_.delegate) match {
       case Some(ButtonType.APPLY) =>
         val model = ctrl.model
-        println("apply remove ruled line detail " + model)
+        logger.info("apply remove ruled line detail " + model)
         project.removeRuledLine = project.removeRuledLine.copy(condition = model)
         project.invalidateCachedImage(
           CacheConditionGlob(
@@ -1474,14 +1474,14 @@ class MainController extends Initializable with HandleBigJob {
           removeRuledLineEnabledClicked(null)
         }
 
-      case Some(_) => println("canceled")
-      case None => println("bt = none")
+      case Some(_) => logger.info("canceled")
+      case None => logger.info("bt = none")
     }
   }
 
   @FXML
   def skewCorrectionDetailClicked(e: ActionEvent) {
-    println("skewCorrectionDetail")
+    logger.info("skewCorrectionDetail")
     val loader = new FXMLLoader(getClass().getResource("skewCorrectionDialog.fxml"))
     val root: DialogPane = loader.load()
     val ctrl = loader.getController().asInstanceOf[SkewCorrectionDetailController]
@@ -1491,16 +1491,16 @@ class MainController extends Initializable with HandleBigJob {
     alert.title = "傾き補正"
     alert.onCloseRequest = new EventHandler[DialogEvent] {
       override def handle(t: DialogEvent) {
-        println("event type = " + t.getEventType)
-        println("target = " + t.getTarget)
-        println("result = " + t.getTarget.asInstanceOf[Alert].getResult)
+        logger.info("event type = " + t.getEventType)
+        logger.info("target = " + t.getTarget)
+        logger.info("result = " + t.getTarget.asInstanceOf[Alert].getResult)
 //        t.consume()
       }
     }
     alert.showAndWait().map(_.delegate) match {
       case Some(ButtonType.APPLY) =>
         val model = ctrl.model
-        println("apply skew correction detail " + model)
+        logger.info("apply skew correction detail " + model)
         project.skewCorrection = SkewCorrection(project.skewCorrection.enabled, model)
         project.invalidateCachedImage(
           CacheConditionGlob(
@@ -1514,14 +1514,14 @@ class MainController extends Initializable with HandleBigJob {
           skewCorrectionEnabledClicked(null)
         }
 
-      case Some(_) => println("canceled")
-      case None => println("bt = none")
+      case Some(_) => logger.info("canceled")
+      case None => logger.info("bt = none")
     }
   }
 
   @FXML
   def cropDetailClicked(e: ActionEvent) {
-    println("cropDetailClicked")
+    logger.info("cropDetailClicked")
     val loader = new FXMLLoader(getClass().getResource("cropDetailDialog.fxml"))
     val root: DialogPane = loader.load()
     val ctrl = loader.getController().asInstanceOf[CropDetailController]
@@ -1541,7 +1541,7 @@ class MainController extends Initializable with HandleBigJob {
           }
           catch {
             case t: Throwable =>
-              t.printStackTrace()
+              logger.error("Unknown error.", t)
               errors = errors :+ fieldName
               None
           }
@@ -1560,9 +1560,9 @@ class MainController extends Initializable with HandleBigJob {
           err.show()
         }
 
-        println("event type = " + t.getEventType)
-        println("target = " + t.getTarget)
-        println("result = " + t.getTarget.asInstanceOf[Alert].getResult)
+        logger.info("event type = " + t.getEventType)
+        logger.info("target = " + t.getTarget)
+        logger.info("result = " + t.getTarget.asInstanceOf[Alert].getResult)
       }
     }
     alert.showAndWait().map(_.delegate) match {
@@ -1575,8 +1575,8 @@ class MainController extends Initializable with HandleBigJob {
           cropEnabledCheckClicked(null)
         }
 
-      case Some(_) => println("canceled")
-      case None => println("bt = none")
+      case Some(_) => logger.info("canceled")
+      case None => logger.info("bt = none")
     }
   }
 
@@ -1629,12 +1629,12 @@ class MainController extends Initializable with HandleBigJob {
 
           if ((state % 2) == 0) {
             lines.foreach { l =>
-              println("draw line " + l)
+              logger.info("draw line " + l)
               gc.strokeLine(l._1, l._2, l._3, l._4)
             }
           }
           else {
-            println("clear line " + union)
+            logger.info("clear line " + union)
             redrawRect(union)
           }
 
@@ -1651,7 +1651,7 @@ class MainController extends Initializable with HandleBigJob {
     val showLines: Seq[(Double, Double, Double, Double)] = skewResult.foundLines.map { l =>
       val ro = l.ro
       val th = l.theta + Pi / 2
-      println("ro = " + ro + ", th = " + th)
+      logger.info("ro = " + ro + ", th = " + th)
 
       if (Pi / 2 - 0.1 < th && th < Pi / 2 + 0.1) { // horizontal
         val line = NearlyHorizontalLine(ro, th)
@@ -1672,7 +1672,7 @@ class MainController extends Initializable with HandleBigJob {
 
   @FXML
   def dotRemovalEnabledClicked(e: ActionEvent) {
-    println("dotRemovalEnabledClicked")
+    logger.info("dotRemovalEnabledClicked")
     project.dotRemoval = project.dotRemoval.copy(enabled = sfxDotRemovalCheck.selected())
     redraw(
       Some((t: Throwable) => project.dotRemoval.copy(enabled = false))
@@ -1681,7 +1681,7 @@ class MainController extends Initializable with HandleBigJob {
 
   @FXML
   def cropRectangleEnabledClicked(e: ActionEvent) {
-    println("cropRectangleEnabledClicked")
+    logger.info("cropRectangleEnabledClicked")
     project.cropRectangle = project.cropRectangle.copy(enabled = sfxCropRectangleCheck.selected())
     redraw(
       Some((t: Throwable) => project.cropRectangle.copy(enabled = false))
@@ -1690,7 +1690,7 @@ class MainController extends Initializable with HandleBigJob {
 
   @FXML
   def removeRuledLineEnabledClicked(e: ActionEvent) {
-    println("removeRuledLineEnabledClicked")
+    logger.info("removeRuledLineEnabledClicked")
     project.removeRuledLine = project.removeRuledLine.copy(enabled = sfxRemoveRuledLineCheck.selected())
     redraw(
       Some((t: Throwable) => project.removeRuledLine.copy(enabled = false))
@@ -1699,7 +1699,7 @@ class MainController extends Initializable with HandleBigJob {
 
   @FXML
   def skewCorrectionEnabledClicked(e: ActionEvent) {
-    println(
+    logger.info(
       "skewCorrectionEnabledClicked sfxSkewCorrectionCheck.selected() = " + sfxSkewCorrectionCheck.selected() +
         ", project.skewCorrection.enabled = " + project.skewCorrection.enabled
     )
@@ -1746,7 +1746,7 @@ class MainController extends Initializable with HandleBigJob {
       }
       catch {
         case t: Throwable =>
-          t.printStackTrace()
+          logger.error("Unknown error.", t)
           sfxSkewCorrectionCheck.selected = false
           sfxCropCheck.selected = false
       }
@@ -1755,7 +1755,7 @@ class MainController extends Initializable with HandleBigJob {
 
   @FXML
   def cropEnabledCheckClicked(e: ActionEvent) {
-    println("sfxCropCheck.selected() = " + sfxCropCheck.selected() + ", project.cropEnabled = " + project.cropEnabled)
+    logger.info("sfxCropCheck.selected() = " + sfxCropCheck.selected() + ", project.cropEnabled = " + project.cropEnabled)
     if (sfxCropCheck.selected() && ! project.cropFieldsAreReady) {
       sfxCropCheck.selected = false
       val err = new Alert(AlertType.Error)
@@ -1773,7 +1773,7 @@ class MainController extends Initializable with HandleBigJob {
 
   @FXML
   def addModeClicked(e: ActionEvent) {
-    println("addModeClicked")
+    logger.info("addModeClicked")
     doWithImageSize { imgSz =>
       editor.switchToAddMode(e, imgSz)
     }
@@ -1781,7 +1781,7 @@ class MainController extends Initializable with HandleBigJob {
 
   @FXML
   def selectModeClicked(e: ActionEvent) {
-    println("selectModeClicked")
+    logger.info("selectModeClicked")
     doWithImageSize { imgSz =>
       editor.switchToSelectMode(e, imgSz)
     }
@@ -1789,7 +1789,7 @@ class MainController extends Initializable with HandleBigJob {
 
   @FXML
   def addCropModeClicked(e: ActionEvent) {
-    println("addCropModeClicked")
+    logger.info("addCropModeClicked")
     doWithImageSize { imgSz =>
       editor.switchToAddCropMode(e, imgSz)
     }
@@ -1808,9 +1808,9 @@ class MainController extends Initializable with HandleBigJob {
 
   @FXML
   def canvasMouseClicked(e: MouseEvent) {
-    println("canvasMouseClicked")
+    logger.info("canvasMouseClicked")
     if (e.getClickCount == 2) {
-      println("double clicked")
+      logger.info("double clicked")
       doWithImageSize { imgSz =>
         project.getSelectedAbsoluteFieldAt(imgSz, e.getX, e.getY) foreach { f =>
           val (dlg, ctrl) = absoluteFieldDialog
@@ -1831,9 +1831,9 @@ class MainController extends Initializable with HandleBigJob {
             case Some(ButtonType.APPLY) =>
               project.updateSelectedAbsoluteField(f, ctrl.fieldName, Some(ctrl.ocrSettings))
             case Some(_) =>
-              println("canceled")
+              logger.info("canceled")
             case None =>
-              println("bt = none")
+              logger.info("bt = none")
           }
 
           // val dlg = new SfxTextInputDialog(f.name)
@@ -1849,7 +1849,7 @@ class MainController extends Initializable with HandleBigJob {
 
   @FXML
   def canvasMousePressed(e: MouseEvent) {
-    println("canvasMousePressed")
+    logger.info("canvasMousePressed")
     doWithImageSize { imgSz =>
       editor.onMousePressed(e, imgSz)
     }
@@ -1857,7 +1857,7 @@ class MainController extends Initializable with HandleBigJob {
 
   @FXML
   def canvasMouseDragged(e: MouseEvent) {
-    println("canvasMouseDragged")
+    logger.info("canvasMouseDragged")
     doWithImageSize { imgSz =>
       editor.onMouseDragged(e, imgSz)
     }
@@ -1865,7 +1865,7 @@ class MainController extends Initializable with HandleBigJob {
 
   @FXML
   def canvasMouseReleased(e: MouseEvent) {
-    println("canvasMouseReleased")
+    logger.info("canvasMouseReleased")
     doWithImageSize { imgSz =>
       editor.onMouseReleased(e, imgSz)
     }
@@ -1894,7 +1894,7 @@ class MainController extends Initializable with HandleBigJob {
 
   @FXML
   def runCaptureClicked(e: ActionEvent) {
-    println("runCapture")
+    logger.info("runCapture")
 
     selectedImage.foreach { si =>
       doBigJob(Right(project.runCapture(si))) {
@@ -1930,7 +1930,7 @@ class MainController extends Initializable with HandleBigJob {
 
   @FXML
   def authSettingsMenuClicked(e: ActionEvent) {
-    println("authSettingsMenuClicked")
+    logger.info("authSettingsMenuClicked")
     val loader = new FXMLLoader(getClass().getResource("auth.fxml"))
     val root: DialogPane = loader.load()
     val ctrl = loader.getController().asInstanceOf[AuthController]
@@ -1943,14 +1943,14 @@ class MainController extends Initializable with HandleBigJob {
       case Some(ButtonType.APPLY) =>
         val newAuth: AuthSettings = ctrl.model
         settingsLoader.update(settings.copy(auth = newAuth))
-      case Some(_) => println("canceled")
-      case None => println("bt = none")
+      case Some(_) => logger.info("canceled")
+      case None => logger.info("bt = none")
     }
   }
 
   @FXML
   def helpAboutClicked(e: ActionEvent) {
-    println("helpAboutClicked")
+    logger.info("helpAboutClicked")
 
     val alert = new SfxAlert(AlertType.None) {
       title = "About"
@@ -1972,52 +1972,52 @@ class MainController extends Initializable with HandleBigJob {
     project = ProjectImpl(
       new ProjectContext(
         onNormalAbsoluteFieldAdded = (f: AbsoluteField) => {
-          println("*** normal field added " + f)
+          logger.info("*** normal field added " + f)
           doWithImageSize { imgSz =>
             f.draw(imgSz, sfxImageCanvas.graphicsContext2D, false)
           }
         },
         onSelectedAbsoluteFieldAdded = (f: AbsoluteField) => {
-          println("*** selected field added " + f)
+          logger.info("*** selected field added " + f)
           doWithImageSize { imgSz =>
             f.draw(imgSz, sfxImageCanvas.graphicsContext2D, true)
           }
         },
         onNormalAbsoluteFieldRemoved = (f: AbsoluteField) => {
-          println("*** normal field removed " + f)
+          logger.info("*** normal field removed " + f)
           doWithImageSize { imgSz =>
             redrawRect(f.drawArea(imgSz))
           }
         },
         onSelectedAbsoluteFieldRemoved = (f: AbsoluteField) => {
-          println("*** selected field removed " + f)
+          logger.info("*** selected field removed " + f)
           doWithImageSize { imgSz =>
             redrawRect(f.drawArea(imgSz))
           }
         },
         onNormalCropFieldAdded = (f: CropField) => {
-          println("onNormalCropFieldAdded")
+          logger.info("onNormalCropFieldAdded")
           project.invalidateCachedImage(CacheConditionGlob(isCropEnabled = Some(true)))
           doWithImageSize { imgSz =>
             f.draw(imgSz, sfxImageCanvas.graphicsContext2D, false)
           }
         },
         onSelectedCropFieldAdded = (f: CropField) => {
-          println("onSelectedCropFieldAdded")
+          logger.info("onSelectedCropFieldAdded")
           project.invalidateCachedImage(CacheConditionGlob(isCropEnabled = Some(true)))
           doWithImageSize { imgSz =>
             f.draw(imgSz, sfxImageCanvas.graphicsContext2D, true)
           }
         },
         onNormalCropFieldRemoved = (f: CropField) => {
-          println("onNormalCropFieldRemoved")
+          logger.info("onNormalCropFieldRemoved")
           project.invalidateCachedImage(CacheConditionGlob(isCropEnabled = Some(true)))
           doWithImageSize { imgSz =>
             redrawRect(f.drawArea(imgSz))
           }
         },
         onSelectedCropFieldRemoved = (f: CropField) => {
-          println("onSelectedCropFieldRemoved")
+          logger.info("onSelectedCropFieldRemoved")
           project.invalidateCachedImage(CacheConditionGlob(isCropEnabled = Some(true)))
           doWithImageSize { imgSz =>
             redrawRect(f.drawArea(imgSz))
@@ -2036,27 +2036,27 @@ class MainController extends Initializable with HandleBigJob {
       ),
       new ProjectListener {
         override def onSkewCorrectionChanged(skewCorrection: SkewCorrection) {
-          println("Skew correction changed " + skewCorrection)
+          logger.info("Skew correction changed " + skewCorrection)
           sfxSkewCorrectionCheck.selected = skewCorrection.enabled
         }
 
         override def onCropEnabledChanged(enabled: Boolean) {
-          println("crop enabled changed " + enabled)
+          logger.info("crop enabled changed " + enabled)
           sfxCropCheck.selected = enabled
         }
 
         override def onDotRemovalChanged(dotRemoval: DotRemoval): Unit = {
-          println("dot removal changed " + dotRemoval)
+          logger.info("dot removal changed " + dotRemoval)
           sfxDotRemovalCheck.selected = dotRemoval.enabled
         }
 
         override def onCropRectangleChanged(cropRectangle: CropRectangle): Unit = {
-          println("crop rectangle changed " + cropRectangle)
+          logger.info("crop rectangle changed " + cropRectangle)
           sfxCropRectangleCheck.selected = cropRectangle.enabled
         }
 
         override def onRemoveRuledLineChanged(removeRuledLine: RemoveRuledLine): Unit = {
-          println("remove ruled line changed " + removeRuledLine)
+          logger.info("remove ruled line changed " + removeRuledLine)
           sfxRemoveRuledLineCheck.selected = removeRuledLine.enabled
         }
       }
@@ -2087,7 +2087,7 @@ class MainController extends Initializable with HandleBigJob {
       Duration(1, TimeUnit.MINUTES)
     )
     
-    println(s"Current version: ${generated.BuildInfo.version}, Latest version: ${latestVersion}")
+    logger.info(s"Current version: ${generated.BuildInfo.version}, Latest version: ${latestVersion}")
     if (latestVersion > Version.parse(generated.BuildInfo.version)) {
       val dlg = new SfxAlert(
         alertType = SfxAlert.AlertType.Confirmation
@@ -2112,7 +2112,7 @@ class MainController extends Initializable with HandleBigJob {
     val cwd = Paths.get(System.getProperty("user.dir"))
     val fileName = Os().fileName(v)
     val downloadedFile = cwd.resolve(fileName)
-    println("Downloading + " + downloadedFile)
+    logger.info("Downloading + " + downloadedFile)
     val dlg = new Alert(AlertType.None)
     dlg.setTitle("ダウンロード中")
     dlg.setContentText("ダウンロード中。お待ちください")
@@ -2126,13 +2126,13 @@ class MainController extends Initializable with HandleBigJob {
         case 200 =>
           val m = resp.bodyAsSource.runWith(FileIO.toPath(downloadedFile))
           m.onComplete { _ =>
-            println("Download completed.")
-            println("Explode " + downloadedFile + " into " + cwd)
+            logger.info("Download completed.")
+            logger.info("Explode " + downloadedFile + " into " + cwd)
             Zip.explode(downloadedFile, cwd, maxZipEntrySize = 100 * 1000 * 1000)
             Platform.runLater(terminateApplication())
           }
         case _ =>
-          println("Cannot download file status: " + resp.status + "(" + resp.statusText + ")")
+          logger.info("Cannot download file status: " + resp.status + "(" + resp.statusText + ")")
           dlg.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL);
           dlg.close()
           Platform.runLater {

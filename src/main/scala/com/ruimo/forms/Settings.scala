@@ -4,6 +4,7 @@ import java.nio.file.{Files, Path, Paths}
 
 import play.api.libs.json.{JsBoolean, JsObject, JsString, JsValue, Json}
 import com.typesafe.config.{Config, ConfigFactory, ConfigObject, ConfigValueFactory}
+import org.slf4j.LoggerFactory
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
@@ -54,7 +55,7 @@ sealed trait AuthSettings {
   def url: Url
 }
 
-case object NullAuthSettings extends AuthSettings {
+case object NullAuthSettings extends AuthSettings with HasLogger {
   def asJson: JsValue = throw new RuntimeException
   def asConf: ConfigObject = throw new RuntimeException
   def contractedUserId: ContractedUserId = throw new RuntimeException
@@ -82,7 +83,7 @@ case class AuthSettingsImpl(
   )
 }
 
-class SettingsLoader(configFile: Path) {
+class SettingsLoader(configFile: Path) extends HasLogger {
   @volatile private[this] var instance: Settings =
     if (! Files.exists(configFile)) Settings.Null
     else load(ConfigFactory.parseFile(configFile.toFile))
@@ -94,7 +95,7 @@ class SettingsLoader(configFile: Path) {
   )
 
   private def save(settings: Settings): Unit = {
-    println("Save to '" + configFile.toAbsolutePath + "'")
+    logger.info("Save to '" + configFile.toAbsolutePath + "'")
     Files.write(configFile, settings.asConf.render().getBytes("utf-8"))
   }
 

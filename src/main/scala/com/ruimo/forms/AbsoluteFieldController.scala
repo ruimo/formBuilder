@@ -4,22 +4,23 @@ import scalafx.scene.control.{CheckBox => SfxCheckBox}
 import scalafx.scene.control.{Label => SfxLabel}
 import scalafx.scene.control.{TextField => SfxTextField}
 import javafx.event.ActionEvent
-
 import scalafx.scene.control.{ComboBox => SfxComboBox}
+
 import scala.collection.JavaConverters._
 import scalafx.collections.ObservableBuffer
 import javafx.scene.control._
 import javafx.scene.control.TableColumn.CellDataFeatures
 import java.net.URL
 import java.util.ResourceBundle
+
 import javafx.fxml.{FXML, Initializable}
 import javafx.scene.control.TableView
 import javafx.util.Callback
 import javafx.beans.value.ObservableValue
 import javafx.beans.property.ReadOnlyStringWrapper
 import javafx.scene.input.{KeyCode, KeyEvent, MouseButton, MouseEvent}
-
 import com.ruimo.forms.common.{TesseractAcceptChars, _}
+import org.slf4j.LoggerFactory
 
 import scala.collection.{immutable => imm}
 
@@ -37,7 +38,7 @@ case object OcrEngineCodeCogent extends OcrEngineCode {
   override def toString = "Cogent Tegaki"
 }
 
-class AbsoluteFieldController extends Initializable {
+class AbsoluteFieldController extends Initializable with HasLogger {
   @FXML
   private[this] var fieldNameText: TextField = _
 
@@ -195,7 +196,7 @@ class AbsoluteFieldController extends Initializable {
   }
 
   override def initialize(url: URL, resourceBundle: ResourceBundle) {
-    println("AbsoluteFieldController initialize")
+    logger.info("AbsoluteFieldController initialize")
     sfxOcrEngineComboBox += OcrEngineCodeTesseract
     sfxOcrEngineComboBox += OcrEngineCodeGoogle
     sfxOcrEngineComboBox += OcrEngineCodeMicrosoft

@@ -3,14 +3,14 @@ package com.ruimo.forms
 import javafx.fxml.{FXML, Initializable}
 import java.net.URL
 import java.util.ResourceBundle
+
 import javafx.scene.control.{ComboBox, TextField}
-
 import com.ruimo.scoins.Percent
-
+import org.slf4j.LoggerFactory
 import scalafx.collections.ObservableBuffer
 import scalafx.scene.control.{ComboBox => SfxComboBox}
 
-class SkewCorrectionDetailController extends Initializable {
+class SkewCorrectionDetailController extends Initializable with HasLogger {
   val HorizontalLineDetection = "横線検出"
   val VerticalLineDetection = "縦線検出"
 
@@ -32,7 +32,7 @@ class SkewCorrectionDetailController extends Initializable {
   lazy val sfxHvComboBox = new SfxComboBox[String](hvComboBox)
 
   override def initialize(url: URL, resourceBundle: ResourceBundle) {
-    println("SkewCorrectionDetailController initialize")
+    logger.info("SkewCorrectionDetailController initialize")
     sfxHvComboBox += HorizontalLineDetection
     sfxHvComboBox += VerticalLineDetection
     sfxHvComboBox.value = HorizontalLineDetection

@@ -30,7 +30,7 @@ class OpenController extends SaveOpenController {
   @FXML
   def onFormTableClicked(e: MouseEvent) {
     val conf: FormConfig = configTable.selectionModel().getSelectedItem
-    println("onFormTableClicked " + conf)
+    logger.info("onFormTableClicked " + conf)
     e.getButton match {
       case MouseButton.PRIMARY =>
         if (e.getClickCount == 2) {
@@ -41,7 +41,7 @@ class OpenController extends SaveOpenController {
           }
         }
       case MouseButton.SECONDARY =>
-        println("Right clicked")
+        logger.info("Right clicked")
         showContextMenu(conf, configTable, e)
       case _ =>
     }

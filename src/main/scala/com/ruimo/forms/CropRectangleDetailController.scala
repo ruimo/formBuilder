@@ -3,8 +3,9 @@ package com.ruimo.forms
 import javafx.fxml.{FXML, Initializable}
 import java.net.URL
 import java.util.ResourceBundle
-import javafx.scene.control.{ComboBox, TextField}
 
+import javafx.scene.control.{ComboBox, TextField}
+import org.slf4j.LoggerFactory
 import scalafx.collections.ObservableBuffer
 import scalafx.scene.control.{ComboBox => SfxComboBox}
 
@@ -21,8 +22,7 @@ object CropRectangleDetailController {
   val SlantAllowanceMax = 8
 }
 
-class CropRectangleDetailController extends Initializable {
-
+class CropRectangleDetailController extends Initializable with HasLogger {
   @FXML
   private[this] var errorAllowanceText: TextField = _
 
@@ -174,6 +174,6 @@ class CropRectangleDetailController extends Initializable {
   }
 
   override def initialize(url: URL, resourceBundle: ResourceBundle) {
-    println("CropRectangleDetailController initialize")
+    logger.info("CropRectangleDetailController initialize")
   }
 }

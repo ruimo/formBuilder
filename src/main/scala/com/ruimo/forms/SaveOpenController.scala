@@ -10,6 +10,7 @@ import scalafx.scene.control.{ButtonType => SfxButtonType}
 import javafx.fxml.Initializable
 import java.net.URL
 import java.util.ResourceBundle
+
 import javafx.scene.control._
 import javafx.scene.control.TableColumn.CellDataFeatures
 import scalafx.collections.ObservableBuffer
@@ -20,8 +21,9 @@ import javafx.beans.value.ObservableValue
 import javafx.beans.property.ReadOnlyStringWrapper
 import scalafx.scene.control.{TableView => SfxTableView}
 import javafx.scene.input.{KeyCode, KeyEvent, MouseButton, MouseEvent}
+import org.slf4j.LoggerFactory
 
-trait SaveOpenController extends Initializable with HandleBigJob {
+trait SaveOpenController extends Initializable with HandleBigJob with HasLogger {
   protected lazy val configTable: SfxTableView[FormConfig] = new SfxTableView(configList)
 
   protected def configList: TableView[FormConfig]
@@ -71,7 +73,7 @@ trait SaveOpenController extends Initializable with HandleBigJob {
       new SfxMenuItem("削除(_D)") {
         mnemonicParsing = true
         onAction = (e: ActionEvent) => {
-          println("削除 clicked")
+          logger.info("削除 clicked")
           val dlg = new SfxAlert(AlertType.Confirmation) {
             title = "削除確認"
             contentText = conf.configName + "を削除してよろしいですか？"

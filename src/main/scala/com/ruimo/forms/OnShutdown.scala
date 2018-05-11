@@ -3,18 +3,19 @@ package com.ruimo.forms
 import java.nio.file.Path
 
 import com.ruimo.scoins.PathUtil
+import org.slf4j.LoggerFactory
 
 import scala.collection.{immutable => imm}
 
-object OnShutdown {
+object OnShutdown extends HasLogger {
   @volatile
   private[this] var _deleteDirectories = imm.Seq[Path]()
 
   Runtime.getRuntime().addShutdownHook(new Thread {
     override def run() {
-      println("Performing shutdown hook...")
+      logger.info("Performing shutdown hook...")
       deleteDirectory()
-      println("Shutdown hook done.")
+      logger.info("Shutdown hook done.")
     }
   })
 
@@ -25,8 +26,7 @@ object OnShutdown {
       }
       catch {
         case t: Throwable =>
-          println("Cannot delete directory " + dir + ". Skip.")
-          t.printStackTrace()
+          logger.info("Cannot delete directory " + dir + ". Skip.", t)
       }
     }
   }

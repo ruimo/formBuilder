@@ -3,8 +3,9 @@ package com.ruimo.forms
 import javafx.fxml.{FXML, Initializable}
 import java.net.URL
 import java.util.ResourceBundle
-import javafx.scene.control.{ComboBox, TextField}
 
+import javafx.scene.control.{ComboBox, TextField}
+import org.slf4j.LoggerFactory
 import scalafx.collections.ObservableBuffer
 import scalafx.scene.control.{ComboBox => SfxComboBox}
 
@@ -12,7 +13,7 @@ sealed trait DotRemovalDetailValidation
 case object MaxDotSizeInvalid extends DotRemovalDetailValidation
 case object BlackLevelInvalid extends DotRemovalDetailValidation
 
-class DotRemovalDetailController extends Initializable {
+class DotRemovalDetailController extends Initializable with HasLogger {
   @FXML
   private[this] var maxDotSizeText: TextField = _
 
@@ -67,6 +68,6 @@ class DotRemovalDetailController extends Initializable {
   }
 
   override def initialize(url: URL, resourceBundle: ResourceBundle) {
-    println("DotRemovalDetailController initialize")
+    logger.info("DotRemovalDetailController initialize")
   }
 }

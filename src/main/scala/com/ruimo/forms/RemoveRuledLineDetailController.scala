@@ -3,9 +3,10 @@ package com.ruimo.forms
 import javafx.fxml.{FXML, Initializable}
 import java.net.URL
 import java.util.ResourceBundle
-import javafx.scene.control.{ComboBox, TextField, CheckBox}
-import javafx.event.ActionEvent
 
+import javafx.scene.control.{CheckBox, ComboBox, TextField}
+import javafx.event.ActionEvent
+import org.slf4j.LoggerFactory
 import scalafx.collections.ObservableBuffer
 import scalafx.scene.control.{ComboBox => SfxComboBox}
 
@@ -16,8 +17,7 @@ case object InvalidLineDotRatio extends RemoveRuledLineDetailValidation
 case object InvalidCorrectOverlappingDelta extends RemoveRuledLineDetailValidation
 case object InvalidCorrectOverlappingDotRatio extends RemoveRuledLineDetailValidation
 
-class RemoveRuledLineDetailController extends Initializable {
-
+class RemoveRuledLineDetailController extends Initializable with HasLogger {
   @FXML
   private[this] var lineDeltaXText: TextField = _
 
@@ -56,7 +56,7 @@ class RemoveRuledLineDetailController extends Initializable {
 
   @FXML
   def correctOverlappingEnabledClicked(e: ActionEvent) {
-    println("correctOverlappingEnabledClicked")
+    logger.info("correctOverlappingEnabledClicked")
     correctOverlappingDeltaText.setDisable(!correctOverlappingEnabled)
     correctOverlappingDotRatioText.setDisable(!correctOverlappingEnabled)
   }
@@ -148,6 +148,6 @@ class RemoveRuledLineDetailController extends Initializable {
   }
 
   override def initialize(url: URL, resourceBundle: ResourceBundle) {
-    println("RemoveRuledLineDetailController initialize")
+    logger.info("RemoveRuledLineDetailController initialize")
   }
 }

@@ -11,9 +11,9 @@ import java.nio.file.{Files, Path, StandardOpenOption}
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 import java.util.zip.ZipInputStream
+
 import javafx.scene.input.MouseEvent
 import javafx.scene.paint.Color
-
 import play.api.libs.ws.DefaultBodyWritables._
 import play.api.libs.ws.JsonBodyWritables._
 import play.api.libs.ws._
@@ -26,9 +26,9 @@ import scalafx.geometry.{Point2D, Rectangle2D}
 import scalafx.scene.canvas.{GraphicsContext => SfxGraphicsContext}
 import com.ruimo.graphics.twodim.Area
 import com.ruimo.scoins.{PathUtil, Percent, Zip}
-
 import scalafx.scene.image.Image
 import com.ruimo.scoins.LoanPattern._
+import org.slf4j.LoggerFactory
 
 import scala.annotation.tailrec
 import scala.concurrent.{Await, Future}
@@ -507,7 +507,7 @@ object ProjectImpl {
 class ProjectImpl(
   projectContext: ProjectContext,
   val listener: ProjectListener
-) extends com.ruimo.forms.Project {
+) extends com.ruimo.forms.Project with HasLogger {
   @volatile
   private[this] var _isDirty = false
   @volatile
@@ -775,7 +775,7 @@ class ProjectImpl(
   def modifySelectedCropField[T <: CropField](
     field: Option[T], isSelected: Boolean, modifier: T => T
   ) {
-    println("modifySelectedCropField()")
+    logger.info("modifySelectedCropField()")
     var fieldModified = false
     field.foreach { f =>
       if (isSelected) {
@@ -794,7 +794,7 @@ class ProjectImpl(
   }
 
   def moveSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
-    println("moveSelectedCropFields()")
+    logger.info("moveSelectedCropFields()")
     val modifier: CropField => CropField = _.move(formSize, from, to)
     modifySelectedCropField(topCropField, isTopCropFieldSelected, modifier)
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
@@ -843,7 +843,7 @@ class ProjectImpl(
   }
 
   def northResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
-    println("northResizeSelectedCropFields()")
+    logger.info("northResizeSelectedCropFields()")
     val modifier: CropField => CropField = _.northResize(formSize, from, to)
     modifySelectedCropField(topCropField, isTopCropFieldSelected, modifier)
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
@@ -852,7 +852,7 @@ class ProjectImpl(
   }
 
   def eastResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
-    println("eastResizeSelectedCropFields()")
+    logger.info("eastResizeSelectedCropFields()")
     val modifier: CropField => CropField = _.eastResize(formSize, from, to)
     modifySelectedCropField(topCropField, isTopCropFieldSelected, modifier)
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
@@ -861,7 +861,7 @@ class ProjectImpl(
   }
 
   def westResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
-    println("westResizeSelectedCropFields()")
+    logger.info("westResizeSelectedCropFields()")
     val modifier: CropField => CropField = _.westResize(formSize, from, to)
     modifySelectedCropField(topCropField, isTopCropFieldSelected, modifier)
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
@@ -870,7 +870,7 @@ class ProjectImpl(
   }
 
   def southResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
-    println("southResizeSelectedCropFields()")
+    logger.info("southResizeSelectedCropFields()")
     val modifier: CropField => CropField = _.southResize(formSize, from, to)
     modifySelectedCropField(topCropField, isTopCropFieldSelected, modifier)
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
@@ -879,7 +879,7 @@ class ProjectImpl(
   }
 
   def northEastResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
-    println("northEastResizeSelectedCropFields()")
+    logger.info("northEastResizeSelectedCropFields()")
     val modifier: CropField => CropField = _.northEastResize(formSize, from, to)
     modifySelectedCropField(topCropField, isTopCropFieldSelected, modifier)
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
@@ -888,7 +888,7 @@ class ProjectImpl(
   }
 
   def northWestResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
-    println("northWestResizeSelectedCropFields()")
+    logger.info("northWestResizeSelectedCropFields()")
     val modifier: CropField => CropField = _.northWestResize(formSize, from, to)
     modifySelectedCropField(topCropField, isTopCropFieldSelected, modifier)
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
@@ -897,7 +897,7 @@ class ProjectImpl(
   }
 
   def southEastResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
-    println("southEastResizeSelectedCropFields()")
+    logger.info("southEastResizeSelectedCropFields()")
     val modifier: CropField => CropField = _.southEastResize(formSize, from, to)
     modifySelectedCropField(topCropField, isTopCropFieldSelected, modifier)
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
@@ -906,7 +906,7 @@ class ProjectImpl(
   }
 
   def southWestResizeSelectedCropFields(formSize: (Double, Double), from: Point2D, to: Point2D) {
-    println("southWestResizeSelectedCropFields()")
+    logger.info("southWestResizeSelectedCropFields()")
     val modifier: CropField => CropField = _.southWestResize(formSize, from, to)
     modifySelectedCropField(topCropField, isTopCropFieldSelected, modifier)
     modifySelectedCropField(leftCropField, isLeftCropFieldSelected, modifier)
@@ -1118,7 +1118,7 @@ class ProjectImpl(
   }
 
   def topEdgeCropSensivity_=(topSensivity: EdgeCropSensivity) {
-    println("topEdgeCropSensivity changed")
+    logger.info("topEdgeCropSensivity changed")
     _topSensivity = topSensivity
     _isDirty = true
     invalidateCachedImage(CacheConditionGlob(isCropEnabled = Some(true)))
@@ -1127,7 +1127,7 @@ class ProjectImpl(
   def topEdgeCropSensivity: EdgeCropSensivity = _topSensivity
 
   def bottomEdgeCropSensivity_=(bottomSensivity: EdgeCropSensivity) {
-    println("bottomEdgeCropSensivity changed")
+    logger.info("bottomEdgeCropSensivity changed")
     _bottomSensivity = bottomSensivity
     _isDirty = true
     invalidateCachedImage(CacheConditionGlob(isCropEnabled = Some(true)))
@@ -1136,7 +1136,7 @@ class ProjectImpl(
   def bottomEdgeCropSensivity: EdgeCropSensivity = _bottomSensivity
 
   def leftEdgeCropSensivity_=(leftSensivity: EdgeCropSensivity) {
-    println("leftEdgeCropSensivity changed")
+    logger.info("leftEdgeCropSensivity changed")
     _leftSensivity = leftSensivity
     _isDirty = true
     invalidateCachedImage(CacheConditionGlob(isCropEnabled = Some(true)))
@@ -1145,7 +1145,7 @@ class ProjectImpl(
   def leftEdgeCropSensivity: EdgeCropSensivity = _leftSensivity
 
   def rightEdgeCropSensivity_=(rightSensivity: EdgeCropSensivity) {
-    println("rightEdgeCropSensivity changed")
+    logger.info("rightEdgeCropSensivity changed")
     _rightSensivity = rightSensivity
     _isDirty = true
     invalidateCachedImage(CacheConditionGlob(isCropEnabled = Some(true)))
@@ -1163,15 +1163,15 @@ class ProjectImpl(
       isRemoveRuledLineEnabled = removeRuledLine.enabled
     )
   ): Either[RetrievePreparedImageRestResult, Future[RetrievePreparedImageRestResult]] = {
-    println("cachedImage cacheCondition = " + cacheCondition)
+    logger.info("cachedImage cacheCondition = " + cacheCondition)
 
     val key = (selectedImage.file, cacheCondition)
     _cachedImage.get(key) match {
       case Some(img) =>
-        println("cachedImage found.")
+        logger.info("cachedImage found.")
         Left(img)
       case None =>
-        println("cachedImage not found. Call server to obtain image.")
+        logger.info("cachedImage not found. Call server to obtain image.")
         val fimg: Future[RetrievePreparedImageRestResult] = retrievePreparedImage(selectedImage, cacheCondition)
         Right(
           fimg.map {
@@ -1192,7 +1192,7 @@ class ProjectImpl(
   }
 
   private def prepareFileForCaptureApi(image: SelectedImage): Future[Either[RetrievePreparedImageRestFailure, Path]] = {
-    println("prepareFileForCaptureApi()")
+    logger.info("prepareFileForCaptureApi()")
 
     val configFile = Files.createTempFile(null, null)
     val fileName = "image001" + extention(image.file).getOrElse("")
@@ -1281,7 +1281,7 @@ class ProjectImpl(
   private def prepareFileForPrepareApi(
     image: SelectedImage, cond: CacheCondition
   ): Future[Either[RetrievePreparedImageRestFailure, Path]] = {
-    println("prepareFileForPrepareApi(cond: " + cond + ")")
+    logger.info("prepareFileForPrepareApi(cond: " + cond + ")")
 
     val configFile = Files.createTempFile(null, null)
     val fileName = "image001" + extention(image.file).getOrElse("")
@@ -1312,7 +1312,7 @@ class ProjectImpl(
           "cropRectangle" -> Json.toJson(cropRectangle.copy(enabled = cond.isCropRectangleEnabled)),
           "ruledLineRemoval" -> Json.toJson(removeRuledLine.copy(enabled = cond.isRemoveRuledLineEnabled))
         )
-        println("Json to send: " + json)
+        logger.info("Json to send: " + json)
         Files.write(configFile, json.toString.getBytes("utf-8"))
 
         val zipFile = Files.createTempFile(null, null)
@@ -1344,8 +1344,8 @@ class ProjectImpl(
           ).post(
             Files.readAllBytes(fileToSubmit)
           ).map { resp =>
-            println("status = " + resp.status)
-            println("statusText = " + resp.statusText)
+            logger.info("status = " + resp.status)
+            logger.info("statusText = " + resp.statusText)
             resp.status match {
               case 200 =>
                 val respJson = Json.parse(resp.bodyAsBytes.toArray)
@@ -1365,7 +1365,7 @@ class ProjectImpl(
             jobResp.status match {
               case 200 =>
                 val jsonResult: JsValue = Json.parse(jobResp.body)
-                println("result: " + jsonResult)
+                logger.info("result: " + jsonResult)
                 Right(CaptureResultOk.parse(jsonResult))
               case 403 =>
                 Left(RestAuthFailure(jobResp.status, jobResp.statusText, jobResp.body))
@@ -1397,11 +1397,11 @@ class ProjectImpl(
               val json: JsValue = using(Files.createTempFile(null, null)) { tmp =>
                 Files.copy(zipIn, tmp, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
                 zipIn.closeEntry()
-                println("Response json: " + Files.readAllLines(tmp))
+                logger.info("Response json: " + Files.readAllLines(tmp))
                 Json.parse(new FileInputStream(tmp.toFile))
               }(f => Files.delete(f)).get
               val prepareResult = PrepareResult.parse(json)
-              println("prepare result: " + json)
+              logger.info("prepare result: " + json)
               val fileName: Option[String] =
                 prepareResult.dotRemovalResult.map {
                   case DotRemovalResultSuccess(files) => files.head
@@ -1425,7 +1425,7 @@ class ProjectImpl(
                     scr.correctedFiles.head
                   }
                 }
-              println("fileName: " + fileName)
+              logger.info("fileName: " + fileName)
               parseZip(Some(prepareResult), fileName, finalImage)
             case fname: String =>
               if (fname == finalImageFileName.get) {
@@ -1484,7 +1484,7 @@ class ProjectImpl(
     si: SelectedImage,
     cond: CacheCondition
   ): Future[RetrievePreparedImageRestResult] = {
-    println("retrievePreparedImage(cond = " + cond + ") called")
+    logger.info("retrievePreparedImage(cond = " + cond + ") called")
     if (
       ! cond.isSkewCorrectionEnabled && ! cond.isCropEnabled && ! cond.isDotRemovalEnabled && ! cond.isCropRectangleEnabled && ! cond.isRemoveRuledLineEnabled
     ) Future.successful(new RetrievePreparedImageResultOk(None, si.image))
@@ -1501,8 +1501,8 @@ class ProjectImpl(
             ).post(
               Files.readAllBytes(f)
             ).map { resp =>
-              println("status = " + resp.status)
-              println("statusText = " + resp.statusText)
+              logger.info("status = " + resp.status)
+              logger.info("statusText = " + resp.statusText)
               resp.status match {
                 case 200 =>
                   val respJson = Json.parse(resp.bodyAsBytes.toArray)
@@ -1541,7 +1541,7 @@ class ProjectImpl(
   }
 
   def flushCachedImage() {
-    println("flushCachedImage() called.")
+    logger.info("flushCachedImage() called.")
     _cachedImage = Map()
   }
 
@@ -1554,7 +1554,7 @@ class ProjectImpl(
       isRemoveRuledLineEnabled = Some(false)
     )
   ) {
-    println("invalidateCachedImage(" + cond + ") called")
+    logger.info("invalidateCachedImage(" + cond + ") called")
     _cachedImage = _cachedImage.filter { case (key, value) =>
       val shouldDrop = cond.isMatched(key._2)
       ! shouldDrop
@@ -1598,7 +1598,7 @@ class ProjectImpl(
   }
 
   private def prepareFileForSaveConfig(configName: String): Path = {
-    println("prepareFileForSaveConfig()")
+    logger.info("prepareFileForSaveConfig()")
 
     PathUtil.withTempFile(None, None) { projectFile =>
       Files.write(projectFile, asJson.toString.getBytes("utf-8"))
@@ -1634,8 +1634,8 @@ class ProjectImpl(
     ).post(
       Files.readAllBytes(prepareFileForSaveConfig(configName))
     ).map { resp =>
-      println("status = " + resp.status)
-      println("statusText = " + resp.statusText)
+      logger.info("status = " + resp.status)
+      logger.info("statusText = " + resp.statusText)
       resp.status match {
         case 200 =>
           val result: JsValue = Json.parse(resp.bodyAsBytes.toArray)
@@ -1653,7 +1653,7 @@ class ProjectImpl(
   }
 
   private def prepareFileForListConfig(): Path = {
-    println("prepareFileForListConfig()")
+    logger.info("prepareFileForListConfig()")
 
     PathUtil.withTempFile(None, None) { configFile =>
       Files.write(
@@ -1686,8 +1686,8 @@ class ProjectImpl(
     ).post(
       Files.readAllBytes(prepareFileForListConfig())
     ).map { resp =>
-      println("status = " + resp.status)
-      println("statusText = " + resp.statusText)
+      logger.info("status = " + resp.status)
+      logger.info("statusText = " + resp.statusText)
       resp.status match {
         case 200 =>
           val result: JsValue = Json.parse(resp.bodyAsBytes.toArray)
@@ -1722,8 +1722,8 @@ class ProjectImpl(
         "configName" -> configName
       )
     ).map { resp =>
-      println("status = " + resp.status)
-      println("statusText = " + resp.statusText)
+      logger.info("status = " + resp.status)
+      logger.info("statusText = " + resp.statusText)
       resp.status match {
         case 200 =>
           val result: JsValue = Json.parse(resp.bodyAsBytes.toArray)
@@ -1739,7 +1739,7 @@ class ProjectImpl(
   }
 
   private def reflect(result: JsValue) {
-    println("Open config: " + result)
+    logger.info("Open config: " + result)
     import AbsoluteFieldImpl.absoluteFieldFormat
 
     def cropField[T](config: JsValue, ctor: ((Double, Double), Rectangle2D) => T): T = {
@@ -1817,8 +1817,8 @@ class ProjectImpl(
         "configName" -> configName
       )
     ).map { resp =>
-      println("status = " + resp.status)
-      println("statusText = " + resp.statusText)
+      logger.info("status = " + resp.status)
+      logger.info("statusText = " + resp.statusText)
       resp.status match {
         case 200 =>
           val result: JsValue = Json.parse(resp.bodyAsBytes.toArray)

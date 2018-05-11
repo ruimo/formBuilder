@@ -2,13 +2,14 @@ package com.ruimo.forms
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
+import org.slf4j.LoggerFactory
 import play.api.libs.ws._
 import play.api.libs.ws.ahc._
 
-object Ws {
+object Ws extends HasLogger {
   private implicit val system = ActorSystem()
   system.registerOnTermination {
-    println("Akka terminated.")
+    logger.info("Akka terminated.")
     System.exit(0)
   }
 
