@@ -4,6 +4,9 @@
     <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
       <!-- rollover daily -->
       <fileNamePattern>formbuilder-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+      <!-- Leave most recent 5 log files and remove older. -->
+      <maxHistory>5</maxHistory>
+      <cleanHistoryOnStart>true</cleanHistoryOnStart>
       <timeBasedFileNamingAndTriggeringPolicy
             class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
         <!-- or whenever the file size reaches 100MB -->
