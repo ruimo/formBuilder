@@ -997,6 +997,24 @@ class MainController extends Initializable with HandleBigJob {
     err.showAndWait()
   }
 
+  val MaxFieldNameLength = 24
+
+  def isValidFieldName(name: String): Boolean = {
+    if (name.length > MaxFieldNameLength) false
+    else if (name.length == 0) false
+    else {
+      name.find { c =>
+        !(
+          'A' <= c && c <= 'Z' ||
+            'a' <= c && c <= 'z' ||
+            '0' <= c && c <= '9' ||
+            c == '-' ||
+            c == '_'
+        )
+      }.isEmpty
+    }
+  }
+
   def fieldCreated(field: Field): Unit = {
     logger.info("fieldCreated(" + field + ")")
 
@@ -1008,7 +1026,10 @@ class MainController extends Initializable with HandleBigJob {
             override def handle(t: DialogEvent) {
               if (t.getTarget.asInstanceOf[Alert].getResult.getButtonData == ButtonBar.ButtonData.CANCEL_CLOSE) return
 
-              if (af.name != ctrl.fieldName && project.isAbsoluteFieldNameAlreadyUsed(ctrl.fieldName)) {
+              if (! isValidFieldName(ctrl.fieldName)) {
+                showErrorDialog("名前エラー", "名前として仕様できるのは、アルファベット、数字、_、-で、\n長さは1文字以上、" + MaxFieldNameLength + "文字までです。")
+                t.consume()
+              } else if (af.name != ctrl.fieldName && project.isAbsoluteFieldNameAlreadyUsed(ctrl.fieldName)) {
                 showErrorDialog("名前エラー", "この名前は使用済みです。")
                 t.consume()
               }
