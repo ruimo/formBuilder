@@ -747,6 +747,15 @@ class MainController extends Initializable with HandleBigJob {
   }
 
   private[this] def saveProject(callbackOnCancel: () => Unit = () => {}) {
+    if (selectedImage.isEmpty) {
+      val dlg = new SfxAlert(AlertType.Error) {
+        title = "帳票を指定してください"
+        contentText = "保管する際は、帳票を開いた状態で行ってください。"
+      }
+      dlg.showAndWait()
+      return
+    }
+
     val loader = new FXMLLoader(getClass().getResource("save.fxml"))
     val root: DialogPane = loader.load()
     val ctrl: SaveController = loader.getController().asInstanceOf[SaveController]
@@ -769,7 +778,7 @@ class MainController extends Initializable with HandleBigJob {
             if (button.buttonData.delegate == ButtonBar.ButtonData.APPLY) {
               projectConfigName = Some(ctrl.configName)
               doBigJob {
-                Right(project.saveConfig(ctrl.configName))
+                Right(project.saveConfig(ctrl.configName, selectedImage.get.imageSize))
               } {
                 case SaveConfigResultOk(resp) =>
                   val dlg = new SfxAlert(AlertType.Information) {

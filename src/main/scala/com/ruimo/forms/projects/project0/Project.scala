@@ -1564,11 +1564,11 @@ class ProjectImpl(
   override def cropFieldsAreReady: Boolean =
     _topCropField.isDefined && _leftCropField.isDefined && _rightCropField.isDefined && _bottomCropField.isDefined
 
-  private def asJson: JsValue = {
+  private def asJson(formWidth: Double, formHeight: Double): JsValue = {
     JsObject(
       Seq(
         "skewCorrection" -> Json.toJson(skewCorrection),
-        "isCropEnabled" -> JsBoolean(cropEnabled)
+        "crop" -> edgeCrop(formWidth, formHeight, _topSensivity, _bottomSensivity, _leftSensivity, _rightSensivity).asJson(cropEnabled)
       ) ++ leftCropField.map(
         f => Seq("leftCropField" -> f.asJson)
       ).getOrElse(
@@ -1597,11 +1597,11 @@ class ProjectImpl(
     )
   }
 
-  private def prepareFileForSaveConfig(configName: String): Path = {
+  private def prepareFileForSaveConfig(formWidth: Double, formHeight: Double, configName: String): Path = {
     logger.info("prepareFileForSaveConfig()")
 
     PathUtil.withTempFile(None, None) { projectFile =>
-      Files.write(projectFile, asJson.toString.getBytes("utf-8"))
+      Files.write(projectFile, asJson(formWidth, formHeight).toString.getBytes("utf-8"))
 
       PathUtil.withTempFile(None, None) { configFile =>
         Files.write(
@@ -1624,7 +1624,7 @@ class ProjectImpl(
     }.get
   }
 
-  def saveConfig(configName: String): Future[SaveConfigRestResult] = {
+  def saveConfig(configName: String, imageSize: (Double, Double)): Future[SaveConfigRestResult] = {
     val urlPath = Settings.Loader.settings.auth.url.resolve("saveConfig")
     val auth = Settings.Loader.settings.auth
 
@@ -1632,7 +1632,7 @@ class ProjectImpl(
       "Content-Type" -> "application/zip",
       "Authorization" -> (auth.contractedUserId.value + "_" + auth.applicationToken.value)
     ).post(
-      Files.readAllBytes(prepareFileForSaveConfig(configName))
+      Files.readAllBytes(prepareFileForSaveConfig(imageSize._1, imageSize._2, configName))
     ).map { resp =>
       logger.info("status = " + resp.status)
       logger.info("statusText = " + resp.statusText)
@@ -1661,7 +1661,7 @@ class ProjectImpl(
         Json.obj(
           "page" -> 0,
           "pageSize" -> 1000,
-          "orderBy" -> "fc0.created_at"
+          "orderBy" -> "form_config.created_at"
         ).toString.getBytes("utf-8")
       )
 
@@ -1758,16 +1758,17 @@ class ProjectImpl(
 
     val record = (result \ "record").as[JsValue]
     val config: JsValue = Json.parse((record \ "config").as[String])
-    (config \ "leftCropField").asOpt[JsValue].map(cropField(_, LeftCropFieldImpl.apply)).foreach {
+    val crop: JsValue = (config \ "crop").as[JsValue]
+    (crop \ "leftCropField").asOpt[JsValue].map(cropField(_, LeftCropFieldImpl.apply)).foreach {
       addLeftCropField(_, selected = false, redraw = false)
     }
-    (config \ "topCropField").asOpt[JsValue].map(cropField(_, TopCropFieldImpl.apply)).foreach {
+    (crop \ "topCropField").asOpt[JsValue].map(cropField(_, TopCropFieldImpl.apply)).foreach {
       addTopCropField(_, selected = false, redraw = false)
     }
-    (config \ "rightCropField").asOpt[JsValue].map(cropField(_, RightCropFieldImpl.apply)).foreach {
+    (crop \ "rightCropField").asOpt[JsValue].map(cropField(_, RightCropFieldImpl.apply)).foreach {
       addRightCropField(_, selected = false, redraw = false)
     }
-    (config \ "bottomCropField").asOpt[JsValue].map(cropField(_, BottomCropFieldImpl.apply)).foreach {
+    (crop \ "bottomCropField").asOpt[JsValue].map(cropField(_, BottomCropFieldImpl.apply)).foreach {
       addBottomCropField(_, selected = false, redraw = false)
     }
 
@@ -1799,7 +1800,7 @@ class ProjectImpl(
       addAbsoluteField(_, isSelected = false, redraw = false)
     }
 
-    cropEnabled = (config \ "isCropEnabled").as[Boolean]
+    cropEnabled = (crop \ "enabled").as[Boolean]
     skewCorrection = (config \ "skewCorrection").as[SkewCorrection]
 
     _isDirty = false
