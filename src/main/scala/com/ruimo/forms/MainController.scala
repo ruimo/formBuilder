@@ -7,6 +7,7 @@ import java.util.prefs.Preferences
 
 import scala.math
 import scalafx.scene.control.{ButtonType => SfxButtonType}
+import scalafx.scene.control.{TextInputDialog => SfxTextInputDialog}
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
@@ -777,21 +778,28 @@ class MainController extends Initializable with HandleBigJob {
           case Some(button) =>
             if (button.buttonData.delegate == ButtonBar.ButtonData.APPLY) {
               projectConfigName = Some(ctrl.configName)
-              doBigJob {
-                Right(project.saveConfig(ctrl.configName, selectedImage.get.imageSize))
-              } {
-                case SaveConfigResultOk(resp) =>
-                  val dlg = new SfxAlert(AlertType.Information) {
-                    title = "保管成功"
-                    contentText = "保管しました。リビジョン: " + resp.revision.value
+              new SfxTextInputDialog {
+                title = "コメント"
+                contentText = "コメントを入力してください"
+              }.showAndWait() match {
+                case None =>
+                case Some(comment) =>
+                  doBigJob {
+                    Right(project.saveConfig(ctrl.configName, comment, selectedImage.get.imageSize))
+                  } {
+                    case SaveConfigResultOk(resp) =>
+                      val dlg = new SfxAlert(AlertType.Information) {
+                        title = "保管成功"
+                        contentText = "保管しました。リビジョン: " + resp.revision.value
+                      }
+                      dlg.showAndWait()
+                    case authFail: RestAuthFailure =>
+                      authError()
+                      callbackOnCancel()
+                    case serverFail: RestUnknownFailure =>
+                      showGeneralError()
+                      callbackOnCancel()
                   }
-                  dlg.showAndWait()
-                case authFail: RestAuthFailure =>
-                  authError()
-                  callbackOnCancel()
-                case serverFail: RestUnknownFailure =>
-                  showGeneralError()
-                  callbackOnCancel()
               }
             }
           case _ =>

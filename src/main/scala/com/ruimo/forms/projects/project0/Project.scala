@@ -1597,7 +1597,7 @@ class ProjectImpl(
     )
   }
 
-  private def prepareFileForSaveConfig(formWidth: Double, formHeight: Double, configName: String): Path = {
+  private def prepareFileForSaveConfig(formWidth: Double, formHeight: Double, configName: String, comment: String): Path = {
     logger.info("prepareFileForSaveConfig()")
 
     PathUtil.withTempFile(None, None) { projectFile =>
@@ -1607,7 +1607,8 @@ class ProjectImpl(
         Files.write(
           configFile,
           Json.obj(
-            "configName" -> configName
+            "configName" -> configName,
+            "comment" -> comment
           ).toString.getBytes("utf-8")
         )
 
@@ -1624,7 +1625,7 @@ class ProjectImpl(
     }.get
   }
 
-  def saveConfig(configName: String, imageSize: (Double, Double)): Future[SaveConfigRestResult] = {
+  def saveConfig(configName: String, comment: String, imageSize: (Double, Double)): Future[SaveConfigRestResult] = {
     val urlPath = Settings.Loader.settings.auth.url.resolve("saveConfig")
     val auth = Settings.Loader.settings.auth
 
@@ -1632,7 +1633,7 @@ class ProjectImpl(
       "Content-Type" -> "application/zip",
       "Authorization" -> (auth.contractedUserId.value + "_" + auth.applicationToken.value)
     ).post(
-      Files.readAllBytes(prepareFileForSaveConfig(imageSize._1, imageSize._2, configName))
+      Files.readAllBytes(prepareFileForSaveConfig(imageSize._1, imageSize._2, configName, comment))
     ).map { resp =>
       logger.info("status = " + resp.status)
       logger.info("statusText = " + resp.statusText)

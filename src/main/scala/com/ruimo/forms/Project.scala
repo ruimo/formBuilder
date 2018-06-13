@@ -705,7 +705,7 @@ trait Project {
   def runCapture(si: SelectedImage): Future[Either[CaptureRestFailure, CaptureResultOk]]
   def cropFieldsAreReady: Boolean
   def listConfig(): Future[ListConfigRestResult]
-  def saveConfig(configName: String, imageSize: (Double, Double)): Future[SaveConfigRestResult]
+  def saveConfig(configName: String, comment: String, imageSize: (Double, Double)): Future[SaveConfigRestResult]
   def removeConfig(configName: String): Future[RemoveConfigRestResult]
   def openConfig(configName: String): Future[OpenConfigRestResult]
 }
