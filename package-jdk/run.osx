@@ -1,0 +1,27 @@
+#!/bin/sh
+cd `dirname $0`
+
+JAVA_HOME=jdk
+app/formbuilder/bin/formbuilder
+
+if [ -e formbuilder.app ]; then
+  rm -rf formbuilder
+  mv formbuilder.app formbuilder
+fi
+
+if [ -e formbuilder ]; then
+  cat > update << EOF
+#!/bin/sh
+rm -rf app jdk run run.cmd
+mv formbuilder/Contents/MacOS/app formbuilder/Contents/MacOS/jdk formbuilder/Contents/MacOS/run formbuilder/Contents/MacOS/run.cmd .
+rm -rf formbuilder
+chmod +x run
+chmod +x app/formbuilder/bin/formbuilder
+chmod +x jdk/bin/*
+exec ./run
+EOF
+  chmod +x update
+  exec ./update
+else
+  rm -f update
+fi
