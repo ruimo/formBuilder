@@ -33,7 +33,7 @@ mkdir app
 mv formbuilder app/
 
 tar xf $JDK_HOME/osx/$JDK_VERSION.tgz
-cp ../../../run .
+cp ../../../run.osx ./run
 cd ../../..
 
 zip -r formbuilder_osx-$VERSION.zip formbuilder.app
