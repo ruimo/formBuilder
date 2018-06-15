@@ -1115,12 +1115,20 @@ class MainController extends Initializable with HandleBigJob {
 
   @FXML
   def imageOpenMenuClicked(event: ActionEvent) {
+    val dirToOpen = {
+      val dir = new File(
+        pref.get("imageDirectory", System.getProperty("user.home"))
+      )
+      if (dir.exists && dir.isDirectory) dir
+      else new File(System.getProperty("user.home"))
+    }
+
+    logger.info("Opening directory: " + dirToOpen.getAbsolutePath)
+
     val fc = new FileChooser {
       title = "Select image file"
       extensionFilters.add(new FileChooser.ExtensionFilter("Image Files", Seq("*.png", "*.tif", "*.pdf")))
-      initialDirectory = new File(
-        pref.get("imageDirectory", System.getProperty("user.home"))
-      )
+      initialDirectory = dirToOpen
     }
 
     Option(fc.showOpenMultipleDialog(stage)).foreach { ftbl =>
