@@ -1122,7 +1122,7 @@ class MainController extends Initializable with HandleBigJob {
       if (dir.exists && dir.isDirectory) dir
       else new File(System.getProperty("user.home"))
     }
-
+    
     logger.info("Opening directory: " + dirToOpen.getAbsolutePath)
 
     val fc = new FileChooser {

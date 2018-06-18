@@ -14,7 +14,7 @@
       </timeBasedFileNamingAndTriggeringPolicy>
     </rollingPolicy>
     <encoder>
-      <pattern>%msg%n</pattern>
+      <pattern>%d %t %msg%n</pattern>
     </encoder>
   </appender>
 
