@@ -26,24 +26,6 @@ object Main extends JFXApp with HasLogger {
   }
 
   {
-    val pipeIn = new PipedInputStream()
-    Future {
-      val br = new BufferedReader(new InputStreamReader(pipeIn))
-      while (true) {
-        try {
-          Logger.info(br.readLine())
-        } catch {
-          case t: Throwable =>
-            Logger.error("Unexpected error.", t)
-        }
-      }
-    }
-
-    val pipeOut = new PipedOutputStream(pipeIn)
-
-    System.setErr(new PrintStream(pipeOut))
-    System.setOut(new PrintStream(pipeOut))
-
     Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
       def uncaughtException(t: Thread, e: Throwable) {
         logger.error("Uncaught exception.", e)
