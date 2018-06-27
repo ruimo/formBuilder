@@ -25,7 +25,13 @@ trait HandleBigJob extends HasLogger {
 
         future.map { ret =>
           Platform.runLater(() -> {
-            f(ret)
+            try {
+              f(ret)
+            } catch {
+              case t: Throwable =>
+                logger.error("Unknown error.", t)
+                showGeneralError()
+            }
             // Avoid JavaFX bug to close dialog.
             dlg.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL);
             dlg.close()

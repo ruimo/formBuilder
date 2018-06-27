@@ -16,10 +16,12 @@ import java.util.ResourceBundle
 import javafx.fxml.{FXML, Initializable}
 import javafx.scene.control.TableView
 import javafx.util.Callback
-import javafx.beans.value.ObservableValue
+import javafx.beans.value.{ChangeListener, ObservableValue}
 import javafx.beans.property.ReadOnlyStringWrapper
 import javafx.scene.input.{KeyCode, KeyEvent, MouseButton, MouseEvent}
 import com.ruimo.forms.common.{TesseractAcceptChars, _}
+import javafx.scene.layout.GridPane
+import scalafx.scene.layout.{GridPane => SfxGridPane}
 import org.slf4j.LoggerFactory
 
 import scala.collection.{immutable => imm}
@@ -45,6 +47,10 @@ class AbsoluteFieldController extends Initializable with HasLogger {
   @FXML
   private[this] var ocrEngineComboBox: ComboBox[OcrEngineCode] = _
   lazy val sfxOcrEngineComboBox = new SfxComboBox[OcrEngineCode](ocrEngineComboBox)
+
+  @FXML
+  private[this] var googleLangComboBox: ComboBox[GoogleOcrLang] = _
+  lazy val sfxGoogleLangComboBox = new SfxComboBox[GoogleOcrLang](googleLangComboBox)
 
   @FXML
   private[this] var tesCharsDropDown: ComboBox[String] = _
@@ -126,6 +132,14 @@ class AbsoluteFieldController extends Initializable with HasLogger {
   private[this] var tesCustomLabel: Label = _
   lazy val sfxTesCustomLabel = new SfxLabel(tesCustomLabel)
 
+  @FXML
+  private[this] var tesseractGrid: GridPane = _
+  lazy val sfxTesseractGrid = new SfxGridPane(tesseractGrid)
+
+  @FXML
+  private[this] var googleGrid: GridPane = _
+  lazy val sfxGoogleGrid = new SfxGridPane(googleGrid)
+
   def fieldName: String = fieldNameText.getText()
 
   def fieldName_=(newName: String) {
@@ -173,6 +187,10 @@ class AbsoluteFieldController extends Initializable with HasLogger {
   }
 
   def ocrSettings: OcrSettings = sfxOcrEngineComboBox.value() match {
+    case OcrEngineCodeGoogle => GoogleOcrSettings(
+      lang = sfxGoogleLangComboBox.value()
+    )
+
     case _ => TesseractOcrSettings(
       lang = sfxTesLangDropDown.value(),
       acceptChars = TesseractAcceptChars(
@@ -184,7 +202,13 @@ class AbsoluteFieldController extends Initializable with HasLogger {
 
   def ocrSettings_=(newOcrSettings: OcrSettings) {
     newOcrSettings match {
+      case gos: GoogleOcrSettings =>
+        sfxOcrEngineComboBox.value = OcrEngineCodeGoogle
+        sfxGoogleLangComboBox.value = gos.lang
+        selectOcrPane(OcrEngineCodeGoogle)
+
       case tos: TesseractOcrSettings =>
+        sfxOcrEngineComboBox.value = OcrEngineCodeTesseract
         sfxTesLangDropDown.value = tos.lang
         tos.acceptChars match {
           case ta: TesseractAcceptChars =>
@@ -192,7 +216,25 @@ class AbsoluteFieldController extends Initializable with HasLogger {
             sfxTesCustomChar.text = ta.custom
           case _ =>
         }
+        selectOcrPane(OcrEngineCodeTesseract)
     }
+  }
+
+  def gridPane(oec: OcrEngineCode): SfxGridPane = {
+    oec match {
+      case OcrEngineCodeTesseract => sfxTesseractGrid
+      case OcrEngineCodeGoogle => sfxGoogleGrid
+
+      case OcrEngineCodeMicrosoft => sfxTesseractGrid
+      case OcrEngineCodeCogent => sfxTesseractGrid
+    }
+  }
+
+  def selectOcrPane(ocrEngine: OcrEngineCode) {
+    sfxTesseractGrid.visible = false
+    sfxGoogleGrid.visible = false
+
+    gridPane(ocrEngine).visible = true
   }
 
   override def initialize(url: URL, resourceBundle: ResourceBundle) {
@@ -203,8 +245,21 @@ class AbsoluteFieldController extends Initializable with HasLogger {
     sfxOcrEngineComboBox += OcrEngineCodeCogent
     sfxOcrEngineComboBox.value = OcrEngineCodeTesseract
 
+    selectOcrPane(OcrEngineCodeTesseract)
+
     sfxTesLangDropDown += TesseractLangJa
     sfxTesLangDropDown += TesseractLangEn
     sfxTesLangDropDown.value = TesseractLangEn
+
+    sfxGoogleLangComboBox += GoogleOcrLangJa
+    sfxGoogleLangComboBox += GoogleOcrLangEn
+    sfxGoogleLangComboBox.value = GoogleOcrLangEn
+
+    sfxOcrEngineComboBox.valueProperty.addListener(new ChangeListener[OcrEngineCode] {
+      override def changed(observableValue: ObservableValue[_ <: OcrEngineCode], from: OcrEngineCode, to: OcrEngineCode) {
+        gridPane(from).setVisible(false)
+        gridPane(to).setVisible(true)
+      }
+    })
   }
 }

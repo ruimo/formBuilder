@@ -1948,14 +1948,24 @@ class MainController extends Initializable with HandleBigJob {
     selectedImage.foreach { si =>
       doBigJob(Right(project.runCapture(si))) {
         case Right(resp) =>
-          val alert = new Alert(AlertType.Information)
-          alert.setTitle("処理結果")
-          alert.setContentText(
-            resp.serverResp.map { e =>
-              e.fieldName + ": " + e.rawText
-            }.mkString("\r\n")
-          )
-          alert.showAndWait()
+          resp.status match {
+            case CaptureStatus.Ok =>
+              val alert = new Alert(AlertType.Information)
+              alert.setTitle("処理結果")
+              alert.setContentText(
+                resp.serverResp.map { e =>
+                  e.fieldName + ": " + e.rawText
+                }.mkString("\r\n")
+              )
+              alert.showAndWait()
+            case CaptureStatus.NoGoogleOcrApiKeyRegistered =>
+              val alert = new Alert(AlertType.Error)
+              alert.setTitle("Google OCR API未登録")
+              alert.setContentText(
+                "Google OCRが使用できるようになっていません。"
+              )
+              alert.showAndWait()
+          }
         case Left(fail) =>
           fail match {
             case e: RestAuthFailure =>

@@ -50,23 +50,40 @@ class RetrievePreparedImageResultOk(
 
 case class CaptureResultRunning(token: Long) extends CaptureRestResult
 
+sealed trait CaptureStatus
+
+object CaptureStatus {
+  case object Ok extends CaptureStatus
+  case object NoGoogleOcrApiKeyRegistered extends CaptureStatus
+}
+
 class CaptureResultOk(
+  val status: CaptureStatus,
   val serverResp: imm.Seq[CaptureResult]
 ) extends CaptureRestResult
 
 object CaptureResultOk {
   def parse(json: JsValue): CaptureResultOk = {
-    val capturedFields = (json \ "capturedFields").as[Seq[JsValue]]
-    new CaptureResultOk(
-      capturedFields.map { e =>
-        CaptureResult(
-          (e \ "fieldName").as[String],
-          (e \ "base64Image").as[String],
-          (e \ "text").as[String],
-          (e \ "rawText").as[String]
-        )
-      }.toList
-    )
+    val status = (json \ "status").asOpt[String].getOrElse("ok")
+    if (status == "ok") {
+      val capturedFields = (json \ "capturedFields").as[Seq[JsValue]]
+      new CaptureResultOk(
+        status = CaptureStatus.Ok,
+        capturedFields.map { e =>
+          CaptureResult(
+            (e \ "fieldName").as[String],
+            (e \ "base64Image").as[String],
+            (e \ "text").as[String],
+            (e \ "rawText").as[String]
+          )
+        }.toList
+      )
+    } else if (status == "noGoogleOcrApiKeyRegistered") {
+      new CaptureResultOk(
+        status = CaptureStatus.NoGoogleOcrApiKeyRegistered,
+        serverResp = imm.Seq()
+      )
+    } else throw new RuntimeException("Unknown status '" + status + "'")
   }
 }
 
