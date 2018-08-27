@@ -1352,6 +1352,7 @@ class ProjectImpl(
             resp.status match {
               case 200 =>
                 val respJson = Json.parse(resp.bodyAsBytes.toArray)
+                logger.info("response = " + respJson)
                 CaptureResultRunning((respJson \ "token").as[String].toLong)
               case 403 =>
                 RestAuthFailure(resp.status, resp.statusText, resp.body)
@@ -1362,9 +1363,11 @@ class ProjectImpl(
           Duration.apply(5, TimeUnit.MINUTES)
         )
 
+        logger.info("Polling status...")
         postResp match {
           case CaptureResultRunning(token) =>
             val jobResp = getCaptureJobStatus(token, auth.contractedUserId.value.toLong, auth.applicationToken.value.toLong)
+            logger.info("Polling status: " + jobResp)
             jobResp.status match {
               case 200 =>
                 val jsonResult: JsValue = Json.parse(jobResp.body)
