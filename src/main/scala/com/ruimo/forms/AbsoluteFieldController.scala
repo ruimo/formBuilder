@@ -36,7 +36,7 @@ case object OcrEngineCodeGoogle extends OcrEngineCode {
 case object OcrEngineCodeMicrosoft extends OcrEngineCode {
   override def toString = "Microsoft OCR"
 }
-case object OcrEngineCodeCogent extends OcrEngineCode {
+case object OcrEngineCodeTegaki extends OcrEngineCode {
   override def toString = "Cogent Tegaki"
 }
 
@@ -140,6 +140,46 @@ class AbsoluteFieldController extends Initializable with HasLogger {
   private[this] var googleGrid: GridPane = _
   lazy val sfxGoogleGrid = new SfxGridPane(googleGrid)
 
+  @FXML
+  private[this] var tegakiGrid: GridPane = _
+  lazy val sfxTegakiGrid = new SfxGridPane(tegakiGrid)
+
+  @FXML
+  private[this] var tegHiraganaCheck: CheckBox = _
+  lazy val sfxTegHiraganaCheck = new SfxCheckBox(tegHiraganaCheck)
+
+  @FXML
+  private[this] var tegKatakanaCheck: CheckBox = _
+  lazy val sfxTegKatakanaCheck = new SfxCheckBox(tegKatakanaCheck)
+
+  @FXML
+  private[this] var tegKanjiCheck: CheckBox = _
+  lazy val sfxTegKanjiCheck = new SfxCheckBox(tegKanjiCheck)
+
+  @FXML
+  private[this] var tegNumberCheck: CheckBox = _
+  lazy val sfxTegNumberCheck = new SfxCheckBox(tegNumberCheck)
+
+  @FXML
+  private[this] var tegAlphabetUpperCheck: CheckBox = _
+  lazy val sfxTegUpperAlphabetCheck = new SfxCheckBox(tegAlphabetUpperCheck)
+
+  @FXML
+  private[this] var tegAlphabetLowerCheck: CheckBox = _
+  lazy val sfxTegLowerAlphabetCheck = new SfxCheckBox(tegAlphabetLowerCheck)
+
+  @FXML
+  private[this] var tegSymbolCheck: CheckBox = _
+  lazy val sfxTegSymbolCheck = new SfxCheckBox(tegSymbolCheck)
+
+  @FXML
+  private[this] var tegUseLangMode: CheckBox = _
+  lazy val sfxTegUseLangMode = new SfxCheckBox(tegUseLangMode)
+
+  @FXML
+  private[this] var tegIsMultiLine: CheckBox = _
+  lazy val sfxTegIsMultiLine = new SfxCheckBox(tegIsMultiLine)
+
   def fieldName: String = fieldNameText.getText()
 
   def fieldName_=(newName: String) {
@@ -191,6 +231,20 @@ class AbsoluteFieldController extends Initializable with HasLogger {
       lang = sfxGoogleLangComboBox.value()
     )
 
+    case OcrEngineCodeTegaki => TegakiOcrSettings(
+      useLangModel = sfxTegUseLangMode.isSelected,
+      isMultiLine =  sfxTegIsMultiLine.isSelected,
+      acceptChars =  TegakiAcceptChars(
+        isHiragana = sfxTegHiraganaCheck.isSelected,
+        isKatakan = sfxTegKatakanaCheck.isSelected,
+        isKanji = sfxTegKanjiCheck.isSelected,
+        isNumber = sfxTegNumberCheck.isSelected,
+        isUpperAlpha = sfxTegUpperAlphabetCheck.isSelected,
+        isLowerAlpha = sfxTegLowerAlphabetCheck.isSelected,
+        isSymbol = sfxTegSymbolCheck.isSelected
+      )
+    )
+
     case _ => TesseractOcrSettings(
       lang = sfxTesLangDropDown.value(),
       acceptChars = TesseractAcceptChars(
@@ -217,6 +271,12 @@ class AbsoluteFieldController extends Initializable with HasLogger {
           case _ =>
         }
         selectOcrPane(OcrEngineCodeTesseract)
+
+      case teg: TegakiOcrSettings =>
+        sfxTegUseLangMode.setSelected(teg.useLangModel)
+        sfxTegIsMultiLine.setSelected(teg.isMultiLine)
+        sfxTegHiraganaCheck.setSelected(teg.acceptChars.isHiragana)
+        sfxTegKatakanaCheck.setSelected(teg.acceptChars.isKatakan)
     }
   }
 
@@ -226,13 +286,14 @@ class AbsoluteFieldController extends Initializable with HasLogger {
       case OcrEngineCodeGoogle => sfxGoogleGrid
 
       case OcrEngineCodeMicrosoft => sfxTesseractGrid
-      case OcrEngineCodeCogent => sfxTesseractGrid
+      case OcrEngineCodeTegaki => sfxTegakiGrid
     }
   }
 
   def selectOcrPane(ocrEngine: OcrEngineCode) {
     sfxTesseractGrid.visible = false
     sfxGoogleGrid.visible = false
+    sfxTegakiGrid.visible = false
 
     gridPane(ocrEngine).visible = true
   }
@@ -242,7 +303,7 @@ class AbsoluteFieldController extends Initializable with HasLogger {
     sfxOcrEngineComboBox += OcrEngineCodeTesseract
     sfxOcrEngineComboBox += OcrEngineCodeGoogle
     sfxOcrEngineComboBox += OcrEngineCodeMicrosoft
-    sfxOcrEngineComboBox += OcrEngineCodeCogent
+    sfxOcrEngineComboBox += OcrEngineCodeTegaki
     sfxOcrEngineComboBox.value = OcrEngineCodeTesseract
 
     selectOcrPane(OcrEngineCodeTesseract)

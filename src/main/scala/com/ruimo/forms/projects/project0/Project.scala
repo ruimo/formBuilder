@@ -18,7 +18,7 @@ import play.api.libs.ws.DefaultBodyWritables._
 import play.api.libs.ws.JsonBodyWritables._
 import play.api.libs.ws._
 import com.ruimo.forms._
-import com.ruimo.forms.common.{GoogleOcrSettings, OcrSettings, TesseractOcrSettings}
+import com.ruimo.forms.common.{GoogleOcrSettings, OcrSettings, TegakiOcrSettings, TesseractOcrSettings}
 import play.api.libs.json._
 
 import scala.collection.{immutable => imm}
@@ -70,6 +70,9 @@ object AbsoluteFieldImpl {
 
           case gs: GoogleOcrSettings =>
             Json.obj("ocrSettings" -> gs)
+
+          case teg: TegakiOcrSettings =>
+            Json.obj("ocrSettings" -> teg)
         }
       }
     )

@@ -2045,52 +2045,44 @@ class MainController extends Initializable with HandleBigJob {
     project = ProjectImpl(
       new ProjectContext(
         onNormalAbsoluteFieldAdded = (f: AbsoluteField) => {
-          logger.info("*** normal field added " + f)
           doWithImageSize { imgSz =>
             f.draw(imgSz, sfxImageCanvas.graphicsContext2D, false)
           }
         },
         onSelectedAbsoluteFieldAdded = (f: AbsoluteField) => {
-          logger.info("*** selected field added " + f)
           doWithImageSize { imgSz =>
             f.draw(imgSz, sfxImageCanvas.graphicsContext2D, true)
           }
         },
         onNormalAbsoluteFieldRemoved = (f: AbsoluteField) => {
-          logger.info("*** normal field removed " + f)
           doWithImageSize { imgSz =>
             redrawRect(f.drawArea(imgSz))
           }
         },
         onSelectedAbsoluteFieldRemoved = (f: AbsoluteField) => {
-          logger.info("*** selected field removed " + f)
           doWithImageSize { imgSz =>
             redrawRect(f.drawArea(imgSz))
           }
         },
         onNormalCropFieldAdded = (f: CropField) => {
-          logger.info("onNormalCropFieldAdded")
           project.invalidateCachedImage(CacheConditionGlob(isCropEnabled = Some(true)))
           doWithImageSize { imgSz =>
             f.draw(imgSz, sfxImageCanvas.graphicsContext2D, false)
           }
         },
         onSelectedCropFieldAdded = (f: CropField) => {
-          logger.info("onSelectedCropFieldAdded")
           project.invalidateCachedImage(CacheConditionGlob(isCropEnabled = Some(true)))
           doWithImageSize { imgSz =>
             f.draw(imgSz, sfxImageCanvas.graphicsContext2D, true)
           }
         },
         onNormalCropFieldRemoved = (f: CropField) => {
-          logger.info("onNormalCropFieldRemoved")
           project.invalidateCachedImage(CacheConditionGlob(isCropEnabled = Some(true)))
           doWithImageSize { imgSz =>
             redrawRect(f.drawArea(imgSz))
           }
         },
         onSelectedCropFieldRemoved = (f: CropField) => {
-          logger.info("onSelectedCropFieldRemoved")
           project.invalidateCachedImage(CacheConditionGlob(isCropEnabled = Some(true)))
           doWithImageSize { imgSz =>
             redrawRect(f.drawArea(imgSz))

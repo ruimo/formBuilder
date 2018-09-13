@@ -16,7 +16,14 @@ trait HandleBigJob extends HasLogger {
 
   def doBigJob[T](in: Either[T, Future[T]], onError: Throwable => Unit = t => showGeneralError())(f: T => Unit) {
     in match {
-      case Left(value) => f(value)
+      case Left(value) => try {
+        f(value)
+      } catch {
+        case t: Throwable =>
+          logger.error("Unknown error while performing big job." , t)
+          showOtherlError()
+      }
+
       case Right(future) =>
         val dlg = new Alert(AlertType.None)
         dlg.setTitle("サーバ通信中")
@@ -46,6 +53,13 @@ trait HandleBigJob extends HasLogger {
           })
         }
     }
+  }
+
+  def showOtherlError() {
+    val err = new Alert(AlertType.Error)
+    err.setTitle("一般エラー")
+    err.setContentText("処理に失敗しました。")
+    err.show()
   }
 
   def showGeneralError() {
