@@ -927,6 +927,13 @@ class MainController extends Initializable with HandleBigJob {
           project.cropEnabled = false
           sizeError()
 
+        case CannotFindEdgeError =>
+          sfxSkewCorrectionCheck.selected = false
+          project.skewCorrection = project.skewCorrection.copy(enabled = false)
+          sfxCropCheck.selected = false
+          project.cropEnabled = false
+          noEdgeError()
+
         case serverFail: RestUnknownFailure =>
           sfxSkewCorrectionCheck.selected = false
           project.skewCorrection = project.skewCorrection.copy(enabled = false)
@@ -967,6 +974,13 @@ class MainController extends Initializable with HandleBigJob {
           sfxCropCheck.selected = false
           project.cropEnabled = false
           sizeError()
+
+        case CannotFindEdgeError =>
+          sfxSkewCorrectionCheck.selected = false
+          project.skewCorrection = project.skewCorrection.copy(enabled = false)
+          sfxCropCheck.selected = false
+          project.cropEnabled = false
+          noEdgeError()
 
         case serverFail: RestUnknownFailure =>
           sfxSkewCorrectionCheck.selected = false
@@ -1329,6 +1343,13 @@ class MainController extends Initializable with HandleBigJob {
           sfxCropCheck.selected = false
           project.cropEnabled = false
           sizeError()
+
+        case CannotFindEdgeError =>
+          sfxSkewCorrectionCheck.selected = false
+          project.skewCorrection = project.skewCorrection.copy(enabled = false)
+          sfxCropCheck.selected = false
+          project.cropEnabled = false
+          noEdgeError()
 
         case serverFail: RestUnknownFailure =>
           sfxSkewCorrectionCheck.selected = false
@@ -1815,6 +1836,10 @@ class MainController extends Initializable with HandleBigJob {
               sfxSkewCorrectionCheck.selected = false
               sizeError()
 
+            case CannotFindEdgeError =>
+              sfxSkewCorrectionCheck.selected = false
+              noEdgeError()
+
             case unknownError: RestUnknownFailure =>
               sfxSkewCorrectionCheck.selected = false
               showGeneralError()
@@ -2011,6 +2036,9 @@ class MainController extends Initializable with HandleBigJob {
 
             case e: RestSizeError =>
               sizeError()
+
+            case CannotFindEdgeError =>
+              noEdgeError()
 
             case e: RestUnknownFailure =>
               val alert = new Alert(AlertType.Error)

@@ -39,6 +39,9 @@ case class RestSizeError(
 ) extends RetrievePreparedImageRestFailure
     with CaptureRestFailure
 
+case object CannotFindEdgeError extends RetrievePreparedImageRestFailure
+    with CaptureRestFailure
+
 case class RestUnknownFailure(
   statusCode: Int,
   statusText: String,

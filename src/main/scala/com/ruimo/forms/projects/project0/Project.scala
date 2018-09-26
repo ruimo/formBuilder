@@ -1411,33 +1411,39 @@ class ProjectImpl(
                 logger.info("Response json: " + Files.readAllLines(tmp))
                 Json.parse(new FileInputStream(tmp.toFile))
               }(f => Files.delete(f)).get
+              logger.info("prepare result(json): " + json)
               val prepareResult = PrepareResult.parse(json)
-              logger.info("prepare result: " + json)
-              val fileName: Option[String] =
-                prepareResult.dotRemovalResult.map {
-                  case DotRemovalResultSuccess(files) => files.head
-                }.orElse {
-                  prepareResult.removeRuledLineResult.map {
-                    case RemoveRuledLineResultSuccess(files) => files.head
-                  }
-                }.orElse {
-                  prepareResult.cropRectangleResult.map {
-                    case CropRectangleResultSuccess(files) => files.head
-                  }
-                }.orElse {
-                  prepareResult.cropResult.flatMap { cr =>
-                    cr match {
-                      case CropResultSuccess(correctedFiles) => Some(correctedFiles.head)
-                      case CropResultCannotFindEdge => None
+              logger.info("prepare result: " + prepareResult)
+
+              if (prepareResult.cropResult == Some(CropResultCannotFindEdge)) {
+                CannotFindEdgeError
+              } else {
+                val fileName: Option[String] =
+                  prepareResult.dotRemovalResult.map {
+                    case DotRemovalResultSuccess(files) => files.head
+                  }.orElse {
+                    prepareResult.removeRuledLineResult.map {
+                      case RemoveRuledLineResultSuccess(files) => files.head
+                    }
+                  }.orElse {
+                    prepareResult.cropRectangleResult.map {
+                      case CropRectangleResultSuccess(files) => files.head
+                    }
+                  }.orElse {
+                    prepareResult.cropResult.flatMap { cr =>
+                      cr match {
+                        case CropResultSuccess(correctedFiles) => Some(correctedFiles.head)
+                        case CropResultCannotFindEdge => None
+                      }
+                    }
+                  }.orElse {
+                    prepareResult.skewCorrectionResult.map { scr =>
+                      scr.correctedFiles.head
                     }
                   }
-                }.orElse {
-                  prepareResult.skewCorrectionResult.map { scr =>
-                    scr.correctedFiles.head
-                  }
-                }
-              logger.info("fileName: " + fileName)
-              parseZip(Some(prepareResult), fileName, finalImage)
+                logger.info("fileName: " + fileName)
+                parseZip(Some(prepareResult), fileName, finalImage)
+              }
             case fname: String =>
               if (fname == finalImageFileName.get) {
                 val i = Some(new Image(zipIn))

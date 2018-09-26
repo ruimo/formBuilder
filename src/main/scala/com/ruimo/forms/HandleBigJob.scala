@@ -82,4 +82,11 @@ trait HandleBigJob extends HasLogger {
     err.setContentText("画像のサイズが大きすぎます。")
     err.show()
   }
+
+  def noEdgeError() {
+    val err = new Alert(AlertType.Error)
+    err.setTitle("余白検出エラー")
+    err.setContentText("余白が検出できませんでした。")
+    err.show()
+  }
 }
