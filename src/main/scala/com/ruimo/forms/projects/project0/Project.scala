@@ -1359,6 +1359,8 @@ class ProjectImpl(
                 CaptureResultRunning((respJson \ "token").as[String].toLong)
               case 403 =>
                 RestAuthFailure(resp.status, resp.statusText, resp.body)
+              case 413 =>
+                RestSizeError(resp.status, resp.statusText)
               case _ =>
                 RestUnknownFailure(resp.status, resp.statusText, resp.body)
             }
@@ -1518,6 +1520,8 @@ class ProjectImpl(
                   RetrievePreparedImageResultRunning((respJson \ "token").as[String].toLong)
                 case 403 =>
                   RestAuthFailure(resp.status, resp.statusText, resp.body)
+                case 413 =>
+                  RestSizeError(resp.status, resp.statusText)
                 case _ =>
                   RestUnknownFailure(resp.status, resp.statusText, resp.body)
               }

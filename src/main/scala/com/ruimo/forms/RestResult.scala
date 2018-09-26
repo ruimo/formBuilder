@@ -33,6 +33,12 @@ case class RestAuthFailure(
     with CaptureRestFailure with SaveConfigRestFailure with ListConfigRestFailure with RemoveConfigRestFailure
     with OpenConfigRestFailure
 
+case class RestSizeError(
+  statusCode: Int,
+  statusText: String
+) extends RetrievePreparedImageRestFailure
+    with CaptureRestFailure
+
 case class RestUnknownFailure(
   statusCode: Int,
   statusText: String,

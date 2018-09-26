@@ -919,6 +919,14 @@ class MainController extends Initializable with HandleBigJob {
           sfxCropCheck.selected = false
           project.cropEnabled = false
           authError()
+
+        case tooLarge: RestSizeError =>
+          sfxSkewCorrectionCheck.selected = false
+          project.skewCorrection = project.skewCorrection.copy(enabled = false)
+          sfxCropCheck.selected = false
+          project.cropEnabled = false
+          sizeError()
+
         case serverFail: RestUnknownFailure =>
           sfxSkewCorrectionCheck.selected = false
           project.skewCorrection = project.skewCorrection.copy(enabled = false)
@@ -945,12 +953,21 @@ class MainController extends Initializable with HandleBigJob {
           }
           val imgSz = (ok.image.width.get, ok.image.height.get)
           f(imgSz)
+
         case authFail: RestAuthFailure =>
           sfxSkewCorrectionCheck.selected = false
           project.skewCorrection = project.skewCorrection.copy(enabled = false)
           sfxCropCheck.selected = false
           project.cropEnabled = false
           authError()
+
+        case tooLarge: RestSizeError =>
+          sfxSkewCorrectionCheck.selected = false
+          project.skewCorrection = project.skewCorrection.copy(enabled = false)
+          sfxCropCheck.selected = false
+          project.cropEnabled = false
+          sizeError()
+
         case serverFail: RestUnknownFailure =>
           sfxSkewCorrectionCheck.selected = false
           project.skewCorrection = project.skewCorrection.copy(enabled = false)
@@ -1298,12 +1315,21 @@ class MainController extends Initializable with HandleBigJob {
             }
           }
           project.redraw()
+
         case authFail: RestAuthFailure =>
           sfxSkewCorrectionCheck.selected = false
           project.skewCorrection = project.skewCorrection.copy(enabled = false)
           sfxCropCheck.selected = false
           project.cropEnabled = false
           authError()
+
+        case tooLarge: RestSizeError =>
+          sfxSkewCorrectionCheck.selected = false
+          project.skewCorrection = project.skewCorrection.copy(enabled = false)
+          sfxCropCheck.selected = false
+          project.cropEnabled = false
+          sizeError()
+
         case serverFail: RestUnknownFailure =>
           sfxSkewCorrectionCheck.selected = false
           project.skewCorrection = project.skewCorrection.copy(enabled = false)
@@ -1780,9 +1806,15 @@ class MainController extends Initializable with HandleBigJob {
                   showSkewAnimation(sr, si.image)
                 }
               }
+
             case authFail: RestAuthFailure =>
               sfxSkewCorrectionCheck.selected = false
               authError()
+
+            case tooLarge: RestSizeError =>
+              sfxSkewCorrectionCheck.selected = false
+              sizeError()
+
             case unknownError: RestUnknownFailure =>
               sfxSkewCorrectionCheck.selected = false
               showGeneralError()
@@ -1969,12 +2001,17 @@ class MainController extends Initializable with HandleBigJob {
         case Left(fail) =>
           fail match {
             case e: RestAuthFailure =>
-              val alert = new Alert(AlertType.Error)
-              alert.setTitle("認証失敗")
-              alert.setContentText(
-                "認証に失敗しました。認証の設定を確認してください。"
-              )
-              alert.showAndWait()
+              authError()
+//              val alert = new Alert(AlertType.Error)
+//              alert.setTitle("認証失敗")
+//              alert.setContentText(
+//                "認証に失敗しました。認証の設定を確認してください。"
+//              )
+//              alert.showAndWait()
+
+            case e: RestSizeError =>
+              sizeError()
+
             case e: RestUnknownFailure =>
               val alert = new Alert(AlertType.Error)
               alert.setTitle("サーバ通信エラー")

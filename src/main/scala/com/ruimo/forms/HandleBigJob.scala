@@ -75,4 +75,11 @@ trait HandleBigJob extends HasLogger {
     err.setContentText("サーバでの認証に失敗しました。設定を確認してください。")
     err.show()
   }
+
+  def sizeError() {
+    val err = new Alert(AlertType.Error)
+    err.setTitle("画像サイズエラー")
+    err.setContentText("画像のサイズが大きすぎます。")
+    err.show()
+  }
 }
