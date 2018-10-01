@@ -18,7 +18,7 @@ import play.api.libs.ws.DefaultBodyWritables._
 import play.api.libs.ws.JsonBodyWritables._
 import play.api.libs.ws._
 import com.ruimo.forms._
-import com.ruimo.forms.common.{GoogleOcrSettings, OcrSettings, TegakiOcrSettings, TesseractOcrSettings}
+import com.ruimo.forms.common._
 import play.api.libs.json._
 
 import scala.collection.{immutable => imm}
@@ -470,39 +470,6 @@ object RemoveRuledLineConditionImpl {
   )(RemoveRuledLineConditionImpl.apply _)
 }
 
-case class EdgeCropConditionImpl(
-  topArea: Option[Area],
-  bottomArea: Option[Area],
-  leftArea: Option[Area],
-  rightArea: Option[Area],
-  topSensivity: EdgeCropSensivity,
-  bottomSensivity: EdgeCropSensivity,
-  rightSensivity: EdgeCropSensivity,
-  leftSensivity: EdgeCropSensivity
-) extends EdgeCropCondition {
-  lazy val asJson: JsObject = {
-    def areaToJson(area: Area) = {
-      JsArray(
-        Seq(
-          JsNumber(area.x.value), JsNumber(area.y.value), JsNumber(area.w.value), JsNumber(area.h.value)
-        )
-      )
-    }
-
-    JsObject(
-      topArea.map { a => "top" -> areaToJson(a) }.toSeq ++
-      bottomArea.map { a => "bottom" -> areaToJson(a) }.toSeq ++
-      leftArea.map { a => "left" -> areaToJson(a) }.toSeq ++
-      rightArea.map { a => "right" -> areaToJson(a) }.toSeq
-    ) ++ Json.obj(
-      "topSensivity" -> JsNumber(topSensivity.value),
-      "bottomSensivity" -> JsNumber(bottomSensivity.value),
-      "leftSensivity" -> JsNumber(leftSensivity.value),
-      "rightSensivity" -> JsNumber(rightSensivity.value)
-    )
-  }
-}
-
 object ProjectImpl {
   def apply(
     projectContext: ProjectContext,
@@ -547,13 +514,7 @@ class ProjectImpl(
   @volatile
   private[this] var _cachedImage: imm.Map[(Path, CacheCondition), RetrievePreparedImageResultOk] = Map()
   @volatile
-  private[this] var _topSensivity: EdgeCropSensivity = EdgeCropSensivity(254)
-  @volatile
-  private[this] var _bottomSensivity: EdgeCropSensivity = EdgeCropSensivity(254)
-  @volatile
-  private[this] var _leftSensivity: EdgeCropSensivity = EdgeCropSensivity(254)
-  @volatile
-  private[this] var _rightSensivity: EdgeCropSensivity = EdgeCropSensivity(254)
+  private[this] var _edge: Edge = BlackEdge(EdgeCropSensitivity(254), EdgeCropSensitivity(254), EdgeCropSensitivity(254), EdgeCropSensitivity(254))
 
   def isDirty = _isDirty
 
@@ -1097,11 +1058,17 @@ class ProjectImpl(
     _isDirty = true
   }
 
+  def edge_=(newEdge: Edge): Unit = {
+    _edge = newEdge
+    _isDirty = true
+  }
+
+  def edge: Edge = _edge
+
   def cropEnabled: Boolean = _isEdgeCropEnabled
 
   def edgeCrop(
-    formWidth: Double, formHeight: Double,
-    topSensivity: EdgeCropSensivity, bottomSensivity: EdgeCropSensivity, leftSensivity: EdgeCropSensivity, rightSensivity: EdgeCropSensivity
+    formWidth: Double, formHeight: Double
   ): EdgeCrop = {
     def cropFieldToArea(f: CropField): Area = {
       val rect = f.rect
@@ -1111,53 +1078,31 @@ class ProjectImpl(
       )
     }
 
-    EdgeCrop(
-      _isEdgeCropEnabled,
-      EdgeCropConditionImpl(
-        _topCropField.map(cropFieldToArea),
-        _bottomCropField.map(cropFieldToArea),
-        _leftCropField.map(cropFieldToArea),
-        _rightCropField.map(cropFieldToArea),
-        topSensivity, bottomSensivity, rightSensivity, leftSensivity,
-      )
-    )
+    edge match {
+      case blackEdge: BlackEdge =>
+        EdgeCrop(
+          _isEdgeCropEnabled,
+          BlackEdgeCropConditionImpl(
+            _topCropField.map(cropFieldToArea),
+            _bottomCropField.map(cropFieldToArea),
+            _leftCropField.map(cropFieldToArea),
+            _rightCropField.map(cropFieldToArea),
+            blackEdge
+          )
+        )
+      case colorEdge: ColorEdge =>
+        EdgeCrop(
+          _isEdgeCropEnabled,
+          ColorEdgeCropConditionImpl(
+            _topCropField.map(cropFieldToArea),
+            _bottomCropField.map(cropFieldToArea),
+            _leftCropField.map(cropFieldToArea),
+            _rightCropField.map(cropFieldToArea),
+            colorEdge
+          )
+        )
+    }
   }
-
-  def topEdgeCropSensivity_=(topSensivity: EdgeCropSensivity) {
-    logger.info("topEdgeCropSensivity changed")
-    _topSensivity = topSensivity
-    _isDirty = true
-    invalidateCachedImage(CacheConditionGlob(isCropEnabled = Some(true)))
-  }
-
-  def topEdgeCropSensivity: EdgeCropSensivity = _topSensivity
-
-  def bottomEdgeCropSensivity_=(bottomSensivity: EdgeCropSensivity) {
-    logger.info("bottomEdgeCropSensivity changed")
-    _bottomSensivity = bottomSensivity
-    _isDirty = true
-    invalidateCachedImage(CacheConditionGlob(isCropEnabled = Some(true)))
-  }
-
-  def bottomEdgeCropSensivity: EdgeCropSensivity = _bottomSensivity
-
-  def leftEdgeCropSensivity_=(leftSensivity: EdgeCropSensivity) {
-    logger.info("leftEdgeCropSensivity changed")
-    _leftSensivity = leftSensivity
-    _isDirty = true
-    invalidateCachedImage(CacheConditionGlob(isCropEnabled = Some(true)))
-  }
-
-  def leftEdgeCropSensivity: EdgeCropSensivity = _leftSensivity
-
-  def rightEdgeCropSensivity_=(rightSensivity: EdgeCropSensivity) {
-    logger.info("rightEdgeCropSensivity changed")
-    _rightSensivity = rightSensivity
-    _isDirty = true
-    invalidateCachedImage(CacheConditionGlob(isCropEnabled = Some(true)))
-  }
-
-  def rightEdgeCropSensivity: EdgeCropSensivity = _rightSensivity
 
   override def cachedImage(
     selectedImage: SelectedImage,
@@ -1252,7 +1197,7 @@ class ProjectImpl(
                 Json.obj(
                   "inputFiles" -> JsArray(Seq(JsString(fileName))),
                   "skewCorrection" -> Json.toJson(skewCorrection),
-                  "crop" -> edgeCrop(cropt._1, cropt._2, _topSensivity, _bottomSensivity, _leftSensivity, _rightSensivity).asJson(cropEnabled),
+                  "crop" -> edgeCrop(cropt._1, cropt._2).asJson(cropEnabled),
                   "dotRemoval" -> Json.toJson(dotRemoval),
                   "cropRectangle" -> Json.toJson(cropRectangle),
                   "ruledLineRemoval" -> Json.toJson(removeRuledLine),
@@ -1313,7 +1258,7 @@ class ProjectImpl(
         val json = Json.obj(
           "inputFiles" -> JsArray(Seq(JsString(fileName))),
           "skewCorrection" -> Json.toJson(skewCorrection.copy(enabled = cond.isSkewCorrectionEnabled)),
-          "crop" -> edgeCrop(cropt._1, cropt._2, _topSensivity, _bottomSensivity, _leftSensivity, _rightSensivity).asJson(cond.isCropEnabled),
+          "crop" -> edgeCrop(cropt._1, cropt._2).asJson(cond.isCropEnabled),
           "dotRemoval" -> Json.toJson(dotRemoval.copy(enabled = cond.isDotRemovalEnabled)),
           "cropRectangle" -> Json.toJson(cropRectangle.copy(enabled = cond.isCropRectangleEnabled)),
           "ruledLineRemoval" -> Json.toJson(removeRuledLine.copy(enabled = cond.isRemoveRuledLineEnabled))
@@ -1587,7 +1532,7 @@ class ProjectImpl(
     JsObject(
       Seq(
         "skewCorrection" -> Json.toJson(skewCorrection),
-        "crop" -> edgeCrop(formWidth, formHeight, _topSensivity, _bottomSensivity, _leftSensivity, _rightSensivity).asJson(cropEnabled)
+        "crop" -> edgeCrop(formWidth, formHeight).asJson(cropEnabled)
       ) ++ leftCropField.map(
         f => Seq("leftCropField" -> f.asJson)
       ).getOrElse(
@@ -1779,16 +1724,17 @@ class ProjectImpl(
     val record = (result \ "record").as[JsValue]
     val config: JsValue = Json.parse((record \ "config").as[String])
     val crop: JsValue = (config \ "crop").as[JsValue]
-    (crop \ "leftCropField").asOpt[JsValue].map(cropField(_, LeftCropFieldImpl.apply)).foreach {
+    (config \ "leftCropField").asOpt[JsValue].map(cropField(_, LeftCropFieldImpl.apply)).foreach {
       addLeftCropField(_, selected = false, redraw = false)
     }
-    (crop \ "topCropField").asOpt[JsValue].map(cropField(_, TopCropFieldImpl.apply)).foreach {
+println("leftCropField: " + leftCropField)
+    (config \ "topCropField").asOpt[JsValue].map(cropField(_, TopCropFieldImpl.apply)).foreach {
       addTopCropField(_, selected = false, redraw = false)
     }
-    (crop \ "rightCropField").asOpt[JsValue].map(cropField(_, RightCropFieldImpl.apply)).foreach {
+    (config \ "rightCropField").asOpt[JsValue].map(cropField(_, RightCropFieldImpl.apply)).foreach {
       addRightCropField(_, selected = false, redraw = false)
     }
-    (crop \ "bottomCropField").asOpt[JsValue].map(cropField(_, BottomCropFieldImpl.apply)).foreach {
+    (config \ "bottomCropField").asOpt[JsValue].map(cropField(_, BottomCropFieldImpl.apply)).foreach {
       addBottomCropField(_, selected = false, redraw = false)
     }
 
@@ -1821,6 +1767,8 @@ class ProjectImpl(
     }
 
     cropEnabled = (crop \ "enabled").as[Boolean]
+    val edgeCropCondition: EdgeCropCondition = EdgeCropCondition.parse(crop)
+    edge = edgeCropCondition.edge
     skewCorrection = (config \ "skewCorrection").as[SkewCorrection]
 
     _isDirty = false

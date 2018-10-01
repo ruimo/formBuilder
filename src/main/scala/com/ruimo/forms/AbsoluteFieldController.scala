@@ -13,13 +13,13 @@ import javafx.scene.control.TableColumn.CellDataFeatures
 import java.net.URL
 import java.util.ResourceBundle
 
+import com.ruimo.forms.common._
 import javafx.fxml.{FXML, Initializable}
 import javafx.scene.control.TableView
 import javafx.util.Callback
 import javafx.beans.value.{ChangeListener, ObservableValue}
 import javafx.beans.property.ReadOnlyStringWrapper
 import javafx.scene.input.{KeyCode, KeyEvent, MouseButton, MouseEvent}
-import com.ruimo.forms.common.{TesseractAcceptChars, _}
 import javafx.scene.layout.GridPane
 import scalafx.scene.layout.{GridPane => SfxGridPane}
 import org.slf4j.LoggerFactory

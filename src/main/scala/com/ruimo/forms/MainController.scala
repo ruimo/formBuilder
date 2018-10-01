@@ -65,6 +65,7 @@ import play.api.libs.json._
 import scalafx.geometry.{Point2D, Rectangle2D}
 import Helpers.toRect
 import akka.stream.scaladsl.FileIO
+import com.ruimo.forms.common.EdgeCropSensitivity
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.duration._
@@ -1621,44 +1622,40 @@ class MainController extends Initializable with HandleBigJob {
     val loader = new FXMLLoader(getClass().getResource("cropDetailDialog.fxml"))
     val root: DialogPane = loader.load()
     val ctrl = loader.getController().asInstanceOf[CropDetailController]
-    ctrl.topSensivity = project.topEdgeCropSensivity
-    ctrl.bottomSensivity = project.bottomEdgeCropSensivity
-    ctrl.leftSensivity = project.leftEdgeCropSensivity
-    ctrl.rightSensivity = project.rightEdgeCropSensivity
+    ctrl.edge = project.edge
     val alert = new SfxAlert(AlertType.Confirmation)
     alert.dialogPane = new SfxDialogPane(root)
     alert.title = "傾き補正"
     alert.onCloseRequest = new EventHandler[DialogEvent] {
       override def handle(t: DialogEvent) {
-        var errors: imm.Seq[String] = List()
-        def parse(fieldName: String, f: => EdgeCropSensivity): Option[EdgeCropSensivity] = {
-          try {
-            Some(f)
-          }
-          catch {
-            case t: Throwable =>
-              logger.error("Unknown error.", t)
-              errors = errors :+ fieldName
-              None
-          }
-        }
-
-        parse("感度(上)", ctrl.topSensivity).foreach { project.topEdgeCropSensivity = _ }
-        parse("感度(下)", ctrl.bottomSensivity).foreach { project.bottomEdgeCropSensivity = _ }
-        parse("感度(左)", ctrl.leftSensivity).foreach { project.leftEdgeCropSensivity = _ }
-        parse("感度(右)", ctrl.rightSensivity).foreach { project.rightEdgeCropSensivity = _ }
-
-        if (! errors.isEmpty && t.getTarget.asInstanceOf[Alert].getResult.getButtonData != ButtonBar.ButtonData.CANCEL_CLOSE) {
+        def showError(title: String, message: String): Unit = {
           t.consume()
           val err = new Alert(AlertType.Error)
-          err.setTitle("感度の指定エラー")
-          err.setContentText("感度は、半角数字で、0-255の範囲で指定しください。" + errors.mkString(", "))
-          err.show()
+          err.setTitle(title)
+          err.setContentText(message)
+          err.showAndWait()
         }
 
-        logger.info("event type = " + t.getEventType)
-        logger.info("target = " + t.getTarget)
-        logger.info("result = " + t.getTarget.asInstanceOf[Alert].getResult)
+        ctrl.validate match {
+          case None =>
+            project.edge = ctrl.edge
+          case Some(CropDetailValidation.TopSensitivityInvalid) =>
+            showError("上の感度指定エラー", "感度は、半角数字で、0-254の範囲で指定しください。")
+          case Some(CropDetailValidation.BottomSensitivityInvalid) =>
+            showError("下の感度指定エラー", "感度は、半角数字で、0-254の範囲で指定しください。")
+          case Some(CropDetailValidation.LeftSensitivityInvalid) =>
+            showError("左の感度指定エラー", "感度は、半角数字で、0-254の範囲で指定しください。")
+          case Some(CropDetailValidation.RightSensitivityInvalid) =>
+            showError("右の感度指定エラー", "感度は、半角数字で、0-254の範囲で指定しください。")
+          case Some(CropDetailValidation.HvalueInvalid) =>
+            showError("H値の指定エラー", "0以上360未満で指定しください。")
+          case Some(CropDetailValidation.SvalueInvalid) =>
+            showError("S値の指定エラー", "0-100で指定しください。")
+          case Some(CropDetailValidation.VvalueInvalid) =>
+            showError("V値の指定エラー", "0-100で指定しください。")
+          case Some(CropDetailValidation.HsvErrorInvalid) =>
+            showError("誤差の指定エラー", "0-100で指定しください。")
+        }
       }
     }
     alert.showAndWait().map(_.delegate) match {

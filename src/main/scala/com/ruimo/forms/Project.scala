@@ -7,17 +7,16 @@ import com.ruimo.scoins.Percent
 
 import scala.concurrent.Future
 import java.nio.file.Path
+
 import javafx.scene.Cursor
 import javafx.scene.input.MouseEvent
-
-import com.ruimo.forms.common.OcrSettings
-
+import com.ruimo.forms.common._
 import scalafx.scene.image.Image
 import scalafx.geometry.{Point2D, Rectangle2D}
 import com.ruimo.graphics.twodim.Area
 import play.api.libs.json._
-
 import scalafx.scene.canvas.{GraphicsContext => SfxGraphicsContext}
+
 import scala.collection.{immutable => imm}
 
 case class SaveConfigResponse(
@@ -292,19 +291,6 @@ case class EdgeCrop(
 }
 
 // 0 - 254
-final class EdgeCropSensivity(val value: Int) extends AnyVal {
-  override def toString = "EdgeCropSensivity(" + value + ")"
-}
-
-object EdgeCropSensivity {
-  def apply(value: Int): EdgeCropSensivity = {
-    if (value < 0 || 254 < value)
-      throw new IllegalArgumentException("black level(=" + value + ") should be 0-254")
-    new EdgeCropSensivity(value)
-  }
-}
-
-// 0 - 254
 final class BlackLevel(val value: Int) extends AnyVal {
   override def toString = "BlackLevel(" + value + ")"
 }
@@ -329,19 +315,6 @@ object BlackLevel {
       "value" -> JsNumber(obj.value)
     )
   }
-}
-
-trait EdgeCropCondition {
-  def topArea: Option[Area]
-  def bottomArea: Option[Area]
-  def leftArea: Option[Area]
-  def rightArea: Option[Area]
-  def topSensivity: EdgeCropSensivity
-  def bottomSensivity: EdgeCropSensivity
-  def leftSensivity: EdgeCropSensivity
-  def rightSensivity: EdgeCropSensivity
-
-  def asJson: JsObject
 }
 
 trait RectField extends Field {
@@ -653,20 +626,11 @@ trait Project {
   def removeRuledLine: RemoveRuledLine
   def removeRuledLine_=(newRemoveRuledLine: RemoveRuledLine)
 
-  def edgeCrop(
-    formWidth: Double, formHeight: Double,
-    topSensivity: EdgeCropSensivity, bottomSensivity: EdgeCropSensivity, leftSensivity: EdgeCropSensivity, rightSensivity: EdgeCropSensivity
-  ): EdgeCrop
   def cropEnabled_=(enabled: Boolean)
   def cropEnabled: Boolean
-  def topEdgeCropSensivity_=(topSensivity: EdgeCropSensivity)
-  def topEdgeCropSensivity: EdgeCropSensivity
-  def bottomEdgeCropSensivity_=(bottomSensivity: EdgeCropSensivity)
-  def bottomEdgeCropSensivity: EdgeCropSensivity
-  def leftEdgeCropSensivity_=(leftSensivity: EdgeCropSensivity)
-  def leftEdgeCropSensivity: EdgeCropSensivity
-  def rightEdgeCropSensivity_=(rightSensivity: EdgeCropSensivity)
-  def rightEdgeCropSensivity: EdgeCropSensivity
+
+  def edge_=(edge: Edge)
+  def edge: Edge
 
   def addLeftCropField(f: LeftCropField, selected: Boolean, redraw: Boolean = true): Option[LeftCropField]
   def addRightCropField(f: RightCropField, selected: Boolean, redraw: Boolean = true): Option[RightCropField]
