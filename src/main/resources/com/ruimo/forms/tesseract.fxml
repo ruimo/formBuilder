@@ -26,14 +26,16 @@
                <rowConstraints>
                   <RowConstraints fillHeight="false" minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                   <RowConstraints fillHeight="false" minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                  <RowConstraints fillHeight="false" minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                   <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" vgrow="ALWAYS" />
                </rowConstraints>
                <children>
                   <Label maxHeight="1.7976931348623157E308" text="OCRエンジン" GridPane.hgrow="ALWAYS" GridPane.rowIndex="1" GridPane.vgrow="ALWAYS" />
+                  <Label maxHeight="1.7976931348623157E308" text="カラーパスフィルタ" GridPane.hgrow="ALWAYS" GridPane.rowIndex="2" GridPane.vgrow="ALWAYS" />
                   <ComboBox fx:id="ocrEngineComboBox" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" GridPane.columnIndex="1" GridPane.hgrow="ALWAYS" GridPane.rowIndex="1" GridPane.vgrow="ALWAYS" />
                   <Label maxHeight="1.7976931348623157E308" text="フィールド名" GridPane.hgrow="ALWAYS" GridPane.vgrow="ALWAYS" />
                   <TextField fx:id="fieldNameText" maxHeight="1.7976931348623157E308" GridPane.columnIndex="1" GridPane.hgrow="ALWAYS" GridPane.vgrow="ALWAYS" />
-                  <StackPane prefHeight="150.0" prefWidth="200.0" GridPane.columnSpan="2" GridPane.rowIndex="2">
+                  <StackPane prefHeight="150.0" prefWidth="200.0" GridPane.columnSpan="2" GridPane.rowIndex="3">
                      <children>
                         <GridPane fx:id="tesseractGrid" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" vgap="10.0" visible="false">
                            <columnConstraints>
@@ -151,6 +153,18 @@
                         <Insets left="15.0" />
                      </padding>
                   </StackPane>
+                  <FlowPane prefHeight="200.0" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="2" GridPane.valignment="CENTER" GridPane.vgrow="ALWAYS">
+                     <children>
+                        <Label maxHeight="1.7976931348623157E308" text="Hue値" />
+                        <TextField fx:id="colorPassFilterHueText" maxWidth="-Infinity" prefWidth="100.0" promptText="0以上360未満" />
+                        <Label text="許容誤差(%)">
+                           <FlowPane.margin>
+                              <Insets left="20.0" />
+                           </FlowPane.margin>
+                        </Label>
+                        <TextField fx:id="colorPassFilterHueErrorText" prefWidth="64.0" promptText="0-100" />
+                     </children>
+                  </FlowPane>
                </children>
             </GridPane>
          </children>

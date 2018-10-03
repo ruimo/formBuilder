@@ -6,6 +6,7 @@ import scalafx.scene.control.{TextField => SfxTextField}
 import javafx.event.ActionEvent
 import scalafx.scene.control.{ComboBox => SfxComboBox}
 
+import scala.collection.{immutable => imm}
 import scala.collection.JavaConverters._
 import scalafx.collections.ObservableBuffer
 import javafx.scene.control._
@@ -14,6 +15,8 @@ import java.net.URL
 import java.util.ResourceBundle
 
 import com.ruimo.forms.common._
+import com.ruimo.graphics.twodim.Hsv
+import com.ruimo.scoins.Percent
 import javafx.fxml.{FXML, Initializable}
 import javafx.scene.control.TableView
 import javafx.util.Callback
@@ -38,6 +41,15 @@ case object OcrEngineCodeMicrosoft extends OcrEngineCode {
 }
 case object OcrEngineCodeTegaki extends OcrEngineCode {
   override def toString = "Cogent Tegaki"
+}
+
+sealed trait AbsoluteFieldValidationResult
+
+object AbsoluteFieldValidationResult {
+  case object Ok extends AbsoluteFieldValidationResult
+  case object ColorFilterHueInvalid extends AbsoluteFieldValidationResult
+  case object ColorFilterHueErrorInvalid extends AbsoluteFieldValidationResult
+  case object ColorFilterHueErrorMissing extends AbsoluteFieldValidationResult
 }
 
 class AbsoluteFieldController extends Initializable with HasLogger {
@@ -180,6 +192,14 @@ class AbsoluteFieldController extends Initializable with HasLogger {
   private[this] var tegIsMultiLine: CheckBox = _
   lazy val sfxTegIsMultiLine = new SfxCheckBox(tegIsMultiLine)
 
+  @FXML
+  private[this] var colorPassFilterHueText: TextField = _
+  lazy val sfxColorPassFilterHueText = new SfxTextField(colorPassFilterHueText)
+
+  @FXML
+  private[this] var colorPassFilterHueErrorText: TextField = _
+  lazy val sfxColorPassFilterHueErrorText = new SfxTextField(colorPassFilterHueErrorText)
+
   def fieldName: String = fieldNameText.getText()
 
   def fieldName_=(newName: String) {
@@ -226,12 +246,27 @@ class AbsoluteFieldController extends Initializable with HasLogger {
     sfxTesAsteriskCheck.selected = chars.contains(Tesseract.OcrAsterisc)
   }
 
+  def colorPassFilterHue: Option[Double] = {
+    val text: String = sfxColorPassFilterHueText.text.value
+    if (text.trim.isEmpty) None
+    else Some(text.toDouble)
+  }
+
+  def colorPassFilterHueError: Double =
+    sfxColorPassFilterHueErrorText.text.value.toDouble
+
+  def colorPassFilter: imm.Seq[ColorPassFilterSettings] = colorPassFilterHue.map { h =>
+    ColorPassFilterSettings(Hsv.Hue(h), Percent(colorPassFilterHueError))
+  }.toList
+
   def ocrSettings: OcrSettings = sfxOcrEngineComboBox.value() match {
     case OcrEngineCodeGoogle => GoogleOcrSettings(
+      colorPassFilter = colorPassFilter,
       lang = sfxGoogleLangComboBox.value()
     )
 
     case OcrEngineCodeTegaki => TegakiOcrSettings(
+      colorPassFilter = colorPassFilter,
       useLangModel = sfxTegUseLangMode.isSelected,
       isMultiLine =  sfxTegIsMultiLine.isSelected,
       acceptChars =  TegakiAcceptChars(
@@ -246,6 +281,7 @@ class AbsoluteFieldController extends Initializable with HasLogger {
     )
 
     case _ => TesseractOcrSettings(
+      colorPassFilter = colorPassFilter,
       lang = sfxTesLangDropDown.value(),
       acceptChars = TesseractAcceptChars(
         tesseractAcceptChars,
@@ -254,7 +290,20 @@ class AbsoluteFieldController extends Initializable with HasLogger {
     )
   }
 
+  def setColorPassFilter(settings: imm.Seq[ColorPassFilterSettings]) {
+    settings.headOption match {
+      case None =>
+        sfxColorPassFilterHueText.text.value = ""
+        sfxColorPassFilterHueErrorText.text.value = ""
+
+      case Some(cpfs) =>
+        sfxColorPassFilterHueText.text.value = cpfs.hueValue.value.toString
+        sfxColorPassFilterHueErrorText.text.value = cpfs.hueErrorAllowance.value.toString
+    }
+  }
+
   def ocrSettings_=(newOcrSettings: OcrSettings) {
+    setColorPassFilter(newOcrSettings.colorPassFilter)
     newOcrSettings match {
       case gos: GoogleOcrSettings =>
         sfxOcrEngineComboBox.value = OcrEngineCodeGoogle
@@ -322,5 +371,31 @@ class AbsoluteFieldController extends Initializable with HasLogger {
         gridPane(to).setVisible(true)
       }
     })
+  }
+
+  def validate: AbsoluteFieldValidationResult = {
+    try {
+      colorPassFilterHue match {
+        case None => AbsoluteFieldValidationResult.Ok
+        case Some(h) =>
+          if (0 <= h && h < 360) {
+            val s = sfxColorPassFilterHueErrorText.text.value
+            if (s.trim.isEmpty) AbsoluteFieldValidationResult.ColorFilterHueErrorMissing
+            else {
+              try {
+                val e = s.toDouble
+                if (0 <= e && e <= 100) AbsoluteFieldValidationResult.Ok
+                else AbsoluteFieldValidationResult.ColorFilterHueErrorInvalid
+              } catch {
+                case err: NumberFormatException => AbsoluteFieldValidationResult.ColorFilterHueErrorInvalid
+              }
+            }
+          } else
+              AbsoluteFieldValidationResult.ColorFilterHueInvalid
+      }
+    } catch {
+      case e: NumberFormatException =>
+        AbsoluteFieldValidationResult.ColorFilterHueInvalid
+    }
   }
 }

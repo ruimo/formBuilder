@@ -14,6 +14,7 @@ import scala.collection.JavaConverters._
 import scala.concurrent.{Await, Future}
 import java.util.zip.ZipInputStream
 
+import javafx.scene.image.ImageView
 import javafx.animation.AnimationTimer
 
 import scala.math.{Pi, abs, cos, sin}
@@ -28,7 +29,7 @@ import javafx.scene.input.{KeyCode, KeyEvent, MouseEvent}
 import javafx.event.EventHandler
 import scalafx.collections.ObservableBuffer
 import scalafx.application.Platform
-import scalafx.scene.image.Image
+import scalafx.scene.image.{Image => SfxImage}
 import scalafx.stage.{FileChooser, Modality, Stage, StageStyle}
 import java.net.{HttpURLConnection, URL}
 import java.nio.channels.FileChannel
@@ -66,6 +67,9 @@ import scalafx.geometry.{Point2D, Rectangle2D}
 import Helpers.toRect
 import akka.stream.scaladsl.FileIO
 import com.ruimo.forms.common.EdgeCropSensitivity
+import javafx.scene.image.Image
+import javafx.scene.layout.GridPane
+import javax.xml.bind.DatatypeConverter
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.duration._
@@ -628,7 +632,7 @@ class Editor(
   }
 }
 
-case class SelectedImage(file: Path, image: Image) {
+case class SelectedImage(file: Path, image: SfxImage) {
   val imageSize: (Double, Double) = (image.getWidth, image.getHeight)
 }
 
@@ -1065,6 +1069,22 @@ class MainController extends Initializable with HandleBigJob {
                 showErrorDialog("名前エラー", "この名前は使用済みです。")
                 t.consume()
               }
+
+              ctrl.validate match {
+                case AbsoluteFieldValidationResult.ColorFilterHueInvalid =>
+                  showErrorDialog("カラーパスフィルタ エラー", "Hue値が不適切です。")
+                  t.consume()
+
+                case AbsoluteFieldValidationResult.ColorFilterHueErrorInvalid =>
+                  showErrorDialog("カラーパスフィルタ エラー", "Hue許容誤差が不適切です。")
+                  t.consume()
+
+                case AbsoluteFieldValidationResult.ColorFilterHueErrorMissing =>
+                  showErrorDialog("カラーパスフィルタ エラー", "Hue許容誤差が指定されていません。")
+                  t.consume()
+
+                case AbsoluteFieldValidationResult.Ok =>
+              }
             }
           }
 
@@ -1283,7 +1303,7 @@ class MainController extends Initializable with HandleBigJob {
     val imageFile = e.getSource().asInstanceOf[ListView[File]].getSelectionModel().getSelectedItem()
     logger.info("Image selected " + imageFile)
     if (imageFile != null) {
-      val img = new Image(imageFile.toURI().toString())
+      val img = new SfxImage(imageFile.toURI().toString())
       selectedImage = Some(SelectedImage(imageFile.toPath, img))
 
       redraw()
@@ -1673,7 +1693,7 @@ class MainController extends Initializable with HandleBigJob {
     }
   }
 
-  private def showSkewAnimation(skewResult: SkewCorrectionResult, image: Image) {
+  private def showSkewAnimation(skewResult: SkewCorrectionResult, image: SfxImage) {
     val orgCropEnabled = project.cropEnabled
     project.skewCorrection = project.skewCorrection.copy(enabled = false)
     project.cropEnabled = false
@@ -1995,6 +2015,8 @@ class MainController extends Initializable with HandleBigJob {
     }
   }
 
+  def zapCrLf(s: String): String = s.filter(c => c != '\r' && c != '\n')
+
   @FXML
   def runCaptureClicked(e: ActionEvent) {
     logger.info("runCapture")
@@ -2006,11 +2028,17 @@ class MainController extends Initializable with HandleBigJob {
             case CaptureStatus.Ok =>
               val alert = new Alert(AlertType.Information)
               alert.setTitle("処理結果")
-              alert.setContentText(
-                resp.serverResp.map { e =>
-                  e.fieldName + ": " + e.rawText
-                }.mkString("\r\n")
-              )
+              val grid = new GridPane
+              grid.setHgap(5)
+              grid.setVgap(5)
+              val sc = new ScrollPane(grid)
+              val rows = resp.serverResp.size
+              resp.serverResp.sortBy(_.fieldName).zipWithIndex.foreach { case (cr, idx) =>
+                  grid.add(new Label(cr.fieldName), 0, idx)
+                  grid.add(new Label(zapCrLf(cr.rawText)), 1, idx)
+                  grid.add(new ImageView(new Image(new ByteArrayInputStream(DatatypeConverter.parseBase64Binary(cr.base64Image)))), 2, idx)
+              }
+              alert.getDialogPane().setContent(sc)
               alert.showAndWait()
             case CaptureStatus.NoGoogleOcrApiKeyRegistered =>
               val alert = new Alert(AlertType.Error)
