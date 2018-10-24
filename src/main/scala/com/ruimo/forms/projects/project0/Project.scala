@@ -1317,7 +1317,8 @@ class ProjectImpl(
         postResp match {
           case CaptureResultRunning(token) =>
             val jobResp = getCaptureJobStatus(token, auth.contractedUserId.value.toLong, auth.applicationToken.value.toLong)
-            logger.info("Polling status: " + jobResp)
+            logger.info("status = " + jobResp.status)
+            logger.info("statusText = " + jobResp.statusText)
             jobResp.status match {
               case 200 =>
                 val jsonResult: JsValue = Json.parse(jobResp.body)

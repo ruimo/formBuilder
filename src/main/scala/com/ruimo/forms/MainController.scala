@@ -2225,7 +2225,17 @@ class MainController extends Initializable with HandleBigJob {
     )
     editor.initialize()
 
-    performUpdateCheck()
+    try {
+      performUpdateCheck()
+    } catch {
+      case t: Throwable =>
+        val dlg = new SfxAlert(AlertType.Error) {
+          title = "アプリケーション更新チェックエラー"
+          contentText = "アプリケーション更新チェックに失敗しました。ネットワーク接続を確認してください。"
+        }
+        dlg.showAndWait()
+        throw t
+    }
   }
 
   def performUpdateCheck() {

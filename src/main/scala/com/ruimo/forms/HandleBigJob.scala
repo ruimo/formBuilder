@@ -62,10 +62,10 @@ trait HandleBigJob extends HasLogger {
     err.show()
   }
 
-  def showGeneralError() {
+  def showGeneralError(title: String = "サーバ・エラー", message: String = "サーバ処理に失敗しました。") {
     val err = new Alert(AlertType.Error)
-    err.setTitle("サーバ・エラー")
-    err.setContentText("サーバ処理に失敗しました。")
+    err.setTitle(title)
+    err.setContentText(message)
     err.show()
   }
 
