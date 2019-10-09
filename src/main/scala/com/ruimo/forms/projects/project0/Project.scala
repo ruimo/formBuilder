@@ -1211,7 +1211,9 @@ class ProjectImpl(
 
     json.map { (ejs: Either[RetrievePreparedImageRestFailure, JsObject]) =>
       ejs.map { js =>
-        Files.write(configFile, js.toString.getBytes("utf-8"))
+        val s = js.toString
+        logger.info("Capture API request: " + s)
+        Files.write(configFile, s.getBytes("utf-8"))
 
         val zipFile = Files.createTempFile(null, null)
         Zip.deflate(
@@ -1391,6 +1393,7 @@ class ProjectImpl(
                 parseZip(Some(prepareResult), fileName, finalImage)
               }
             case fname: String =>
+              logger.info("Fname get: " + fname)
               if (fname == finalImageFileName.get) {
                 val i = Some(new Image(zipIn))
                 zipIn.closeEntry()
@@ -1662,7 +1665,7 @@ class ProjectImpl(
               (result \ "records").as[Seq[JsObject]].map { e =>
                 FormConfig(
                   (e \ "configName").as[String],
-                  Revision((e \ "revision").as[String].toLong),
+                  Revision((e \ "id").as[String].toLong),
                   (e \ "comment").as[String],
                   Instant.ofEpochMilli((e \ "createdAt").as[String].toLong)
                 )

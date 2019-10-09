@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
 <?import javafx.scene.control.ButtonType?>
 <?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.DialogPane?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.FlowPane?>
@@ -14,9 +16,9 @@
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.StackPane?>
 
-<DialogPane maxHeight="-Infinity" maxWidth="-Infinity" xmlns="http://javafx.com/javafx/8.0.60" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.ruimo.forms.AbsoluteFieldController">
+<DialogPane maxHeight="-Infinity" maxWidth="-Infinity" prefHeight="496.0" prefWidth="685.0" xmlns="http://javafx.com/javafx/8.0.161-ea" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.ruimo.forms.AbsoluteFieldController">
    <content>
-      <AnchorPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="313.0" prefWidth="532.0">
+      <AnchorPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="415.0" prefWidth="682.0">
          <children>
             <GridPane hgap="5.0" layoutX="14.0" layoutY="14.0" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" vgap="5.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                <columnConstraints>
@@ -24,6 +26,7 @@
                   <ColumnConstraints hgrow="ALWAYS" maxWidth="1.7976931348623157E308" minWidth="10.0" prefWidth="213.0" />
                </columnConstraints>
                <rowConstraints>
+                  <RowConstraints fillHeight="false" minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                   <RowConstraints fillHeight="false" minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                   <RowConstraints fillHeight="false" minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                   <RowConstraints fillHeight="false" minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
@@ -35,9 +38,9 @@
                   <ComboBox fx:id="ocrEngineComboBox" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" GridPane.columnIndex="1" GridPane.hgrow="ALWAYS" GridPane.rowIndex="1" GridPane.vgrow="ALWAYS" />
                   <Label maxHeight="1.7976931348623157E308" text="フィールド名" GridPane.hgrow="ALWAYS" GridPane.vgrow="ALWAYS" />
                   <TextField fx:id="fieldNameText" maxHeight="1.7976931348623157E308" GridPane.columnIndex="1" GridPane.hgrow="ALWAYS" GridPane.vgrow="ALWAYS" />
-                  <StackPane prefHeight="150.0" prefWidth="200.0" GridPane.columnSpan="2" GridPane.rowIndex="3">
+                  <StackPane prefHeight="150.0" prefWidth="200.0" GridPane.columnSpan="2" GridPane.rowIndex="4">
                      <children>
-                        <GridPane fx:id="tesseractGrid" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" vgap="10.0" visible="false">
+                        <GridPane fx:id="tesseractGrid" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" vgap="10.0">
                            <columnConstraints>
                               <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
                               <ColumnConstraints hgrow="ALWAYS" maxWidth="1.7976931348623157E308" minWidth="10.0" prefWidth="100.0" />
@@ -46,6 +49,7 @@
                               <RowConstraints fillHeight="false" vgrow="NEVER" />
                               <RowConstraints fillHeight="false" vgrow="NEVER" />
                               <RowConstraints fillHeight="false" vgrow="NEVER" />
+                              <RowConstraints fillHeight="false" vgrow="ALWAYS" />
                               <RowConstraints maxHeight="1.7976931348623157E308" minHeight="10.0" prefHeight="30.0" vgrow="ALWAYS" />
                            </rowConstraints>
                            <children>
@@ -88,6 +92,109 @@
                               </FlowPane>
                               <Label fx:id="tesCustomLabel" text="文字種(カスタム)" GridPane.rowIndex="2" />
                               <TextField fx:id="tesCustomChar" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+                              <Label text="等幅" GridPane.rowIndex="3" GridPane.valignment="TOP" />
+                              <GridPane GridPane.columnIndex="1" GridPane.rowIndex="3" GridPane.vgrow="ALWAYS">
+                                <columnConstraints>
+                                  <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" />
+                                  <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" />
+                                </columnConstraints>
+                                <rowConstraints>
+                                  <RowConstraints vgrow="SOMETIMES" />
+                                  <RowConstraints vgrow="SOMETIMES" />
+                                  <RowConstraints vgrow="SOMETIMES" />
+                                    <RowConstraints vgrow="SOMETIMES" />
+                                    <RowConstraints vgrow="SOMETIMES" />
+                                    <RowConstraints minHeight="-Infinity" vgrow="SOMETIMES" />
+                                    <RowConstraints vgrow="SOMETIMES" />
+                                    <RowConstraints vgrow="SOMETIMES" />
+                                </rowConstraints>
+                                 <children>
+                                    <Label text="文字最大幅" GridPane.rowIndex="7">
+                                       <padding>
+                                          <Insets right="3.0" />
+                                       </padding>
+                                    </Label>
+                                    <Label text="両端エッジ検出割合" GridPane.rowIndex="1">
+                                       <padding>
+                                          <Insets right="3.0" />
+                                       </padding>
+                                    </Label>
+                                    <FlowPane GridPane.columnSpan="2">
+                                       <children>
+                                          <CheckBox fx:id="enableMonoSpaceCheck" mnemonicParsing="false" text="文字が等幅であることを仮定して精度を上げる">
+                                             <tooltip>
+                                                <Tooltip text="等幅でなかったり、スペースが入っていると精度が逆に落ちる" />
+                                             </tooltip>
+                                          </CheckBox>
+                                          <Button fx:id="resetMonoSpacedSettingsButton" mnemonicParsing="false" onAction="#onResetMonoSpacedSettings" text="値をリセット">
+                                             <FlowPane.margin>
+                                                <Insets left="10.0" />
+                                             </FlowPane.margin>
+                                          </Button>
+                                       </children>
+                                    </FlowPane>
+                                    <TextField fx:id="hEdgeThresholdPerHeightText" promptText="両端のこれより細い黒領域は削除される(高さに対する百分率)" GridPane.columnIndex="1" GridPane.hgrow="ALWAYS" GridPane.rowIndex="1">
+                                       <tooltip>
+                                          <Tooltip text="両端のこれより細い黒領域は削除される(高さに対する百分率)" />
+                                       </tooltip>
+                                    </TextField>
+                                    <Label text="X gap許容最大幅" GridPane.rowIndex="3">
+                                       <padding>
+                                          <Insets right="3.0" />
+                                       </padding>
+                                    </Label>
+                                    <TextField fx:id="acceptableYgapText" promptText="白幅がこれを越えると文字の切れ目と認識(高さに対する百分率)" GridPane.columnIndex="1" GridPane.rowIndex="3">
+                                       <tooltip>
+                                          <Tooltip text="白幅がこれを越えると文字の切れ目と認識(高さに対する百分率)" />
+                                       </tooltip>
+                                    </TextField>
+                                    <Label text="上下エッジ検出割合" GridPane.rowIndex="2" GridPane.vgrow="ALWAYS">
+                                       <padding>
+                                          <Insets right="3.0" />
+                                       </padding>
+                                    </Label>
+                                    <TextField fx:id="vEdgeThresholdPerHeightText" promptText="上下のこれより細い黒領域は削除される(高さに対する百分率)" GridPane.columnIndex="1" GridPane.rowIndex="2">
+                                       <tooltip>
+                                          <Tooltip text="上下のこれより細い黒領域は削除される(高さに対する百分率)" />
+                                       </tooltip>
+                                    </TextField>
+                                    <Label text="Y gap許容最大幅" GridPane.rowIndex="4">
+                                       <padding>
+                                          <Insets right="3.0" />
+                                       </padding>
+                                    </Label>
+                                    <TextField fx:id="acceptableXgapText" promptText="白幅がこれを越えると文字の切れ目と認識(高さに対する百分率)" GridPane.columnIndex="1" GridPane.rowIndex="4">
+                                       <tooltip>
+                                          <Tooltip text="白幅がこれを越えると文字の切れ目と認識(高さに対する百分率)" />
+                                       </tooltip>
+                                    </TextField>
+                                    <Label text="文字最小幅(実体部分)" GridPane.rowIndex="5">
+                                       <padding>
+                                          <Insets right="3.0" />
+                                       </padding>
+                                    </Label>
+                                    <TextField fx:id="minCharBodyWidthPerHeightText" promptText="文字の実体部分の最小幅(高さに対する百分率)" GridPane.columnIndex="1" GridPane.rowIndex="5">
+                                       <tooltip>
+                                          <Tooltip text="文字の実体部分の最小幅(高さに対する百分率)" />
+                                       </tooltip>
+                                    </TextField>
+                                    <TextField fx:id="minCharWidthPerHeightText" promptText="文字最小幅(高さに対する百分率)" GridPane.columnIndex="1" GridPane.rowIndex="6">
+                                       <tooltip>
+                                          <Tooltip text="文字最小幅(高さに対する百分率)" />
+                                       </tooltip>
+                                    </TextField>
+                                    <Label text="文字最小幅" GridPane.rowIndex="6">
+                                       <padding>
+                                          <Insets right="3.0" />
+                                       </padding>
+                                    </Label>
+                                    <TextField fx:id="maxCharWidthPerHeightText" promptText="文字最大幅(高さに対する百分率)" GridPane.columnIndex="1" GridPane.rowIndex="7">
+                                       <tooltip>
+                                          <Tooltip text="文字最大幅(高さに対する百分率)" />
+                                       </tooltip>
+                                    </TextField>
+                                 </children>
+                              </GridPane>
                            </children>
                            <padding>
                               <Insets right="1.0" top="10.0" />
@@ -108,7 +215,7 @@
                               <ComboBox fx:id="googleLangComboBox" maxWidth="1.7976931348623157E308" prefWidth="150.0" GridPane.columnIndex="1" GridPane.hgrow="ALWAYS" />
                            </children>
                         </GridPane> 
-                        <GridPane fx:id="tegakiGrid" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" vgap="10.0">
+                        <GridPane fx:id="tegakiGrid" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" vgap="10.0" visible="false">
                            <columnConstraints>
                               <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
                               <ColumnConstraints hgrow="ALWAYS" maxWidth="1.7976931348623157E308" minWidth="10.0" prefWidth="100.0" />
@@ -163,6 +270,13 @@
                            </FlowPane.margin>
                         </Label>
                         <TextField fx:id="colorPassFilterHueErrorText" prefWidth="64.0" promptText="0-100" />
+                     </children>
+                  </FlowPane>
+                  <Label text="二値化" GridPane.rowIndex="3" />
+                  <FlowPane prefHeight="200.0" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="3" GridPane.valignment="BASELINE" GridPane.vgrow="ALWAYS">
+                     <children>
+                        <Label maxHeight="1.7976931348623157E308" text="明るさしきい値" />
+                        <TextField fx:id="binarizationBrightnessThresholdText" prefWidth="100.0" promptText="0-255" />
                      </children>
                   </FlowPane>
                </children>

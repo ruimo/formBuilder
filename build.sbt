@@ -8,7 +8,7 @@ scalacOptions := Seq("-unchecked", "-deprecation", "-feature")
 libraryDependencies ++= Seq(
   "org.scalafx" % "scalafx_2.12" % "8.0.102-R11",
   "com.ruimo" %% "scoins" % "1.15",
-  "com.ruimo" %% "formbuildercommon" % "1.8",
+  "com.ruimo" %% "formbuildercommon" % "1.10-SNAPSHOT",
   "com.typesafe.play" %% "play-ahc-ws-standalone" % "1.1.8",
   "com.typesafe.play" %% "play-ws-standalone-json" % "1.1.8",
   "com.typesafe.play" % "play-json_2.12" % "2.6.8",
@@ -23,7 +23,7 @@ libraryDependencies ++= Seq(
 lazy val root = (project in file(".")).
   enablePlugins(JavaAppPackaging, BuildInfoPlugin).
   settings(
-    organization := "com.functionalcapture",
+    organization := "com.ruimo",
     scalaVersion := "2.12.4",
     buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
     buildInfoPackage := "generated"

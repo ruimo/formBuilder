@@ -82,8 +82,8 @@ object CaptureResultOk {
           CaptureResult(
             (e \ "fieldName").as[String],
             (e \ "base64Image").as[String],
-            (e \ "text").as[String],
-            (e \ "rawText").as[String]
+            (e \ "text").asOpt[String].getOrElse(""),
+            (e \ "rawText").asOpt[String].getOrElse("")
           )
         }.toList
       )
@@ -134,7 +134,7 @@ object OpenConfigResultOk {
     val rec = (json \ "record").as[JsValue]
     OpenConfigResultOk(
       OpenConfigResult(
-        Revision((rec \ "revision").as[String].toLong),
+        Revision((rec \ "id").as[String].toLong),
         (rec \ "config").as[String],
         (rec \ "comment").as[String],
         Instant.ofEpochMilli((rec \ "createdAt").as[String].toLong)

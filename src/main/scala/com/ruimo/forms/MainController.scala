@@ -1060,34 +1060,11 @@ class MainController extends Initializable with HandleBigJob {
           val (dlg, ctrl) = absoluteFieldDialog
           dlg.onCloseRequest = new EventHandler[DialogEvent] {
             override def handle(t: DialogEvent) {
-              if (t.getTarget.asInstanceOf[Alert].getResult.getButtonData == ButtonBar.ButtonData.CANCEL_CLOSE) return
-
-              if (! isValidFieldName(ctrl.fieldName)) {
-                showErrorDialog("名前エラー", "名前として仕様できるのは、アルファベット、数字、_、-で、\n長さは1文字以上、" + MaxFieldNameLength + "文字までです。")
-                t.consume()
-              } else if (af.name != ctrl.fieldName && project.isAbsoluteFieldNameAlreadyUsed(ctrl.fieldName)) {
-                showErrorDialog("名前エラー", "この名前は使用済みです。")
-                t.consume()
-              }
-
-              ctrl.validate match {
-                case AbsoluteFieldValidationResult.ColorFilterHueInvalid =>
-                  showErrorDialog("カラーパスフィルタ エラー", "Hue値が不適切です。")
-                  t.consume()
-
-                case AbsoluteFieldValidationResult.ColorFilterHueErrorInvalid =>
-                  showErrorDialog("カラーパスフィルタ エラー", "Hue許容誤差が不適切です。")
-                  t.consume()
-
-                case AbsoluteFieldValidationResult.ColorFilterHueErrorMissing =>
-                  showErrorDialog("カラーパスフィルタ エラー", "Hue許容誤差が指定されていません。")
-                  t.consume()
-
-                case AbsoluteFieldValidationResult.Ok =>
-              }
+              validateAbsoluteField(t, ctrl, af)
             }
           }
 
+          ctrl.fillEmptyMonoSpacedSettings()
           dlg.showAndWait().map(_.delegate) match {
             case Some(ButtonType.APPLY) =>
               logger.info("APPLY")
@@ -1929,6 +1906,77 @@ class MainController extends Initializable with HandleBigJob {
     (alert, ctrl)
   }
 
+  private def validateAbsoluteField(t: DialogEvent, ctrl: AbsoluteFieldController, af: AbsoluteField) {
+    if (t.getTarget.asInstanceOf[Alert].getResult.getButtonData == ButtonBar.ButtonData.CANCEL_CLOSE) return
+
+    if (! isValidFieldName(ctrl.fieldName)) {
+      showErrorDialog("名前エラー", "名前として仕様できるのは、アルファベット、数字、_、-で、\n長さは1文字以上、" + MaxFieldNameLength + "文字までです。")
+      t.consume()
+    } else if (af.name != ctrl.fieldName && project.isAbsoluteFieldNameAlreadyUsed(ctrl.fieldName)) {
+      showErrorDialog("名前エラー", "この名前は使用済みです。")
+      t.consume()
+    }
+
+    def percentError(failure: PercentFieldFailure): String = failure match {
+      case PercentFieldResult.NotNumber => "数値として無効です。"
+      case PercentFieldResult.TooSmall(min) => min.value + "より大きな値を指定してください。"
+      case PercentFieldResult.TooBig(max) => max.value + "より小さい値を指定してください。"
+      case PercentFieldResult.Empty => "値を指定してください。"
+    }
+
+    ctrl.validate match {
+      case AbsoluteFieldValidationResult.ColorFilterHueInvalid =>
+        showErrorDialog("カラーパスフィルタ エラー", "Hue値が不適切です。")
+        t.consume()
+
+      case AbsoluteFieldValidationResult.ColorFilterHueErrorInvalid =>
+        showErrorDialog("カラーパスフィルタ エラー", "Hue許容誤差が不適切です。")
+        t.consume()
+
+      case AbsoluteFieldValidationResult.ColorFilterHueErrorMissing =>
+        showErrorDialog("カラーパスフィルタ エラー", "Hue許容誤差が指定されていません。")
+        t.consume()
+
+      case AbsoluteFieldValidationResult.BinarizationBrightnessThresholdInvalid =>
+        showErrorDialog("二値化の明るさしきい値 エラー", "二値化の明るさしきい値が不適切です。")
+        t.consume()
+
+      case AbsoluteFieldValidationResult.HEdgeThresholdPerHeightInvalid(failure) =>
+        showErrorDialog("両端エッジ検出割合 エラー", percentError(failure))
+        t.consume()
+
+      case AbsoluteFieldValidationResult.VEdgeThresholdPerHeightInvalid(failure) =>
+        showErrorDialog("上下エッジ検出割合 エラー", percentError(failure))
+        t.consume()
+
+      case AbsoluteFieldValidationResult.VEdgeThresholdPerHeightInvalid(failure) =>
+        showErrorDialog("上下エッジ検出割合 エラー", percentError(failure))
+        t.consume()
+
+      case AbsoluteFieldValidationResult.AcceptableXgapInvalid(failure) =>
+        showErrorDialog("X gap許容最大幅 エラー", percentError(failure))
+        t.consume()
+
+      case AbsoluteFieldValidationResult.AcceptableYgapInvalid(failure) =>
+        showErrorDialog("X gap許容最大幅 エラー", percentError(failure))
+        t.consume()
+
+      case AbsoluteFieldValidationResult.MinCharBodyWidthPerHeightInvalid(failure) =>
+        showErrorDialog("文字最小幅(実体部分)", percentError(failure))
+        t.consume()
+
+      case AbsoluteFieldValidationResult.MinCharWidthPerHeightInvalid(failure) =>
+        showErrorDialog("文字最小幅", percentError(failure))
+        t.consume()
+
+      case AbsoluteFieldValidationResult.MaxCharWidthPerHeightInvalid(failure) =>
+        showErrorDialog("文字最小幅", percentError(failure))
+        t.consume()
+
+      case AbsoluteFieldValidationResult.Ok =>
+    }
+  }
+
   @FXML
   def canvasMouseClicked(e: MouseEvent) {
     logger.info("canvasMouseClicked")
@@ -1939,17 +1987,13 @@ class MainController extends Initializable with HandleBigJob {
           val (dlg, ctrl) = absoluteFieldDialog
           dlg.onCloseRequest = new EventHandler[DialogEvent] {
             override def handle(t: DialogEvent) {
-              if (t.getTarget.asInstanceOf[Alert].getResult.getButtonData == ButtonBar.ButtonData.CANCEL_CLOSE) return
-
-              if (f.name != ctrl.fieldName && project.isAbsoluteFieldNameAlreadyUsed(ctrl.fieldName)) {
-                showErrorDialog("名前エラー", "この名前は使用済みです。")
-                t.consume()
-              }
+              validateAbsoluteField(t, ctrl, f)
             }
           }
 
           ctrl.fieldName = f.name
           f.ocrSettings.foreach { os => ctrl.ocrSettings = os }
+          ctrl.fillEmptyMonoSpacedSettings()
           dlg.showAndWait().map(_.delegate) match {
             case Some(ButtonType.APPLY) =>
               project.updateSelectedAbsoluteField(f, ctrl.fieldName, Some(ctrl.ocrSettings))

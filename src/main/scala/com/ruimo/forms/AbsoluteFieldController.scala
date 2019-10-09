@@ -43,13 +43,25 @@ case object OcrEngineCodeTegaki extends OcrEngineCode {
   override def toString = "Cogent Tegaki"
 }
 
-sealed trait AbsoluteFieldValidationResult
+sealed trait AbsoluteFieldValidationResult {
+  def ifOkThen(f: => AbsoluteFieldValidationResult): AbsoluteFieldValidationResult =
+    if (this == AbsoluteFieldValidationResult.Ok) f else this
+}
 
 object AbsoluteFieldValidationResult {
   case object Ok extends AbsoluteFieldValidationResult
   case object ColorFilterHueInvalid extends AbsoluteFieldValidationResult
   case object ColorFilterHueErrorInvalid extends AbsoluteFieldValidationResult
   case object ColorFilterHueErrorMissing extends AbsoluteFieldValidationResult
+  case object BinarizationBrightnessThresholdInvalid extends AbsoluteFieldValidationResult
+  
+  case class HEdgeThresholdPerHeightInvalid(failure: PercentFieldFailure) extends AbsoluteFieldValidationResult
+  case class VEdgeThresholdPerHeightInvalid(failure: PercentFieldFailure) extends AbsoluteFieldValidationResult
+  case class AcceptableXgapInvalid(failure: PercentFieldFailure) extends AbsoluteFieldValidationResult
+  case class AcceptableYgapInvalid(failure: PercentFieldFailure) extends AbsoluteFieldValidationResult
+  case class MinCharBodyWidthPerHeightInvalid(failure: PercentFieldFailure) extends AbsoluteFieldValidationResult
+  case class MinCharWidthPerHeightInvalid(failure: PercentFieldFailure) extends AbsoluteFieldValidationResult
+  case class MaxCharWidthPerHeightInvalid(failure: PercentFieldFailure) extends AbsoluteFieldValidationResult
 }
 
 class AbsoluteFieldController extends Initializable with HasLogger {
@@ -200,6 +212,42 @@ class AbsoluteFieldController extends Initializable with HasLogger {
   private[this] var colorPassFilterHueErrorText: TextField = _
   lazy val sfxColorPassFilterHueErrorText = new SfxTextField(colorPassFilterHueErrorText)
 
+  @FXML
+  private[this] var binarizationBrightnessThresholdText: TextField = _
+  lazy val sfxBinarizationBrightnessThresholdText = new SfxTextField(binarizationBrightnessThresholdText)
+
+  @FXML
+  private[this] var enableMonoSpaceCheck: CheckBox = _
+  lazy val sfxEnableMonoSpaceCheck = new SfxCheckBox(enableMonoSpaceCheck)
+
+  @FXML
+  private[this] var hEdgeThresholdPerHeightText: TextField = _
+  lazy val sfxHEdgeThresholdPerHeightText = new SfxTextField(hEdgeThresholdPerHeightText)
+
+  @FXML
+  private[this] var acceptableYgapText: TextField = _
+  lazy val sfxAcceptableYgapText = new SfxTextField(acceptableYgapText)
+
+  @FXML
+  private[this] var vEdgeThresholdPerHeightText: TextField = _
+  lazy val sfxVEdgeThresholdPerHeightText = new SfxTextField(vEdgeThresholdPerHeightText)
+
+  @FXML
+  private[this] var acceptableXgapText: TextField = _
+  lazy val sfxAcceptableXgapText = new SfxTextField(acceptableXgapText)
+
+  @FXML
+  private[this] var minCharBodyWidthPerHeightText: TextField = _
+  lazy val sfxMinCharBodyWidthPerHeightText = new SfxTextField(minCharBodyWidthPerHeightText)
+
+  @FXML
+  private[this] var minCharWidthPerHeightText: TextField = _
+  lazy val sfxMinCharWidthPerHeightText = new SfxTextField(minCharWidthPerHeightText)
+
+  @FXML
+  private[this] var maxCharWidthPerHeightText: TextField = _
+  lazy val sfxMaxCharWidthPerHeightText = new SfxTextField(maxCharWidthPerHeightText)
+
   def fieldName: String = fieldNameText.getText()
 
   def fieldName_=(newName: String) {
@@ -246,6 +294,28 @@ class AbsoluteFieldController extends Initializable with HasLogger {
     sfxTesAsteriskCheck.selected = chars.contains(Tesseract.OcrAsterisc)
   }
 
+  def monoSpacedSettings: MonoSpacedSettings = MonoSpacedSettings(
+    enabled = sfxEnableMonoSpaceCheck.isSelected(),
+    hEdgeThresholdPerHeight = Percent(sfxHEdgeThresholdPerHeightText.text.value.toDouble),
+    vEdgeThresholdPerHeight = Percent(sfxVEdgeThresholdPerHeightText.text.value.toDouble),
+    acceptableXgap = Percent(sfxAcceptableXgapText.text.value.toDouble),
+    acceptableYgap = Percent(sfxAcceptableYgapText.text.value.toDouble),
+    minCharBodyWidthPerHeight = Percent(sfxMinCharBodyWidthPerHeightText.text.value.toDouble),
+    minCharWidthPerHeight = Percent(sfxMinCharWidthPerHeightText.text.value.toDouble),
+    maxCharWidthPerHeight = Percent(sfxMaxCharWidthPerHeightText.text.value.toDouble)
+  )
+
+  def applyMonoSpacedSettings(s: MonoSpacedSettings) {
+    sfxEnableMonoSpaceCheck.setSelected(s.enabled)
+    sfxHEdgeThresholdPerHeightText.text.value = s.hEdgeThresholdPerHeight.value.toString
+    sfxVEdgeThresholdPerHeightText.text.value = s.vEdgeThresholdPerHeight.value.toString
+    sfxAcceptableXgapText.text.value = s.acceptableXgap.value.toString
+    sfxAcceptableYgapText.text.value = s.acceptableYgap.value.toString
+    sfxMinCharBodyWidthPerHeightText.text.value = s.minCharBodyWidthPerHeight.value.toString
+    sfxMinCharWidthPerHeightText.text.value = s.minCharWidthPerHeight.value.toString
+    sfxMaxCharWidthPerHeightText.text.value = s.maxCharWidthPerHeight.value.toString
+  }
+
   def colorPassFilterHue: Option[Double] = {
     val text: String = sfxColorPassFilterHueText.text.value
     if (text.trim.isEmpty) None
@@ -259,14 +329,22 @@ class AbsoluteFieldController extends Initializable with HasLogger {
     ColorPassFilterSettings(Hsv.Hue(h), Percent(colorPassFilterHueError))
   }.toList
 
+  def binarization: Option[BinarizationSettings] = {
+    val text: String = sfxBinarizationBrightnessThresholdText.text.value
+    if (text.trim.isEmpty) None
+    else Some(BinarizationSettings(text.toInt))
+  }
+
   def ocrSettings: OcrSettings = sfxOcrEngineComboBox.value() match {
     case OcrEngineCodeGoogle => GoogleOcrSettings(
       colorPassFilter = colorPassFilter,
+      binarization = binarization,
       lang = sfxGoogleLangComboBox.value()
     )
 
     case OcrEngineCodeTegaki => TegakiOcrSettings(
       colorPassFilter = colorPassFilter,
+      binarization = binarization,
       useLangModel = sfxTegUseLangMode.isSelected,
       isMultiLine =  sfxTegIsMultiLine.isSelected,
       acceptChars =  TegakiAcceptChars(
@@ -282,10 +360,21 @@ class AbsoluteFieldController extends Initializable with HasLogger {
 
     case _ => TesseractOcrSettings(
       colorPassFilter = colorPassFilter,
+      binarization = binarization,
       lang = sfxTesLangDropDown.value(),
       acceptChars = TesseractAcceptChars(
         tesseractAcceptChars,
         sfxTesCustomChar.text()
+      ),
+      monoSpacedSettings = MonoSpacedSettings(
+        enabled = sfxEnableMonoSpaceCheck.selected.value,
+        hEdgeThresholdPerHeight = Percent(sfxHEdgeThresholdPerHeightText.text.value.toDouble),
+        vEdgeThresholdPerHeight = Percent(sfxVEdgeThresholdPerHeightText.text.value.toDouble),
+        acceptableXgap = Percent(sfxAcceptableXgapText.text.value.toDouble),
+        acceptableYgap = Percent(sfxAcceptableYgapText.text.value.toDouble),
+        minCharBodyWidthPerHeight = Percent(sfxMinCharBodyWidthPerHeightText.text.value.toDouble),
+        minCharWidthPerHeight = Percent(sfxMinCharWidthPerHeightText.text.value.toDouble),
+        maxCharWidthPerHeight = Percent(sfxMaxCharWidthPerHeightText.text.value.toDouble)
       )
     )
   }
@@ -302,8 +391,18 @@ class AbsoluteFieldController extends Initializable with HasLogger {
     }
   }
 
+  def setBinarization(settings: Option[BinarizationSettings]): Unit = {
+    settings match {
+      case None =>
+        sfxBinarizationBrightnessThresholdText.text.value = ""
+      case Some(s) =>
+        sfxBinarizationBrightnessThresholdText.text.value = s.brightnessThreshold.toString
+    }
+  }
+
   def ocrSettings_=(newOcrSettings: OcrSettings) {
     setColorPassFilter(newOcrSettings.colorPassFilter)
+    setBinarization(newOcrSettings.binarization)
     newOcrSettings match {
       case gos: GoogleOcrSettings =>
         sfxOcrEngineComboBox.value = OcrEngineCodeGoogle
@@ -319,6 +418,14 @@ class AbsoluteFieldController extends Initializable with HasLogger {
             sfxTesCustomChar.text = ta.custom
           case _ =>
         }
+        sfxEnableMonoSpaceCheck.selected.value = tos.monoSpacedSettings.enabled
+        sfxHEdgeThresholdPerHeightText.text.value = tos.monoSpacedSettings.hEdgeThresholdPerHeight.value.toString
+        sfxVEdgeThresholdPerHeightText.text.value = tos.monoSpacedSettings.vEdgeThresholdPerHeight.value.toString
+        sfxAcceptableXgapText.text.value = tos.monoSpacedSettings.acceptableXgap.value.toString
+        sfxAcceptableYgapText.text.value = tos.monoSpacedSettings.acceptableYgap.value.toString
+        sfxMinCharBodyWidthPerHeightText.text.value = tos.monoSpacedSettings.minCharBodyWidthPerHeight.value.toString
+        sfxMinCharWidthPerHeightText.text.value = tos.monoSpacedSettings.minCharWidthPerHeight.value.toString
+        sfxMaxCharWidthPerHeightText.text.value = tos.monoSpacedSettings.maxCharWidthPerHeight.value.toString
         selectOcrPane(OcrEngineCodeTesseract)
 
       case teg: TegakiOcrSettings =>
@@ -373,7 +480,14 @@ class AbsoluteFieldController extends Initializable with HasLogger {
     })
   }
 
-  def validate: AbsoluteFieldValidationResult = {
+  def validate: AbsoluteFieldValidationResult =
+    validateColorFilter.ifOkThen {
+      validateBinarization
+    }.ifOkThen {
+      validateMonoSpacedSettings
+    }
+
+  def validateColorFilter: AbsoluteFieldValidationResult = {
     try {
       colorPassFilterHue match {
         case None => AbsoluteFieldValidationResult.Ok
@@ -397,5 +511,83 @@ class AbsoluteFieldController extends Initializable with HasLogger {
       case e: NumberFormatException =>
         AbsoluteFieldValidationResult.ColorFilterHueInvalid
     }
+  }
+
+  def validateBinarization: AbsoluteFieldValidationResult = {
+    try {
+      binarization match {
+        case None => AbsoluteFieldValidationResult.Ok
+        case Some(s) =>
+          if (0 <= s.brightnessThreshold && s.brightnessThreshold <= 255)
+            AbsoluteFieldValidationResult.Ok
+          else
+            AbsoluteFieldValidationResult.BinarizationBrightnessThresholdInvalid
+       }
+    } catch {
+      case e: NumberFormatException =>
+        AbsoluteFieldValidationResult.BinarizationBrightnessThresholdInvalid
+    }
+  }
+
+  def parseTextField(
+    textField: SfxTextField, f: PercentFieldFailure => AbsoluteFieldValidationResult,
+    min: Percent = Percent(0), max: Percent = Percent(100)
+  ): AbsoluteFieldValidationResult = {
+    import PercentFieldResult.{parseTextField => parse}
+
+    parse(textField, Some(min), Some(max)) match {
+      case Left(fail) => f(fail)
+      case Right(p) => AbsoluteFieldValidationResult.Ok
+    }
+  }
+
+  def validateMonoSpacedSettings: AbsoluteFieldValidationResult = {
+    if (sfxEnableMonoSpaceCheck.selected.value) {
+      import AbsoluteFieldValidationResult._
+
+      parseTextField(sfxHEdgeThresholdPerHeightText, HEdgeThresholdPerHeightInvalid.apply).ifOkThen {
+        parseTextField(sfxVEdgeThresholdPerHeightText, VEdgeThresholdPerHeightInvalid.apply)
+      }.ifOkThen {
+        parseTextField(sfxAcceptableXgapText, AcceptableXgapInvalid.apply)
+      }.ifOkThen {
+        parseTextField(sfxAcceptableYgapText, AcceptableYgapInvalid.apply)
+      }.ifOkThen {
+        parseTextField(sfxMinCharBodyWidthPerHeightText, MinCharBodyWidthPerHeightInvalid.apply)
+      }.ifOkThen {
+        parseTextField(sfxMinCharWidthPerHeightText, MinCharWidthPerHeightInvalid.apply)
+      }.ifOkThen {
+        parseTextField(sfxMaxCharWidthPerHeightText, MaxCharWidthPerHeightInvalid.apply, max = Percent(500))
+      }
+    } else {
+      AbsoluteFieldValidationResult.Ok
+    }
+  }
+
+  def fillEmptyMonoSpacedSettings(): Unit = {
+    def fill(textField: SfxTextField, default: Percent) {
+      if (textField.text.value.trim.isEmpty()) {
+        textField.text.value = default.value.toString
+      }
+    }
+
+    fill(sfxHEdgeThresholdPerHeightText, MonoSpacedSettings.DefaultHEdgeThresholdPerHeight)
+    fill(sfxVEdgeThresholdPerHeightText, MonoSpacedSettings.DefaultVEdgeThresholdPerHeight)
+    fill(sfxAcceptableXgapText, MonoSpacedSettings.DefaultAcceptableXgap)
+    fill(sfxAcceptableYgapText, MonoSpacedSettings.DefaultAcceptableYgap)
+    fill(sfxMinCharBodyWidthPerHeightText, MonoSpacedSettings.DefaultMinCharBodyWidthPerHeight)
+    fill(sfxMinCharWidthPerHeightText, MonoSpacedSettings.DefaultMinCharWidthPerHeight)
+    fill(sfxMaxCharWidthPerHeightText, MonoSpacedSettings.DefaultMaxCharWidthPerHeight)
+  }
+
+  @FXML
+  def onResetMonoSpacedSettings(e: ActionEvent) {
+    sfxHEdgeThresholdPerHeightText.text.value = ""
+    sfxVEdgeThresholdPerHeightText.text.value = ""
+    sfxAcceptableXgapText.text.value = ""
+    sfxAcceptableYgapText.text.value = ""
+    sfxMinCharBodyWidthPerHeightText.text.value = ""
+    sfxMinCharWidthPerHeightText.text.value = ""
+    sfxMaxCharWidthPerHeightText.text.value = ""
+    fillEmptyMonoSpacedSettings()
   }
 }

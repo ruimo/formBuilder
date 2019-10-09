@@ -145,6 +145,7 @@ class CropDetailController extends Initializable with HasLogger {
         sfxSvalue.text = colorEdge.s.toString
         sfxVvalue.text = colorEdge.v.toString
         sfxHsvError.text = colorEdge.errorPercentage.value.toString
+        sfxHsvThreshold.text = colorEdge.threshold.value.toString
     }
   }
 

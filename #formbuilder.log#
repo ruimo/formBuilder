@@ -1,0 +1,114 @@
+2019-10-09 14:51:18,659 JavaFX Application Thread Application start. Version: 1.0.26-SNAPSHOT
+2019-10-09 14:51:19,751 JavaFX Application Thread Current version: 1.0.26-SNAPSHOT, Latest version: 1.0.25
+2019-10-09 14:51:23,659 JavaFX Application Thread openMenuClicked()
+2019-10-09 14:51:23,719 JavaFX Application Thread prepareFileForListConfig()
+2019-10-09 14:51:24,652 scala-execution-context-global-64 status = 200
+2019-10-09 14:51:24,652 scala-execution-context-global-64 statusText = OK
+2019-10-09 14:51:27,581 JavaFX Application Thread onFormTableClicked FormConfig(arata,Revision(201),,2019-09-26T08:11:27.033Z)
+2019-10-09 14:51:31,954 JavaFX Application Thread Open config: FormConfig(arata,Revision(201),,2019-09-26T08:11:27.033Z)
+2019-10-09 14:51:32,560 scala-execution-context-global-66 status = 200
+2019-10-09 14:51:32,560 scala-execution-context-global-66 statusText = OK
+2019-10-09 14:51:32,561 JavaFX Application Thread Open config: {"record":{"id":"201","contractedUserId":"16","configName":"arata","config":"{\"skewCorrection\":{\"enabled\":true,\"condition\":{\"direction\":\"horizontal\",\"errorAllowance\":25,\"lineCount\":1,\"maxAngleToDetect\":2,\"detectAreaFrom\":0,\"detectAreaTo\":100}},\"crop\":{\"enabled\":true,\"cropType\":\"blackEdgeCrop\",\"top\":[10.305958132045088,3.7606837606837606,38.64734299516908,8.88888888888889],\"bottom\":[21.658615136876005,77.83475783475784,32.930756843800324,11.11111111111111],\"left\":[5.475040257648954,33.732193732193736,12.47987117552335,18.632478632478634],\"right\":[80.91787439613526,32.193732193732195,16.586151368760063,17.72079772079772],\"topSensitivity\":254,\"bottomSensitivity\":254,\"leftSensitivity\":254,\"rightSensitivity\":254},\"leftCropField\":{\"originalSize\":[1244,1757],\"x\":68,\"y\":592,\"w\":155,\"h\":327},\"topCropField\":{\"originalSize\":[1244,1757],\"x\":128,\"y\":66,\"w\":480,\"h\":156},\"rightCropField\":{\"originalSize\":[1244,1757],\"x\":1005,\"y\":565,\"w\":206,\"h\":311},\"bottomCropField\":{\"originalSize\":[1244,1757],\"x\":269,\"y\":1366,\"w\":409,\"h\":195},\"ruledLineRemoval\":{\"enabled\":false,\"condition\":{\"line\":{\"deltaX\":1,\"deltaY\":1,\"dotRatio\":40},\"correctOverlapping\":{\"enabled\":true,\"delta\":2,\"dotRatio\":40}}},\"cropRectangle\":{\"enabled\":false,\"condition\":{\"errorAllowance\":25,\"topMargin\":0,\"leftMargin\":0,\"rightMargin\":0,\"bottomMargin\":0,\"slantAllowance\":1,\"blackLevel\":20}},\"dotRemoval\":{\"enabled\":false,\"condition\":{\"maxDotSize\":10,\"blackLevel\":200}},\"absoluteFields\":[{\"name\":\"slipno\",\"field\":{\"originalSize\":[916,1318],\"x\":716,\"y\":0,\"w\":121,\"h\":28,\"name\":\"slipno\",\"ocrSettings\":{\"engine\":\"tesseract\",\"colorPassFilter\":[],\"lang\":\"en\",\"acceptChars\":{\"chars\":[\"0-9\"],\"custom\":\"\"},\"monoSpacedSettings\":{\"enabled\":false,\"hEdgeThresholdPerHeight\":5,\"vEdgeThresholdPerHeight\":5,\"acceptableXgap\":15,\"acceptableYgap\":5,\"minCharBodyWidthPerHeight\":15,\"minCharWidthPerHeight\":50,\"maxCharWidthPerHeight\":110}}}},{\"name\":\"item0_name\",\"field\":{\"originalSize\":[916,1318],\"x\":6,\"y\":514,\"w\":505,\"h\":41,\"name\":\"item0_name\",\"ocrSettings\":{\"engine\":\"google\",\"colorPassFilter\":[],\"lang\":\"ja\"}}},{\"name\":\"item0_price\",\"field\":{\"originalSize\":[916,1318],\"x\":525,\"y\":518,\"w\":189,\"h\":34,\"name\":\"item0_price\",\"ocrSettings\":{\"engine\":\"tesseract\",\"colorPassFilter\":[],\"lang\":\"en\",\"acceptChars\":{\"chars\":[\"0-9\",\",\"],\"custom\":\"\"},\"monoSpacedSettings\":{\"enabled\":false,\"hEdgeThresholdPerHeight\":5,\"vEdgeThresholdPerHeight\":5,\"acceptableXgap\":15,\"acceptableYgap\":5,\"minCharBodyWidthPerHeight\":15,\"minCharWidthPerHeight\":50,\"maxCharWidthPerHeight\":110}}}},{\"name\":\"subtotal\",\"field\":{\"originalSize\":[916,1318],\"x\":527,\"y\":753,\"w\":187,\"h\":35,\"name\":\"subtotal\",\"ocrSettings\":{\"engine\":\"tesseract\",\"colorPassFilter\":[],\"lang\":\"en\",\"acceptChars\":{\"chars\":[\"0-9\",\",\"],\"custom\":\"\"},\"monoSpacedSettings\":{\"enabled\":false,\"hEdgeThresholdPerHeight\":5,\"vEdgeThresholdPerHeight\":5,\"acceptableXgap\":15,\"acceptableYgap\":5,\"minCharBodyWidthPerHeight\":15,\"minCharWidthPerHeight\":50,\"maxCharWidthPerHeight\":110}}}},{\"name\":\"tax\",\"field\":{\"originalSize\":[916,1318],\"x\":531,\"y\":802,\"w\":183,\"h\":32,\"name\":\"tax\",\"ocrSettings\":{\"engine\":\"tesseract\",\"colorPassFilter\":[],\"lang\":\"en\",\"acceptChars\":{\"chars\":[\"0-9\",\",\"],\"custom\":\"\"},\"monoSpacedSettings\":{\"enabled\":false,\"hEdgeThresholdPerHeight\":5,\"vEdgeThresholdPerHeight\":5,\"acceptableXgap\":15,\"acceptableYgap\":5,\"minCharBodyWidthPerHeight\":15,\"minCharWidthPerHeight\":50,\"maxCharWidthPerHeight\":110}}}},{\"name\":\"total\",\"field\":{\"originalSize\":[916,1318],\"x\":529,\"y\":849,\"w\":186,\"h\":25,\"name\":\"total\",\"ocrSettings\":{\"engine\":\"tesseract\",\"colorPassFilter\":[],\"lang\":\"en\",\"acceptChars\":{\"chars\":[\"0-9\",\",\"],\"custom\":\"\"},\"monoSpacedSettings\":{\"enabled\":false,\"hEdgeThresholdPerHeight\":5,\"vEdgeThresholdPerHeight\":5,\"acceptableXgap\":15,\"acceptableYgap\":5,\"minCharBodyWidthPerHeight\":15,\"minCharWidthPerHeight\":50,\"maxCharWidthPerHeight\":110}}}}]}","comment":"","createdAt":"1569485487033"}}
+2019-10-09 14:51:32,567 scala-execution-context-global-64 Unknown error while performing big job.
+play.api.libs.json.JsResultException: JsResultException(errors:List((,List(JsonValidationError(List('revision' is undefined on object:
+{
+  "id":"201",
+  "contractedUserId":"16",
+  "configName":"arata",
+  "config":"{
+    \"skewCorrection\":{
+      \"enabled\":true,
+      \"condition\":{
+        \"direction\":\"horizontal\",
+        \"errorAllowance\":25,
+        \"lineCount\":1,
+        \"maxAngleToDetect\":2,
+        \"detectAreaFrom\":0,
+        \"detectAreaTo\":100
+      }
+    },
+    \"crop\":{
+      \"enabled\":true,
+      \"cropType\":\"blackEdgeCrop\",
+      \"top\":[10.305958132045088,3.7606837606837606,38.64734299516908,8.88888888888889],
+      \"bottom\":[21.658615136876005,77.83475783475784,32.930756843800324,11.11111111111111],
+      \"left\":[5.475040257648954,33.732193732193736,12.47987117552335,18.632478632478634],
+      \"right\":[80.91787439613526,32.193732193732195,16.586151368760063,17.72079772079772],
+      \"topSensitivity\":254,
+      \"bottomSensitivity\":254,
+      \"leftSensitivity\":254,
+      \"rightSensitivity\":254
+    },
+    \"leftCropField\":{
+      \"originalSize\":[1244,1757],
+      \"x\":68,\"y\":592,\"w\":155,\"h\":327
+    },
+    \"topCropField\":{
+      \"originalSize\":[1244,1757],
+      \"x\":128,\"y\":66,\"w\":480,\"h\":156
+    },
+    \"rightCropField\":{
+      \"originalSize\":[1244,1757],\"x\":1005,\"y\":565,\"w\":206,\"h\":311
+    },
+    \"bottomCropField\":{
+      \"originalSize\":[1244,1757],\"x\":269,\"y\":1366,\"w\":409,\"h\":195
+    },
+    \"ruledLineRemoval\":{
+      \"enabled\":false,\"condition\":{
+        \"line\":{\"deltaX\":1,\"deltaY\":1,\"dotRatio\":40},
+        \"correctOverlapping\":{\"enabled\":true,\"delta\":2,\"dotRatio\":40}
+      }
+    },
+    \"cropRectangle\":{
+      \"enabled\":false,
+      \"condition\":{
+        \"errorAllowance\":25,
+        \"topMargin\":0,\"leftMargin\":0,\"rightMargin\":0,\"bottomMargin\":0,\"slantAllowance\":1,\"blackLevel\":20
+      }
+    },
+    \"dotRemoval\":{
+      \"enabled\":false,\"condition\":{
+        \"maxDotSize\":10,\"blackLevel\":200
+      }
+    },
+    \"absoluteFields\":[
+      {
+        \"name\":\"slipno\",
+        \"field\":{
+          \"originalSize\":[916,1318],
+          \"x\":716,\"y\":0,\"w\":121,\"h\":28,
+          \"name\":\"slipno\",
+          \"ocrSettings\":{
+            \"engine\":\"tesseract\",\"colorPassFilter\":[],\"lang\":\"en\",
+            \"acceptChars\":{\"chars\":[\"0-9\"],\"custom\":\"\"},
+            \"monoSpacedSettings\":{
+              \"enabled\":false,\"hEdgeThresholdPerHeight\":5,
+              \"vEdgeThresholdPerHeight\":5,\"acceptableXgap\":15,\"acceptableYgap\":5,\"minCharBodyWidthPerHeight\":15,
+              \"minCharWidthPerHeight\":50,\"maxCharWidthPerHeight\":110
+            }
+          }
+        }
+      },
+      {
+        \"name\":\"item0_name\",\"field\":{\"originalSize\":[916,1318],\"x\":6,\"y\":514,\"w\":505,\"h\":41,\"name\":\"item0_name\",\"ocrSettings\":{\"engine\":\"google\",\"colorPassFilter\":[],\"lang\":\"ja\"}}},{\"name\":\"item0_price\",\"field\":{\"originalSize\":[916,1318],\"x\":525,\"y\":518,\"w\":189,\"h\":34,\"name\":\"item0_price\",\"ocrSettings\":{\"engine\":\"tesseract\",\"colorPassFilter\":[],\"lang\":\"en\",\"acceptChars\":{\"chars\":[\"0-9\",\",\"],\"custom\":\"\"},\"monoSpacedSettings\":{\"enabled\":false,\"hEdgeThresholdPerHeight\":5,\"vEdgeThresholdPerHeight\":5,\"acceptableXgap\":15,\"acceptableYgap\":5,\"minCharBodyWidthPerHeight\":15,\"minCharWidthPerHeight\":50,\"maxCharWidthPerHeight\":110}}}},{\"name\":\"subtotal\",\"field\":{\"originalSize\":[916,1318],\"x\":527,\"y\":753,\"w\":187,\"h\":35,\"name\":\"subtotal\",\"ocrSettings\":{\"engine\":\"tesseract\",\"colorPassFilter\":[],\"lang\":\"en\",\"acceptChars\":{\"chars\":[\"0-9\",\",\"],\"custom\":\"\"},\"monoSpacedSettings\":{\"enabled\":false,\"hEdgeThresholdPerHeight\":5,\"vEdgeThresholdPerHeight\":5,\"acceptableXgap\":15,\"acceptableYgap\":5,\"minCharBodyWidthPerHeight\":15,\"minCharWidthPerHeight\":50,\"maxCharWidthPerHeight\":110}}}},{\"name\":\"tax\",\"field\":{\"originalSize\":[916,1318],\"x\":531,\"y\":802,\"w\":183,\"h\":32,\"name\":\"tax\",\"ocrSettings\":{\"engine\":\"tesseract\",\"colorPassFilter\":[],\"lang\":\"en\",\"acceptChars\":{\"chars\":[\"0-9\",\",\"],\"custom\":\"\"},\"monoSpacedSettings\":{\"enabled\":false,\"hEdgeThresholdPerHeight\":5,\"vEdgeThresholdPerHeight\":5,\"acceptableXgap\":15,\"acceptableYgap\":5,\"minCharBodyWidthPerHeight\":15,\"minCharWidthPerHeight\":50,\"maxCharWidthPerHeight\":110}}}},{\"name\":\"total\",\"field\":{\"originalSize\":[916,1318],\"x\":529,\"y\":849,\"w\":186,\"h\":25,\"name\":\"total\",\"ocrSettings\":{\"engine\":\"tesseract\",\"colorPassFilter\":[],\"lang\":\"en\",\"acceptChars\":{\"chars\":[\"0-9\",\",\"],\"custom\":\"\"},\"monoSpacedSettings\":{\"enabled\":false,\"hEdgeThresholdPerHeight\":5,\"vEdgeThresholdPerHeight\":5,\"acceptableXgap\":15,\"acceptableYgap\":5,\"minCharBodyWidthPerHeight\":15,\"minCharWidthPerHeight\":50,\"maxCharWidthPerHeight\":110}}}}]}","comment":"","createdAt":"1569485487033"}),WrappedArray())))))
+	at play.api.libs.json.JsReadable.$anonfun$as$2(JsReadable.scala:25)
+	at play.api.libs.json.JsError.fold(JsResult.scala:56)
+	at play.api.libs.json.JsReadable.as(JsReadable.scala:24)
+	at play.api.libs.json.JsReadable.as$(JsReadable.scala:23)
+	at play.api.libs.json.JsUndefined.as(JsLookup.scala:181)
+	at com.ruimo.forms.OpenConfigResultOk$.parse(RestResult.scala:137)
+	at com.ruimo.forms.projects.project0.ProjectImpl.$anonfun$openConfig$1(Project.scala:1801)
+	at scala.util.Success.$anonfun$map$1(Try.scala:251)
+	at scala.util.Success.map(Try.scala:209)
+	at scala.concurrent.Future.$anonfun$map$1(Future.scala:289)
+	at scala.concurrent.impl.Promise.liftedTree1$1(Promise.scala:29)
+	at scala.concurrent.impl.Promise.$anonfun$transform$1(Promise.scala:29)
+	at scala.concurrent.impl.CallbackRunnable.run(Promise.scala:60)
+	at scala.concurrent.impl.ExecutionContextImpl$AdaptedForkJoinTask.exec(ExecutionContextImpl.scala:140)
+	at java.util.concurrent.ForkJoinTask.doExec(ForkJoinTask.java:289)
+	at java.util.concurrent.ForkJoinPool$WorkQueue.runTask(ForkJoinPool.java:1056)
+	at java.util.concurrent.ForkJoinPool.runWorker(ForkJoinPool.java:1692)
+	at java.util.concurrent.ForkJoinWorkerThread.run(ForkJoinWorkerThread.java:157)
+2019-10-09 14:51:32,594 JavaFX Application Thread crop enabled changed true
+2019-10-09 14:51:32,601 JavaFX Application Thread Skew correction changed SkewCorrection(true,SkewCorrectionConditionImpl(SkewCorrectionDirectionHorizontal,25,1,2.0,Percent(0.0),Percent(100.0)))
+2019-10-09 14:51:32,601 JavaFX Application Thread flushCachedImage() called.
